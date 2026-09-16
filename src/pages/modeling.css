@@ -1,0 +1,28 @@
+.hand-in-btn {
+    box-sizing: border-box;
+    width: fit-content;
+    height: 26px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: #0D9488;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.hand-in-btn p {
+    font-size: 12px;
+    font-weight: 600;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+}
+
+.hand-in-btn img {
+    width: 14px;
+    height: 14px;
+}
