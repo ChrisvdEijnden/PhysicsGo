@@ -15,6 +15,15 @@
     cursor: pointer;
 }
 
+.hand-in-btn img {
+    display: inline-block;
+    transition: transform 0.3s ease;
+}
+
+.hand-in-btn:hover img {
+    transform: translateX(4px);
+}
+
 .hand-in-btn p {
     font-size: 12px;
     font-weight: 600;

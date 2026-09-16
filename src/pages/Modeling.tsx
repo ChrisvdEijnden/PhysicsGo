@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import "./global.css";
+import "../styles/global.css";
 import "./modeling.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";

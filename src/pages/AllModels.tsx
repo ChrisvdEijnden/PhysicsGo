@@ -8,24 +8,22 @@ function AllModels() {
     const navigate = useNavigate();
     return (
         <div>
-            <div>
-                <div className="nav">
-                    <div className="brand-and-breadcrumb">
-                        <div className="brand">
-                            <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                        </div>
-                        <h1>PhysicsGo</h1>
-                        <div className="spacer"></div>
-                        <h2>All Models</h2>
+            <div className="nav">
+                <div className="brand-and-breadcrumb">
+                    <div className="brand">
+                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
                     </div>
-                    <div className="right-system-actions">
-                        <button onClick={() => navigate("/settings")}>
-                            <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                        </button>
-                        <button onClick={() => navigate("/")}>
-                            <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                        </button>
-                    </div>
+                    <h1>PhysicsGo</h1>
+                    <div className="spacer"></div>
+                    <h2>All Models</h2>
+                </div>
+                <div className="right-system-actions">
+                    <button onClick={() => navigate("/settings")}>
+                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
+                    </button>
+                    <button onClick={() => navigate("/")}>
+                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
+                    </button>
                 </div>
             </div>
 

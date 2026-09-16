@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import "./global.css";
+import "../styles/global.css";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import LogoIcon26px from "../assets/icons/logo-26px.svg";
 

@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
+
+.auth-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    gap: 32px;
+    border-radius: 20px;
+    background-color: #fff;
+    border: 1px #e2e8f0 solid;
+    box-shadow: 0px 16px 32px #0F172A0D;
+    width: 532px;
+    height: fit-content;
+}
+
+.header-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+    height: fit-content;
+    width: 452px;
+}
+
+.header-group h3 {
+    font-size: 14px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    width: fit-content;
+    color: #475569;
+}
+
+.full-brand {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    align-items: center;
+    height: 40px;
+    width: fit-content;
+}
+
+.full-brand h1 {
+    font-size: 40px;
+    font-weight: bolder;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    color: #0F172A;
+}
+
+.full-brand .brand {
+    width: 40px;
+    height: 40px;
+    background-color: #0D9488;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+}
+.full-brand .brand img {
+    width: 35px;
+    height: 35px;
+    color: #fff;
+}
+
+.access-code {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    width: fit-content;
+    gap: 8px;
+}
+
+.dash {
+    width: 12px;
+    height: 36px;
+    justify-content: center;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    color: #94A3B8;
+}
+
+.char-slot {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 26px;
+    height: 36px;
+    background-color: #F8FAFC;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: "Figtree", sans-serif;
+    color: #0F172A;
+    margin: 0;
+}
+
+.char-slot input {
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    text-align: center;
+    font: inherit;
+    color: inherit;
+    padding: 0;
+}
+
+.footer-context {
+    margin: 0;
+    width: fit-content;
+    font-size: 11px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    color: #94A3B8;
+}
+
+.background-logo {
+    position: absolute;
+    left: 66%;
+    top: 30%;
+    overflow: hidden;
+}

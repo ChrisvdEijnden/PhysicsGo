@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
-import "./global.css";
+import "../styles/global.css";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import LogoIcon26px from "../assets/icons/logo-26px.svg";
@@ -28,7 +28,6 @@ function Dashboard() {
                     </button>
                 </div>
             </div>
-
 
             <div className="content">
                 <button onClick={() => navigate("/modeling")}>

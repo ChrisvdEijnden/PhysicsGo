@@ -1,0 +1,9 @@
+<svg width="750" height="750" viewBox="0 0 750 750" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M375 75L600 225V525L375 675L150 525V225L375 75Z" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375V75" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375L600 225" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375L600 525" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375V675" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375L150 525" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+<path d="M375 375L150 225" stroke="white" stroke-width="21.428" stroke-linejoin="round"/>
+</svg>
