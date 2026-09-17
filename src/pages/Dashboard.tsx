@@ -1,15 +1,18 @@
 import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
+import "./dashboard.css";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
+import NewFile24px from "../assets/icons/newfile-24px.svg";
 
 
 function Dashboard() {
     const navigate = useNavigate();
     return (
-        <div>
+        <div className="dashboard">
             <div className="nav">
                 <div className="brand-and-breadcrumb">
                     <div className="brand">
@@ -30,12 +33,47 @@ function Dashboard() {
             </div>
 
             <div className="content">
-                <button onClick={() => navigate("/modeling")}>
-                    Go to Modeling
-                </button>
-                <button onClick={() => navigate("/all-models")}>
-                    View All Models
-                </button>
+                <div className="left-panel">
+                    <div className="creator-card">
+                        <h2>Start New Model</h2>
+                        <div className="dual-action-buttons">
+                            <div className="action-new" onClick={() => navigate("/modeling")}>
+                                <img src={NewFile24px} alt="NewFile24px"/>
+                                <div className="action-text">
+                                    <h3>Empty Project</h3>
+                                    <p>Pure numeric code editor</p>
+                                </div>
+                            </div>
+                            <div className="action-open" onClick={() => navigate("/modeling")}>
+                                <img src={FolderOpen24px} alt="FolderOpen24px"/>
+                                <div className="action-text">
+                                    <h3>Open Project</h3>
+                                    <p>From local device or cloud</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="curriculum-card">
+                        <h2>Curriculum Presets</h2>
+                        <div className="presets-list">
+
+                        </div>
+                    </div>
+                </div>
+                <div className="right-panel">
+                    <div className="top-row">
+                        <h2>Your Recent Projects</h2>
+                        <a onClick={() => navigate("/all-models")}>View All Models</a>
+                    </div>
+                    <div className="header-row">
+                        <p className="project-name">Project Name</p>
+                        <p className="other-filters">Type</p>
+                        <p className="other-filters">Last Edit</p>
+                    </div>
+                    <div className="recents-list">
+
+                    </div>
+                </div>
             </div>
         </div>
     );

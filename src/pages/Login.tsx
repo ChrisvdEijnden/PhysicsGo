@@ -21,7 +21,7 @@ function Login() {
     const isComplete = code.every((c) => c !== "");
 
     const saveCode = (fullCode: string) => {
-        // Placeholder persistence — swap for your actual auth call.
+        // Placeholder persistence
         localStorage.setItem("physicsgo_login_code", fullCode);
     };
 
