@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
 
 .auth-card {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -128,4 +132,6 @@
     left: 66%;
     top: 30%;
     overflow: hidden;
+    width: 750px;
+    height: 750px;
 }

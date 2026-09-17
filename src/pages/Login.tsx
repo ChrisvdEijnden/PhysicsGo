@@ -28,6 +28,7 @@ function Login() {
     useEffect(() => {
         if (isComplete) {
             saveCode(code.join(""));
+            navigate("/dashboard");
         }
     }, [code, isComplete]);
 
@@ -100,13 +101,9 @@ function Login() {
                         ))}
                     </div>
                     <div className="footer-context">
-                        <p>PhysicsGo v0.1 · Premium Educational Platform</p>
+                        <p>PhysicsGo v0.1 · Modeling Platform</p>
                     </div>
                 </div>
-
-                <button disabled={!isComplete} onClick={() => navigate("/dashboard")}>
-                    Go to Dashboard
-                </button>
             </div>
         </div>
     );
