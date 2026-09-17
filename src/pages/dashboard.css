@@ -126,7 +126,6 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    padding: 12px 8px;
 }
 
 .top-row a {
@@ -148,15 +147,16 @@
     height: fit-content;
     gap: 12px;
     border-bottom: 1px solid #E2E8F0;
+    padding: 8px 12px;
 }
 
 .header-row p {
     font-size: 12px;
     font-weight: 500;
     font-family: "Figtree", sans-serif;
-    margin: 0;
     text-align: left;
     color: #475569;
+    margin: 0;
 }
 
 .other-filters {
@@ -213,4 +213,56 @@
     margin: 0;
     text-align: left;
     color: #475569;
+}
+
+.recents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.recent-item {
+    padding: 12px;
+    width: max-content;
+    height: 42px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background-color: #fff;
+    border-radius: 8px;
+}
+
+.recent-item:active, .recent-item:hover {
+    background-color: #F8FAFC;
+}
+
+.project-recent-name {
+    width: 445px;
+}
+
+.recent-item img {
+    width: 18px;
+    height: 18px;
+}
+
+.project-name .recent-name, .project-recent-name {
+    font-size: 14px;
+    font-weight: 500;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    color: #0F172A;
+    text-align: left;
+    height: fit-content;
+}
+.other-filters .recent-type, .other-filters .recent-last-edit {
+    font-size: 13px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    color: #475569;
+    text-align: left;
+    width: 120px;
+    height: fit-content;
 }

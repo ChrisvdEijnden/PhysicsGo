@@ -12,7 +12,21 @@ import AscewArrow67px from "../assets/icons/Vector.svg";
 
 // these will later hold the teacher's presets
 import { curriculumPresets } from "../data/curriculumPresets.tsx";
+import FileCode18px from "../assets/icons/filecode-18px.svg";
 
+interface RecentProject {
+    id: string;
+    name: string;
+    type: string;
+    lastEdit: string;
+}
+
+const recentProjects: RecentProject[] = [
+    { id: "harmonic-pendulum-drag", name: "Harmonic Pendulum with Drag", type: "Differential Solver", lastEdit: "2 mins ago" },
+    { id: "double-star-orbit", name: "Double Star Orbit Simulation", type: "Gravity Array", lastEdit: "1 hour ago" },
+    { id: "ideal-gas-collisions", name: "Ideal Gas Elastic Collisions", type: "Stochastic Model", lastEdit: "Yesterday" },
+    { id: "photon-interference", name: "Photon Interference Wavefront", type: "Wave Optics", lastEdit: "3 days ago" },
+];
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -90,7 +104,24 @@ function Dashboard() {
                         <p className="other-filters">Last Edit</p>
                     </div>
                     <div className="recents-list">
-
+                        {recentProjects.map((project) => (
+                            <div
+                                key={project.id}
+                                className="recent-item"
+                                onClick={() => navigate("/modeling", { state: { projectId: project.id } })}
+                            >
+                                <img src={FileCode18px} alt="" />
+                                <div className="project-recent-name">
+                                    <p className="recent-name">{project.name}</p>
+                                </div>
+                                <div className="other-filters">
+                                    <p className="recent-type">{project.type}</p>
+                                </div>
+                                <div className="other-filters">
+                                    <p className="recent-last-edit">{project.lastEdit}</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

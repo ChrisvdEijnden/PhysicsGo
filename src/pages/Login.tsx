@@ -101,7 +101,7 @@ function Login() {
                         ))}
                     </div>
                     <div className="footer-context">
-                        <p>PhysicsGo v0.1 · Modeling Platform</p>
+                        <p>PhysicsGo v0.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>
                     </div>
                 </div>
             </div>
