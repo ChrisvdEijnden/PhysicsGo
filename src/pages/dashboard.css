@@ -165,3 +165,52 @@
 .project-name {
     width: 475px;
 }
+
+.presets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.preset-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background-color: #F8FAFC;
+    width: 354px;
+    border-radius: 10px;
+}
+
+.preset-item img {
+    width: fit-content;
+    height: fit-content;
+}
+
+.preset-item-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: left;
+    text-align: left;
+    height: fit-content;
+    width: fit-content;
+}
+
+.preset-item-text h3 {
+    font-size: 13px;
+    font-weight: 500;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    text-align: left;
+    color: #0F172A;
+}
+
+.preset-item-text p {
+    font-size: 11px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    margin: 0;
+    text-align: left;
+    color: #475569;
+}

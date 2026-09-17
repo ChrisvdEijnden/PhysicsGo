@@ -1,4 +1,5 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { curriculumPresets } from "../data/curriculumPresets";
 
 import "../styles/global.css";
 import "./modeling.css";
@@ -11,6 +12,9 @@ import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 
 function Modeling() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const presetId = (location.state as { presetId?: string } | null)?.presetId;
+    const preset = curriculumPresets.find((p) => p.id === presetId);
     return (
         <div>
             <div className="nav">
@@ -20,7 +24,7 @@ function Modeling() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>***Placeholder for project name***</h2>
+                    <h2>{ preset?.title }</h2>
                 </div>
 
                 <div className="system-actions">

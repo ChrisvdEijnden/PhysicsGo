@@ -2,11 +2,16 @@ import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./dashboard.css";
+
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
 import NewFile24px from "../assets/icons/newfile-24px.svg";
+import AscewArrow67px from "../assets/icons/Vector.svg";
+
+// these will later hold the teacher's presets
+import { curriculumPresets } from "../data/curriculumPresets.tsx";
 
 
 function Dashboard() {
@@ -56,7 +61,21 @@ function Dashboard() {
                     <div className="curriculum-card">
                         <h2>Curriculum Presets</h2>
                         <div className="presets-list">
-
+                            {curriculumPresets.map((preset) => (
+                                <div
+                                    key={preset.id}
+                                    className="preset-item"
+                                    onClick={() => navigate(
+                                        "/modeling",
+                                        { state: { presetId: preset.id } }
+                                    )}>
+                                    <div className="preset-item-text">
+                                        <h3>{preset.title}</h3>
+                                        <p>{preset.type}</p>
+                                    </div>
+                                    <img src={AscewArrow67px} alt="AscewArrow67px"/>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
