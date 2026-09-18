@@ -46,6 +46,13 @@ function Modeling() {
             </div>
 
             <div className="content">
+                <div className="explanation-panel">
+
+                </div>
+                <div className="code-panel">
+                </div>
+                <div className="analysis-panel">
+                </div>
             </div>
         </div>
     );

@@ -19,7 +19,7 @@ import { recentProjects } from "../data/recentsProjects.tsx";
 function Dashboard() {
     const navigate = useNavigate();
     return (
-        <div className="dashboard">
+        <div>
             <div className="nav">
                 <div className="brand-and-breadcrumb">
                     <div className="brand">
