@@ -4,7 +4,7 @@
     width: 100%;
     flex: 1;
     align-items: stretch;
-    gap: 20px;
+    gap: 16px;
 }
 
 .left-panel {
@@ -12,7 +12,7 @@
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
-    gap: 20px;
+    gap: 16px;
     height: 100%;
 }
 
@@ -21,8 +21,8 @@
     flex-direction: column;
     align-items: flex-start;
     justify-content: center;
-    padding: 20px;
-    gap: 20px;
+    padding: 16px;
+    gap: 16px;
     border-radius: 16px;
     background-color: #fff;
     border: 1px #E2E8F0 solid;
@@ -63,7 +63,7 @@
 .action-open, .action-new {
     display: flex;
     flex-direction: column;
-    padding: 20px;
+    padding: 16px;
     gap: 12px;
     align-items: flex-start;
     justify-content: center;
@@ -176,7 +176,7 @@
     justify-content: space-between;
     padding: 12px;
     background-color: #F8FAFC;
-    width: 354px;
+    width: 333px;
     border-radius: 10px;
 }
 

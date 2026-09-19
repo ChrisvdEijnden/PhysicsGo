@@ -3,9 +3,9 @@
     flex-direction: row;
     width: 100%;
     flex: 1;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
-    padding: 0;
+    padding: 16px;
 }
 
 .hand-in-btn {
@@ -50,8 +50,8 @@
     width: 368px;
     display: flex;
     flex-direction: column;
-    padding: 20px;
-    gap: 20px;
+    padding: 16px;
+    gap: 16px;
     border-radius: 16px;
     background-color: #fff;
     border: 1px #E2E8F0 solid;
@@ -72,20 +72,20 @@
 .code-panel {
     display: flex;
     flex-direction: column;
-    padding: 20px;
+    padding: 16px;
     gap: 16px;
     border-radius: 16px;
     background-color: #fff;
     border: 1px #E2E8F0 solid;
     flex: 1.6;
-    align-items: stretch;
+    min-height: 0;
     justify-content: flex-start;
 }
 
 .code-panel-actions {
     position: absolute;
     top: 16px;
-    right: 20px;
+    right: 16px;
     z-index: 2;
     display: flex;
     flex-direction: row;
@@ -101,7 +101,7 @@
     align-items: center;
     justify-content: center;
     padding: 0;
-    background-color: #fff;
+    background-color: transparent;
     cursor: pointer;
     border: none;
 }
@@ -136,6 +136,8 @@
 }
 
 .code {
+    flex: 1;
+    min-height: 0;
     position: relative;
     box-sizing: border-box;
     display: flex;
@@ -146,7 +148,10 @@
     border: 1px solid #E2E8F0;
     font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px;
-    overflow-x: auto;
+    overflow: auto;
+    height: 100%;
+    align-items: stretch;
+    justify-content: flex-start;
 }
 
 .code-line {
@@ -158,7 +163,7 @@
 
 .line-number {
     box-sizing: border-box;
-    width: 20px;
+    width: 16px;
     flex-shrink: 0;
     margin-right: 16px;
     text-align: right;
@@ -178,6 +183,7 @@
 }
 
 .code-footer {
+    flex-shrink: 0;
     display: flex;
     flex-direction: row;
     align-items: center;
