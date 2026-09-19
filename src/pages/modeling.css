@@ -65,6 +65,20 @@
     flex-direction: column;
     width: 100%;
     height: 100%;
+    background-color: #F8FAFC;
+    border: 1px #E2E8F0 solid;
+    padding: 16px;
+    border-radius: 16px;
+    overflow: auto;
+}
+
+.explanation p {
+    font-size: 13px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    color: #0F172A;
+    margin: 0;
+    line-height: 1.45;
 }
 
 /* ---------- code-panel ---------- */
@@ -142,7 +156,7 @@
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    padding: 16px;
+    padding: 16px 16px 16px 12px;
     border-radius: 12px;
     background-color: #F8FAFC;
     border: 1px solid #E2E8F0;

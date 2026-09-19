@@ -83,6 +83,11 @@ function Modeling() {
                     <div className="explanation">
                         <p>{ preset?.explanation }</p>
                     </div>
+                    <div className="code-footer">
+                        <span>Estimated Time: <strong>45 min</strong></span>
+                        <span className="code-footer-dot">·</span>
+                        <span>Equipment: <strong>None</strong></span>
+                    </div>
                 </div>
                 <div className="code-panel">
                     <div className="code">
@@ -108,7 +113,7 @@ function Modeling() {
                     <div className="code-footer">
                         <span>Step: <strong>420</strong></span>
                         <span className="code-footer-dot">·</span>
-                        <span>Time: <strong>4.20s</strong></span>
+                        <span>Time: <strong>4.20 s</strong></span>
                     </div>
                 </div>
                 <div className="analysis-panel">
