@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
 
-import "../styles/global.css";
 import "./modeling.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
@@ -82,7 +81,7 @@ function Modeling() {
                 </div>
             </div>
 
-            <div className="content">
+            <div className="content-modeling" >
                 <div className="explanation-panel">
                     <div className="explanation">
                         <p>{ project?.explanation }</p>

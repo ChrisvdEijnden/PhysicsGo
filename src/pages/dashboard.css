@@ -37,8 +37,8 @@
 
 .right-panel {
     flex: 1;
-    align-items: stretch;
-    justify-content: flex-start;
+    min-height: 0;
+    height: max-content;
 }
 
 .left-panel h2, .right-panel h2 {
@@ -124,6 +124,8 @@
     display: flex;
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
+    width: 100%;
 }
 
 .top-row a {
@@ -160,6 +162,7 @@
 .other-filters {
     width: 120px;
 }
+
 .project-name {
     width: 475px;
 }
