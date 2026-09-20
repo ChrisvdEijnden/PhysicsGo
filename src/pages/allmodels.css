@@ -1,0 +1,9 @@
+.content {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    flex: 1;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+}

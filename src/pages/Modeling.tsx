@@ -1,5 +1,4 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { curriculumPresets } from "../data/curriculumPresets";
 
 import "../styles/global.css";
 import "./modeling.css";
@@ -12,6 +11,7 @@ import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 
 import LineChart from "../components/lineChart.tsx";
+import {Projects} from "../data/Projects.tsx";
 
 interface CodeLine {
     number: number;
@@ -49,7 +49,7 @@ function Modeling() {
     const navigate = useNavigate();
     const location = useLocation();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
-    const preset = curriculumPresets.find((p) => p.id === presetId);
+    const project = Projects.find((p) => p.id === presetId);
     return (
         <div>
             <div className="nav">
@@ -59,7 +59,7 @@ function Modeling() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>{ preset?.title }</h2>
+                    <h2>{ project?.title }</h2>
                 </div>
 
                 <div className="system-actions">
@@ -85,7 +85,7 @@ function Modeling() {
             <div className="content">
                 <div className="explanation-panel">
                     <div className="explanation">
-                        <p>{ preset?.explanation }</p>
+                        <p>{ project?.explanation }</p>
                     </div>
                     <div className="explanation-footer">
                         <span>Estimated Time: <strong>45 min</strong></span>

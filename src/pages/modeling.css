@@ -5,8 +5,8 @@
     flex: 1;
     align-items: stretch;
     justify-content: center;
-    padding: 2px;
-    gap: 2px;
+    padding: 3px !important;
+    gap: 3px !important;
 }
 
 .hand-in-btn {
@@ -101,8 +101,8 @@
 
 .code-panel-actions, .analysis-panel-actions {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 8px;
+    right: 8px;
     z-index: 2;
     display: flex;
     flex-direction: row;

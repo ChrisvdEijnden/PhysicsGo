@@ -12,9 +12,9 @@ import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // this will later hold the teacher's curriculum presets
-import { curriculumPresets } from "../data/curriculumPresets.tsx";
 // this will later hold the recent projects
-import { recentProjects } from "../data/recentsProjects.tsx";
+import { Projects } from "../data/Projects.tsx";
+import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -63,17 +63,19 @@ function Dashboard() {
                     <div className="curriculum-card">
                         <h2>Curriculum Presets</h2>
                         <div className="presets-list">
-                            {curriculumPresets.map((preset) => (
+                            {Projects
+                                .filter((project) => project.curriculum)
+                                .map((project) => (
                                 <div
-                                    key={preset.id}
+                                    key={project.id}
                                     className="preset-item"
                                     onClick={() => navigate(
                                         "/modeling",
-                                        { state: { presetId: preset.id } }
+                                        { state: { presetId: project.id } }
                                     )}>
                                     <div className="preset-item-text">
-                                        <h3>{preset.title}</h3>
-                                        <p>{preset.type}</p>
+                                        <h3>{project.title}</h3>
+                                        <p>{project.type}</p>
                                     </div>
                                     <img src={AscewArrow67px} alt="AscewArrow67px"/>
                                 </div>
@@ -92,7 +94,8 @@ function Dashboard() {
                         <p className="other-filters">Last Edit</p>
                     </div>
                     <div className="recents-list">
-                        {recentProjects.map((project) => (
+                        {Projects
+                            .map((project) => (
                             <div
                                 key={project.id}
                                 className="recent-item"
@@ -108,7 +111,7 @@ function Dashboard() {
                                     <p className="recent-type">{project.type}</p>
                                 </div>
                                 <div className="other-filters">
-                                    <p className="recent-last-edit">{project.lastEdit}</p>
+                                    <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>
                                 </div>
                             </div>
                         ))}

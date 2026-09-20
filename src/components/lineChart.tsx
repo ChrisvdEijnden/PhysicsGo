@@ -81,13 +81,50 @@ export default function LineChart() {
         };
     }, [applyZoom]);
 
-    // Y-axis stays fixed to the full dataset's range rather than refitting to
-    // whatever's currently zoomed in, since the line itself always carries the
-    // complete data now (only the visible x-domain changes).
+    // Linear interpolation between the two data points bracketing `t`, so the
+    // visible y-range can account for where the line actually sits at the
+    // domain's edges — not just at the data points that happen to fall inside it.
+    function interpolateOmega(t: number): number {
+        if (t <= T_MIN) return lineData[0].omega;
+        if (t >= T_MAX) return lineData[lineData.length - 1].omega;
+        for (let i = 0; i < lineData.length - 1; i++) {
+            const a = lineData[i];
+            const b = lineData[i + 1];
+            if (t >= a.t && t <= b.t) {
+                const frac = (t - a.t) / (b.t - a.t);
+                return a.omega + frac * (b.omega - a.omega);
+            }
+        }
+        return lineData[lineData.length - 1].omega;
+    }
+
+    // Rescales to whatever's currently visible: the data points inside the
+    // zoomed-in x-range, plus the (possibly interpolated) values right at its
+    // edges. A floor on the span keeps a very flat or very narrow zoom window
+    // from collapsing the axis to a sliver.
     const yDomain = useMemo((): [number, number] => {
-        const values = lineData.map((d) => d.omega);
-        return [Math.min(...values), Math.max(...values)];
-    }, []);
+        const [lo, hi] = domain;
+        const visibleValues = lineData
+            .filter((d) => d.t >= lo && d.t <= hi)
+            .map((d) => d.omega);
+        const edgeValues = [interpolateOmega(lo), interpolateOmega(hi)];
+        const values = [...visibleValues, ...edgeValues];
+
+        let min = Math.min(...values);
+        let max = Math.max(...values);
+
+        const fullValues = lineData.map((d) => d.omega);
+        const fullRange = Math.max(...fullValues) - Math.min(...fullValues);
+        const minSpan = fullRange * 0.05;
+        if (max - min < minSpan) {
+            const mid = (max + min) / 2;
+            min = mid - minSpan / 2;
+            max = mid + minSpan / 2;
+        }
+
+        const padding = (max - min) * 0.1;
+        return [min - padding, max + padding];
+    }, [domain]);
 
     return (
         <div className="chart-area" ref={chartAreaRef}>
@@ -114,8 +151,7 @@ export default function LineChart() {
                         fontFamily="Figtree"
                     />
                     <YAxis
-                        width={40
-                    }
+                        width={32}
                         tickMargin={4}
                         domain={yDomain}
                         fontSize="13"

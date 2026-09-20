@@ -4,7 +4,8 @@
     width: 100%;
     flex: 1;
     align-items: stretch;
-    gap: 16px;
+    gap: 16px !important;
+    padding: 16px !important;
 }
 
 .left-panel {
