@@ -88,9 +88,9 @@ function Modeling() {
                         <p>{ project?.explanation }</p>
                     </div>
                     <div className="explanation-footer">
-                        <span>Estimated Time: <strong>45 min</strong></span>
+                        <span>Estimated Time: <strong>{project?.time} m</strong></span>
                         <span className="code-footer-dot">·</span>
-                        <span>Equipment: <strong>None</strong></span>
+                        <span>Equipment: <strong>{project?.equipment ?? "None"}</strong></span>
                     </div>
                 </div>
                 <div className="code-panel">

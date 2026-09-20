@@ -5,6 +5,8 @@ export interface Project {
     lastEdit: Date;
     explanation: string;
     curriculum: boolean;
+    time: number;
+    equipment: any;
 }
 
 export const Projects: Project[] = [
@@ -14,7 +16,9 @@ export const Projects: Project[] = [
         type: "Differential Solver",
         lastEdit: new Date(2026,9,20, 17, 50),
         explanation: "Simulates an object falling under constant gravitational acceleration, tracking position, velocity, and time to impact.",
-        curriculum: true
+        curriculum: true,
+        time: 45,
+        equipment: null,
     },
     {
         id: "double-star-orbit",
@@ -22,7 +26,9 @@ export const Projects: Project[] = [
         type: "Gravity Array",
         lastEdit: new Date(2026,9,19, 16, 36),
         explanation: "Simulates an object falling under constant gravitational acceleration, tracking position, velocity, and time to impact.",
-        curriculum: true
+        curriculum: true,
+        time: 45,
+        equipment: null,
     },
     {
         id: "ideal-gas-collisions",
@@ -30,7 +36,9 @@ export const Projects: Project[] = [
         type: "Stochastic Model",
         lastEdit: new Date(2026,9,17, 9, 41),
         explanation: "Simulates an object falling under constant gravitational acceleration, tracking position, velocity, and time to impact.",
-        curriculum: false
+        curriculum: false,
+        time: 45,
+        equipment: null,
     },
     {
         id: "photon-interference",
@@ -38,7 +46,9 @@ export const Projects: Project[] = [
         type: "Wave Optics",
         lastEdit: new Date(2026,6,14, 21, 9),
         explanation: "Simulates an object falling under constant gravitational acceleration, tracking position, velocity, and time to impact.",
-        curriculum: false
+        curriculum: false,
+        time: 45,
+        equipment: null,
     },
     {
         id: "standard-freefall",
@@ -46,7 +56,9 @@ export const Projects: Project[] = [
         title: "Standard Freefall",
         lastEdit: new Date(2026,9,12, 10, 53),
         explanation: "Simulates an object falling under constant gravitational acceleration, tracking position, velocity, and time to impact.",
-        curriculum: true
+        curriculum: true,
+        time: 45,
+        equipment: "A small cube and a measuring stick",
     },
     {
         id: "lorentz-field-trajectory",
@@ -54,7 +66,9 @@ export const Projects: Project[] = [
         title: "Lorentz Field Trajectory",
         lastEdit: new Date(2026,6,25, 12, 34),
         explanation: "Traces the path of a charged particle moving through uniform electric and magnetic fields using the Lorentz force law.",
-        curriculum: true
+        curriculum: true,
+        time: 45,
+        equipment: null,
     },
     {
         id: "damped-harmonic-motion",
@@ -62,6 +76,8 @@ export const Projects: Project[] = [
         title: "Damped Harmonic Motion",
         lastEdit: new Date(2025,6,14, 22, 58),
         explanation: "Models a spring-mass system with a velocity-dependent damping force, showing amplitude decay over time.",
-        curriculum: false
+        curriculum: false,
+        time: 45,
+        equipment: null,
     },
 ];
