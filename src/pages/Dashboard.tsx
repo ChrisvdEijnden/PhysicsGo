@@ -11,8 +11,7 @@ import NewFile24px from "../assets/icons/newfile-24px.svg";
 import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
-// this will later hold the teacher's curriculum presets
-// this will later hold the recent projects
+// holds all the projects edited by the user
 import { Projects } from "../data/Projects.tsx";
 import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 
@@ -39,7 +38,7 @@ function Dashboard() {
                 </div>
             </div>
 
-            <div className="content">
+            <div className="content-dashboard">
                 <div className="left-panel">
                     <div className="creator-card">
                         <h2>Start New Model</h2>
@@ -103,9 +102,11 @@ function Dashboard() {
                                     "/modeling",
                                     { state: { projectId: project.id } })}
                             >
-                                <img src={FileCode18px} alt="" />
-                                <div className="project-recent-name">
-                                    <p className="recent-name">{project.title}</p>
+                                <div className="left-side">
+                                    <img src={FileCode18px} alt="" />
+                                    <div className="project-recent-name">
+                                        <p className="recent-name">{project.title}</p>
+                                    </div>
                                 </div>
                                 <div className="other-filters">
                                     <p className="recent-type">{project.type}</p>

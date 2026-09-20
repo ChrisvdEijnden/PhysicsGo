@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import "./allmodels.css";
+import "./dashboard.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
@@ -32,9 +33,12 @@ function AllModels() {
                 </div>
             </div>
 
-            <div className="content">
+            <div className="content-allmodels">
                 <div className="panel">
-                    <h2>Your Recent Projects</h2>
+                    <div className="top-row">
+                        <h2>All Your Projects</h2>
+                        <a onClick={() => navigate("/dashboard")}>Back To Dashboard</a>
+                    </div>
                     <div className="header-row">
                         <p className="project-name">Project Name</p>
                         <p className="other-filters">Type</p>
@@ -50,9 +54,11 @@ function AllModels() {
                                         "/modeling",
                                         { state: { projectId: project.id } })}
                                 >
-                                    <img src={FileCode18px} alt="" />
-                                    <div className="project-recent-name">
-                                        <p className="recent-name">{project.title}</p>
+                                    <div className="left-side">
+                                        <img src={FileCode18px} alt="" />
+                                        <div className="project-recent-name">
+                                            <p className="recent-name">{project.title}</p>
+                                        </div>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-type">{project.type}</p>
@@ -64,9 +70,6 @@ function AllModels() {
                             ))}
                     </div>
                 </div>
-                <button onClick={() => navigate("/dashboard")}>
-                    Go back to Dashboard
-                </button>
             </div>
         </div>
     );

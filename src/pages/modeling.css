@@ -1,12 +1,16 @@
 .content-modeling {
     display: flex;
     flex-direction: row;
-    width: 100%;
-    flex: 1;
     align-items: stretch;
     justify-content: center;
+    width: 100%;
+    height: calc(100vh - 56px);
+    background-color: #F8FAFC;
+    box-sizing: border-box;
+    flex: 1;
     padding: 3px !important;
     gap: 3px !important;
+    min-height: 0;
 }
 
 .hand-in-btn {

@@ -102,3 +102,16 @@ html, body, #root {
     border: none;
     margin: 0;
 }
+
+/* General */
+.content {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    width: 100%;
+    height: calc(100vh - 56px);
+    padding: 16px;
+    background-color: #F8FAFC;
+    box-sizing: border-box;
+}
