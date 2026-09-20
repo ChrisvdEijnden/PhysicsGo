@@ -96,11 +96,13 @@ function Dashboard() {
                             <div
                                 key={project.id}
                                 className="recent-item"
-                                onClick={() => navigate("/modeling", { state: { projectId: project.id } })}
+                                onClick={() => navigate(
+                                    "/modeling",
+                                    { state: { projectId: project.id } })}
                             >
                                 <img src={FileCode18px} alt="" />
                                 <div className="project-recent-name">
-                                    <p className="recent-name">{project.name}</p>
+                                    <p className="recent-name">{project.title}</p>
                                 </div>
                                 <div className="other-filters">
                                     <p className="recent-type">{project.type}</p>

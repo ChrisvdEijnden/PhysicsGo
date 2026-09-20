@@ -11,6 +11,8 @@ import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 
+import LineChart from "../components/lineChart.tsx";
+
 interface CodeLine {
     number: number;
     text?: string;
@@ -61,11 +63,13 @@ function Modeling() {
                 </div>
 
                 <div className="system-actions">
-                    <button onClick={() => navigate("/dashboard")}>
-                        <div className="hand-in-btn">
-                            <img src={arrowIcon14px} alt="ArrowIcon14px"/>
-                            <p>Hand in Assignment</p>
-                        </div>
+                    <button className="insert-media-btn">
+                        <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                        <p>Insert Media &amp; Embeds</p>
+                    </button>
+                    <button className="hand-in-btn" onClick={() => navigate("/dashboard")}>
+                        <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                        <p>Hand in Assignment</p>
                     </button>
                     <div className="right-system-actions">
                         <button onClick={() => navigate("/settings")}>
@@ -83,7 +87,7 @@ function Modeling() {
                     <div className="explanation">
                         <p>{ preset?.explanation }</p>
                     </div>
-                    <div className="code-footer">
+                    <div className="explanation-footer">
                         <span>Estimated Time: <strong>45 min</strong></span>
                         <span className="code-footer-dot">·</span>
                         <span>Equipment: <strong>None</strong></span>
@@ -94,10 +98,6 @@ function Modeling() {
                         <div className="code-panel-actions">
                             <button className="play-btn" aria-label="Run simulation">
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
-                            </button>
-                            <button className="insert-media-btn">
-                                <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                                <p>Insert Media &amp; Embeds</p>
                             </button>
                         </div>
                         {codeLines.map((line) => (
@@ -117,6 +117,15 @@ function Modeling() {
                     </div>
                 </div>
                 <div className="analysis-panel">
+                    <div className="analysis">
+                        <div className="analysis-panel-actions">
+                            <button className="insert-points-btn">
+                                <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                                <p>Insert Points</p>
+                            </button>
+                        </div>
+                        <LineChart/>
+                    </div>
                 </div>
             </div>
         </div>

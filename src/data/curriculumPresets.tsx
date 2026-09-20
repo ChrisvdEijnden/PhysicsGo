@@ -1,15 +1,8 @@
 // here comes the teacher's curriculum presets, for now these are placeholders
 
-export type CurriculumPresetType =
-    | "AP Physics Mechanics"
-    | "AP Physics Electromagnetism"
-    | "Oscillation & Waves"
-    | "Thermodynamics"
-    | "Optics";
-
 export interface CurriculumPreset {
     id: string;
-    type: CurriculumPresetType;
+    type: string;
     title: string;
     explanation: string;
 }
