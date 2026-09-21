@@ -54,7 +54,7 @@
 .explanation-panel, .code-panel, .analysis-panel {
     display: flex;
     flex-direction: column;
-    padding: 16px 16px 8px 16px;
+    padding: 12px;
     gap: 8px;
     border-radius: 16px;
     background-color: #fff;
@@ -116,19 +116,145 @@
     line-height: 1.45;
 }
 
-.analysis {
+.analysis-stack {
     display: flex;
     flex-direction: column;
     width: 100%;
     height: 100%;
+    flex: 1;
+    min-height: 0;
+}
+
+.analysis {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
     background-color: #F8FAFC;
     border: 1px #E2E8F0 solid;
     padding: 16px 16px 2px 0;
     border-radius: 12px;
     overflow: hidden;
     position: relative;
+    min-height: 0;
+}
+
+/* Draggable boundary between stacked analysis panels (chart + inserted
+   media). Same invisible-until-hovered treatment as .panel-divider, just
+   rotated onto the vertical axis. */
+.panel-divider-row {
+    flex: 0 0 8px;
+    align-self: stretch;
+    position: relative;
+    cursor: row-resize;
+    touch-action: none;
+    background: transparent;
+}
+
+.panel-divider-row::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 50%;
+    height: 2px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+    background-color: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.panel-divider-row:hover::after,
+.panel-divider-row.dragging::after {
+    background-color: #0D9488;
+}
+
+.analysis-media {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 0;
+    background-color: #0F172A;
+    border: 1px #E2E8F0 solid;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.analysis-media-actions {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    z-index: 2;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.analysis-media-actions > * {
+    pointer-events: auto;
+}
+
+.analysis-media-tag {
+    font-family: "Figtree", sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    color: #475569;
+    background-color: #fff;
+    border: 1px solid #E2E8F0;
+    border-radius: 999px;
+    padding: 2px 8px;
+}
+
+.analysis-media-remove {
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    padding: 0;
+    background-color: #CCFBF1;
+    border: none;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.analysis-media-remove img {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+}
+
+.analysis-media-content {
+    width: 100%;
+    height: 100%;
     flex: 1;
     min-height: 0;
+    object-fit: contain;
+}
+
+.analysis-media-file {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #475569;
+    background-color: #F8FAFC;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    text-align: center;
+    padding: 16px;
+    word-break: break-word;
 }
 
 /* ---------- code-panel ---------- */
@@ -184,6 +310,11 @@
     border: none;
     border-radius: 8px;
     cursor: pointer;
+}
+
+.insert-media-btn:disabled, .insert-points-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
 .insert-media-btn img, .insert-points-btn img {
@@ -269,6 +400,10 @@
     font-family: "Figtree", sans-serif;
     font-size: 12px;
     color: #475569;
+}
+
+.analysis-footer {
+    padding: 8px;
 }
 
 .code-footer strong, .analysis-footer strong {

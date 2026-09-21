@@ -18,8 +18,25 @@ export const lineData: LineDataPoint[] = [
     { t: 11, omega: 32 },
 ];
 
-export const minDomainLineData = Math.min(...lineData.map(point => point.t));
-export const maxDomainLineData = Math.max(...lineData.map(point => point.t));
+function formatDomainValue(value: number): number | string {
+    if (value === Infinity) return "∞";
+    if (value === -Infinity) return "−∞";
 
-export const minRangeLineData = Math.min(...lineData.map(point => point.omega));
-export const maxRangeLineData = Math.max(...lineData.map(point => point.omega));
+    return value;
+}
+
+export const minDomainLineData = formatDomainValue(
+    Math.min(...lineData.map(point => point.t))
+);
+
+export const maxDomainLineData = formatDomainValue(
+    Math.max(...lineData.map(point => point.t))
+);
+
+export const minRangeLineData = formatDomainValue(
+    Math.min(...lineData.map(point => point.omega))
+);
+
+export const maxRangeLineData = formatDomainValue(
+    Math.max(...lineData.map(point => point.omega))
+);
