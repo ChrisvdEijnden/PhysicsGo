@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 import "./modeling.css";
@@ -45,11 +46,80 @@ function renderLineContent(text?: string) {
     );
 }
 
+// Panels can't be dragged smaller than this share of the row.
+const MIN_PANEL_WIDTH_PERCENT = 15;
+
+type DragState = {
+    dividerIndex: number; // 0 = between panel 0/1, 1 = between panel 1/2
+    startX: number;
+    startWidths: [number, number, number];
+};
+
 function Modeling() {
     const navigate = useNavigate();
     const location = useLocation();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
     const project = Projects.find((p) => p.id === presetId);
+
+    const contentRef = useRef<HTMLDivElement | null>(null);
+    const dragState = useRef<DragState | null>(null);
+    const [panelWidths, setPanelWidths] = useState<[number, number, number]>([
+        100 / 3,
+        100 / 3,
+        100 / 3,
+    ]);
+    const [draggingDivider, setDraggingDivider] = useState<number | null>(null);
+
+    const handlePointerMove = useCallback((e: PointerEvent) => {
+        const drag = dragState.current;
+        const container = contentRef.current;
+        if (!drag || !container) return;
+
+        const containerWidth = container.getBoundingClientRect().width;
+        const deltaPercent = ((e.clientX - drag.startX) / containerWidth) * 100;
+
+        const { dividerIndex, startWidths } = drag;
+        const pairTotal = startWidths[dividerIndex] + startWidths[dividerIndex + 1];
+
+        let left = startWidths[dividerIndex] + deltaPercent;
+        let right = pairTotal - left;
+
+        if (left < MIN_PANEL_WIDTH_PERCENT) {
+            left = MIN_PANEL_WIDTH_PERCENT;
+            right = pairTotal - left;
+        } else if (right < MIN_PANEL_WIDTH_PERCENT) {
+            right = MIN_PANEL_WIDTH_PERCENT;
+            left = pairTotal - right;
+        }
+
+        const next: [number, number, number] = [...startWidths];
+        next[dividerIndex] = left;
+        next[dividerIndex + 1] = right;
+        setPanelWidths(next);
+    }, []);
+
+    const handlePointerUp = useCallback(() => {
+        dragState.current = null;
+        setDraggingDivider(null);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+    }, [handlePointerMove]);
+
+    const handleDividerPointerDown = useCallback(
+        (dividerIndex: number) => (e: React.PointerEvent) => {
+            e.preventDefault();
+            dragState.current = { dividerIndex, startX: e.clientX, startWidths: panelWidths };
+            setDraggingDivider(dividerIndex);
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+            window.addEventListener("pointermove", handlePointerMove);
+            window.addEventListener("pointerup", handlePointerUp);
+        },
+        [panelWidths, handlePointerMove, handlePointerUp]
+    );
+
     return (
         <div>
             <div className="nav">
@@ -82,8 +152,8 @@ function Modeling() {
                 </div>
             </div>
 
-            <div className="content-modeling" >
-                <div className="explanation-panel">
+            <div className="content-modeling" ref={contentRef}>
+                <div className="explanation-panel" style={{ flex: `0 0 ${panelWidths[0]}%` }}>
                     <div className="explanation">
                         <p>{ project?.explanation }</p>
                     </div>
@@ -93,7 +163,16 @@ function Modeling() {
                         <span>Equipment: <strong>{project?.equipment ?? "None"}</strong></span>
                     </div>
                 </div>
-                <div className="code-panel">
+
+                <div
+                    className={`panel-divider${draggingDivider === 0 ? " dragging" : ""}`}
+                    onPointerDown={handleDividerPointerDown(0)}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize explanation and code panels"
+                />
+
+                <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
                             <button className="play-btn" aria-label="Run simulation">
@@ -114,7 +193,15 @@ function Modeling() {
                         <span>Steps: <input type='number' className="steps-input" placeholder="100000"></input></span>
                     </div>
                 </div>
-                <div className="analysis-panel">
+                <div
+                    className={`panel-divider${draggingDivider === 1 ? " dragging" : ""}`}
+                    onPointerDown={handleDividerPointerDown(1)}
+                    role="separator"
+                    aria-orientation="vertical"
+                    aria-label="Resize code and analysis panels"
+                />
+
+                <div className="analysis-panel" style={{ flex: `0 0 ${panelWidths[2]}%` }}>
                     <div className="analysis">
                         <div className="analysis-panel-actions">
                             <button className="insert-points-btn">

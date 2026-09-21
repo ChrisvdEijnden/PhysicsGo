@@ -9,7 +9,7 @@
     box-sizing: border-box;
     flex: 1;
     padding: 3px !important;
-    gap: 3px !important;
+    gap: 0;
     min-height: 0;
 }
 
@@ -52,7 +52,6 @@
 }
 
 .explanation-panel, .code-panel, .analysis-panel {
-    width: 200px;
     display: flex;
     flex-direction: column;
     padding: 16px 16px 8px 16px;
@@ -61,8 +60,39 @@
     background-color: #fff;
     border: 1px #E2E8F0 solid;
     flex: 1;
+    min-width: 0;
     align-items: stretch;
     justify-content: flex-start;
+}
+
+/* Draggable boundary between panels. No visible button/handle by default —
+   only the cursor changes on hover, plus a faint centered line while the
+   pointer is over it or actively dragging, as a light affordance. */
+.panel-divider {
+    flex: 0 0 8px;
+    align-self: stretch;
+    position: relative;
+    cursor: col-resize;
+    touch-action: none;
+    background: transparent;
+}
+
+.panel-divider::after {
+    content: "";
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 50%;
+    width: 2px;
+    transform: translateX(-50%);
+    border-radius: 2px;
+    background-color: transparent;
+    transition: background-color 0.15s ease;
+}
+
+.panel-divider:hover::after,
+.panel-divider.dragging::after {
+    background-color: #0D9488;
 }
 
 .explanation {
@@ -113,6 +143,7 @@
     align-items: center;
     gap: 8px;
 }
+
 
 .chart-area {
     width: 100%;
