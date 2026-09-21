@@ -100,8 +100,8 @@ function Dashboard() {
                                 className="recent-item"
                                 onClick={() => navigate(
                                     "/modeling",
-                                    { state: { projectId: project.id } })}
-                            >
+                                    { state: { presetId: project.id } }
+                                )}>
                                 <div className="left-side">
                                     <img src={FileCode18px} alt="" />
                                     <div className="project-recent-name">

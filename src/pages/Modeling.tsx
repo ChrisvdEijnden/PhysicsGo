@@ -11,6 +11,7 @@ import PlusIcon14px from "../assets/icons/plus-14px.svg";
 
 import LineChart from "../components/lineChart.tsx";
 import {Projects} from "../data/Projects.tsx";
+import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 
 interface CodeLine {
     number: number;
@@ -87,7 +88,7 @@ function Modeling() {
                         <p>{ project?.explanation }</p>
                     </div>
                     <div className="explanation-footer">
-                        <span>Estimated Time: <strong>{project?.time} m</strong></span>
+                        <span>Estimated Time: <strong>{project?.estimatedTime} m</strong></span>
                         <span className="code-footer-dot">·</span>
                         <span>Equipment: <strong>{project?.equipment ?? "None"}</strong></span>
                     </div>
@@ -110,9 +111,7 @@ function Modeling() {
                     </div>
 
                     <div className="code-footer">
-                        <span>Step: <strong>420</strong></span>
-                        <span className="code-footer-dot">·</span>
-                        <span>Time: <strong>4.20 s</strong></span>
+                        <span>Steps: <input type='number' className="steps-input" placeholder="100000"></input></span>
                     </div>
                 </div>
                 <div className="analysis-panel">
@@ -124,6 +123,11 @@ function Modeling() {
                             </button>
                         </div>
                         <LineChart/>
+                    </div>
+                    <div className="analysis-footer">
+                        <span>Domain: <strong> [{minDomainLineData}, {maxDomainLineData}]</strong></span>
+                        <span className="code-footer-dot">·</span>
+                        <span>Range: <strong>[{minRangeLineData}, {maxRangeLineData}]</strong></span>
                     </div>
                 </div>
             </div>

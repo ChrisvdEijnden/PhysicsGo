@@ -14,7 +14,7 @@
     border-radius: 20px;
     background-color: #fff;
     border: 1px #e2e8f0 solid;
-    box-shadow: 0px 16px 32px #0F172A0D;
+    box-shadow: 0 16px 32px #0F172A0D;
     width: 532px;
     height: fit-content;
 }
@@ -88,7 +88,7 @@
     font-weight: 600;
     font-family: "Figtree", sans-serif;
     margin: 0;
-    color: #94A3B8;
+    color: #475569;
 }
 
 .char-slot {
