@@ -174,7 +174,7 @@
     flex-direction: column;
     width: 100%;
     min-height: 0;
-    background-color: #0F172A;
+    background-color: #F8FAFC;
     border: 1px #E2E8F0 solid;
     border-radius: 12px;
     overflow: hidden;
@@ -189,7 +189,7 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 8px;
     pointer-events: none;
 }
@@ -211,15 +211,14 @@
 
 .analysis-media-remove {
     box-sizing: border-box;
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 0;
     padding: 0;
-    background-color: #CCFBF1;
+    background-color: transparent;
     border: none;
     font-size: 14px;
     line-height: 1;
@@ -227,8 +226,8 @@
 }
 
 .analysis-media-remove img {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
     margin: 0;
 }
 
@@ -406,6 +405,61 @@
     padding: 8px;
 }
 
-.code-footer strong, .analysis-footer strong {
+.analysis-media-framecount {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 2;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    color: #475569;
+    background-color: transparent;
+}
+
+.code-footer strong, .analysis-footer strong, .analysis-media-framecount strong {
     font-weight: 600;
+}
+
+.analysis-media-play {
+    box-sizing: border-box;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    cursor: pointer;
+}
+
+.analysis-media-play img {
+    width: 20px;
+    height: 20px;
+    margin-left: 1px;
+}
+
+.pause-icon {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.pause-icon::before,
+.pause-icon::after {
+    content: "";
+    width: 3px;
+    height: 18px;
+    background-color: #0D9488;
+    border-radius: 1px;
+}
+
+.right-btns {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+    justify-content: center;
+
 }

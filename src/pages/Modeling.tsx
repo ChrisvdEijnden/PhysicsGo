@@ -108,6 +108,16 @@ function inferMediaCategory(file: File): MediaCategory {
 
 const ALL_MEDIA_ACCEPT = Object.values(ACCEPT_BY_CATEGORY).join(",");
 
+// Extends HTMLVideoElement with the (still experimental in some browsers)
+// requestVideoFrameCallback API, declared as optional so TS narrows normally
+// via typeof-checks instead of collapsing the branch to `never`.
+type VideoWithFrameCallback = HTMLVideoElement & {
+    requestVideoFrameCallback?: (
+        callback: (now: number, metadata: { presentedFrames?: number }) => void
+    ) => number;
+    cancelVideoFrameCallback?: (handle: number) => void;
+};
+
 // One inserted media panel: an image/video fills the tile, anything else
 // (e.g. a Word doc) falls back to a simple file card.
 function MediaTile({
@@ -123,30 +133,100 @@ function MediaTile({
     const isVideo = item.mime.startsWith("video/");
     const isLooping = item.category === "animation";
 
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [frame, setFrame] = useState(0); // current playback frame, not total frame count
+    const [timeSec, setTimeSec] = useState(0); // current playback time, rounded up to nearest 10ms
+    const fallbackFpsRef = useRef(30); // used when requestVideoFrameCallback isn't available
+
+    // Track frame count + elapsed time while the video plays. Prefer
+    // requestVideoFrameCallback (reports the decoder's actual presented-frame
+    // count); fall back to estimating from currentTime at an assumed frame
+    // rate otherwise.
+    useEffect(() => {
+        if (!isVideo) return;
+        const video = videoRef.current as VideoWithFrameCallback | null;
+        if (!video) return;
+
+        const supportsRVFC = typeof video.requestVideoFrameCallback === "function";
+        let rvfcId: number | null = null;
+
+        if (supportsRVFC) {
+            const onVideoFrame = (_now: number, metadata: { presentedFrames?: number }) => {
+                setFrame(metadata.presentedFrames ?? Math.round(video.currentTime * fallbackFpsRef.current));
+                setTimeSec(Math.round(video.currentTime * 100) / 100);
+                rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
+            };
+            rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
+            return () => {
+                if (rvfcId !== null) video.cancelVideoFrameCallback?.(rvfcId);
+            };
+        }
+
+        const onTimeUpdate = () => {
+            setFrame(Math.round(video.currentTime * fallbackFpsRef.current));
+            setTimeSec(Math.ceil(video.currentTime * 100) / 100);
+        };
+        video.addEventListener("timeupdate", onTimeUpdate);
+        return () => video.removeEventListener("timeupdate", onTimeUpdate);
+    }, [isVideo]);
+
+    function togglePlay() {
+        const video = videoRef.current;
+        if (!video) return;
+        if (video.paused) video.play();
+        else video.pause();
+    }
+
     return (
         <div className="analysis-media" style={style}>
             <div className="analysis-media-actions">
-                <button
-                    type="button"
-                    className="analysis-media-remove"
-                    onClick={onRemove}
-                    aria-label={`Remove ${item.name}`}
-                >
-                    <img src={CloseIcon20px} alt="CloseIcon20px"/>
-                </button>
+                {isVideo && (
+                    <button
+                        type="button"
+                        className="analysis-media-play"
+                        onClick={togglePlay}
+                        aria-label={isPlaying ? "Pause" : "Play"}
+                    >
+                        {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt="PlayIcon20px"/>}
+                    </button>
+                )}
+                <div className="right-btns">
+                    <button className="insert-points-btn">
+                        <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                        <p>Insert Points</p>
+                    </button>
+                    <button
+                        type="button"
+                        className="analysis-media-remove"
+                        onClick={onRemove}
+                        aria-label={`Remove ${item.name}`}
+                    >
+                        <img src={CloseIcon20px} alt="CloseIcon20px"/>
+                    </button>
+                </div>
             </div>
             {isImage ? (
                 <img className="analysis-media-content" src={item.url} alt={item.name}/>
             ) : isVideo ? (
-                <video
-                    className="analysis-media-content"
-                    src={item.url}
-                    controls
-                    autoPlay={isLooping}
-                    loop={isLooping}
-                    muted={isLooping}
-                    playsInline
-                />
+                <>
+                    <video
+                        ref={videoRef}
+                        className="analysis-media-content"
+                        src={item.url}
+                        autoPlay={isLooping}
+                        loop={isLooping}
+                        muted={isLooping}
+                        playsInline
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                    />
+                    <span className="analysis-media-framecount">
+                        Frame: <strong>{frame}</strong>
+                        <span className="code-footer-dot"> · </span>
+                        Time: <strong>{timeSec.toFixed(2)}s</strong>
+                    </span>
+                </>
             ) : (
                 <div className="analysis-media-file">
                     <DocumentGlyph/>
@@ -286,12 +366,18 @@ function Modeling() {
     }
 
     // ---------- analysis panel rows (chart + inserted media) ----------
+    const [showChart, setShowChart] = useState(true);
+
+    function closeChart() {
+        setShowChart(false);
+    }
+
     const rows: AnalysisRow[] = useMemo(
         () => [
-            { kind: "chart" },
+            ...(showChart ? [{ kind: "chart" as const }] : []),
             ...mediaItems.slice(0, MAX_MEDIA_ITEMS).map((item) => ({ kind: "media" as const, item })),
         ],
-        [mediaItems]
+        [mediaItems, showChart]
     );
 
     const analysisStackRef = useRef<HTMLDivElement | null>(null);
@@ -299,7 +385,8 @@ function Modeling() {
     const [rowHeights, setRowHeights] = useState<number[]>([100]);
     const [draggingRowDivider, setDraggingRowDivider] = useState<number | null>(null);
 
-    // Re-split the stack evenly whenever a media panel is added or removed.
+    // Re-split the stack evenly whenever a media panel (or the chart) is
+    // added or removed.
     useEffect(() => {
         setRowHeights(Array(rows.length).fill(100 / rows.length));
     }, [rows.length]);
@@ -474,6 +561,14 @@ function Modeling() {
                                                 <button className="insert-points-btn">
                                                     <img src={PlusIcon14px} alt="PlusIcon14px"/>
                                                     <p>Insert Points</p>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="analysis-media-remove"
+                                                    onClick={closeChart}
+                                                    aria-label="Close graph"
+                                                >
+                                                    <img src={CloseIcon20px} alt="CloseIcon20px"/>
                                                 </button>
                                             </div>
                                             <LineChart/>
