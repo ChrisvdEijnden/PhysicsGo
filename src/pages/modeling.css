@@ -343,38 +343,53 @@
     border: 1px solid #E2E8F0;
     font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 13px;
-    overflow: auto;
+    overflow: hidden;
     height: 100%;
     align-items: stretch;
     justify-content: flex-start;
 }
 
-.code-line {
+.code-editor {
     display: flex;
     flex-direction: row;
-    align-items: center;
-    min-height: 22px;
+    flex: 1;
+    min-height: 0;
 }
 
-.line-number {
-    box-sizing: border-box;
-    width: 16px;
+.code-gutter {
     flex-shrink: 0;
+    width: 16px;
     margin-right: 16px;
+    overflow: hidden;
     text-align: right;
     color: #94A3B8;
     user-select: none;
 }
 
-.line-content {
-    flex: 1;
-    min-width: 0;
-    white-space: pre;
-    color: #0F172A;
+.code-gutter-line {
+    min-height: 22px;
+    line-height: 22px;
 }
 
-.comment-line {
-    color: #475569;
+.code-textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    resize: none;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
+    color: #0F172A;
+    font: inherit;
+    line-height: 22px;
+    white-space: pre;
+    overflow: auto;
+}
+
+.code-textarea::placeholder {
+    color: #94A3B8;
 }
 
 .steps-input {

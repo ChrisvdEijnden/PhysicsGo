@@ -15,37 +15,14 @@ import LineChart from "../components/lineChart.tsx";
 import {Projects} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 
-interface CodeLine {
-    number: number;
-    text?: string;
-}
-
-const codeLines: CodeLine[] = [
-    { number: 1, text: "// Initialize Parameters" },
-    { number: 2, text: "dt = 0.01" },
-    { number: 3, text: "g = 9.81" },
-    { number: 4, text: "L = 1.25" },
-    { number: 5, text: "theta = 0.52" },
-    { number: 6, text: "omega = 0.00" },
-    { number: 7 },
-    { number: 8, text: "// Euler Integration Loop (dt = 0.01s)" },
-    { number: 9, text: "alpha = -(g / L) * sin(theta)" },
-    { number: 10, text: "omega = omega + alpha * dt" },
-    { number: 11, text: "theta = theta + omega * dt // crazy comment" },
-    { number: 12 },
-];
-
-// Splits a line on its first "//" and highlights everything from there to the
-// end as a comment, whether the line is comment-only or the comment trails
-// some code on the same line (e.g. "x = 1 // note").
-function renderLineContent(text?: string) {
-    if (!text) return null;
-    return text.split(/(\/\/.*$)/).map((part, i) =>
-        part.startsWith("//")
-            ? <span key={i} className="comment-line">{part}</span>
-            : <span key={i}>{part}</span>
-    );
-}
+// Starting content for the editable code field below — this will go away
+// once the real interpreter is wired in, but for now it just seeds the
+// textarea with the same sample program that used to be hard-coded.
+const DEFAULT_CODE = [
+    "// Initialize Parameters",
+    "dt = 0.01 // in seconds",
+    "",
+].join("\n");
 
 // Panels can't be dragged smaller than this share of the row/column.
 const MIN_PANEL_WIDTH_PERCENT = 15;
@@ -303,6 +280,22 @@ function Modeling() {
         [panelWidths, handlePointerMove, handlePointerUp]
     );
 
+    // ---------- code panel (placeholder input until the interpreter lands) ----------
+    const [code, setCode] = useState(DEFAULT_CODE);
+    const codeGutterRef = useRef<HTMLDivElement | null>(null);
+    const lineNumbers = useMemo(
+        () => Array.from({ length: Math.max(code.split("\n").length, 1) }, (_, i) => i + 1),
+        [code]
+    );
+
+    // Keep the line-number gutter's scroll position glued to the textarea's,
+    // since the textarea owns the actual scrolling.
+    function handleCodeScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+        if (codeGutterRef.current) {
+            codeGutterRef.current.scrollTop = e.currentTarget.scrollTop;
+        }
+    }
+
     // ---------- Insert Media & Embeds ----------
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -515,14 +508,21 @@ function Modeling() {
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
                             </button>
                         </div>
-                        {codeLines.map((line) => (
-                            <div className="code-line" key={line.number}>
-                                <span className="line-number">{line.number}</span>
-                                <span className="line-content">
-                                    {renderLineContent(line.text)}
-                                </span>
+                        <div className="code-editor">
+                            <div className="code-gutter" ref={codeGutterRef}>
+                                {lineNumbers.map((n) => (
+                                    <div className="code-gutter-line" key={n}>{n}</div>
+                                ))}
                             </div>
-                        ))}
+                            <textarea
+                                className="code-textarea"
+                                value={code}
+                                onChange={(e) => setCode(e.target.value)}
+                                onScroll={handleCodeScroll}
+                                spellCheck={false}
+                                aria-label="Simulation code"
+                            />
+                        </div>
                     </div>
 
                     <div className="code-footer">
