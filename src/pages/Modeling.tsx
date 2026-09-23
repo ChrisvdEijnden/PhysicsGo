@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-
 import "./modeling.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
@@ -14,6 +13,7 @@ import CloseIcon20px from "../assets/icons/close-20px.svg";
 import LineChart from "../components/lineChart.tsx";
 import {Projects} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
+import CodeEditor from "../components/codeEditor.tsx";
 
 // Starting content for the editable code field below — this will go away
 // once the real interpreter is wired in, but for now it just seeds the
@@ -73,9 +73,6 @@ function DocumentGlyph() {
     );
 }
 
-// The picker no longer asks the category up front — infer it from whatever
-// file the user actually picks. GIFs count as animations; any other image is
-// a photo; any video is a video; everything else falls back to "document".
 function inferMediaCategory(file: File): MediaCategory {
     if (file.type === "image/gif") return "animation";
     if (file.type.startsWith("video/")) return "video";
@@ -85,9 +82,6 @@ function inferMediaCategory(file: File): MediaCategory {
 
 const ALL_MEDIA_ACCEPT = Object.values(ACCEPT_BY_CATEGORY).join(",");
 
-// Extends HTMLVideoElement with the (still experimental in some browsers)
-// requestVideoFrameCallback API, declared as optional so TS narrows normally
-// via typeof-checks instead of collapsing the branch to `never`.
 type VideoWithFrameCallback = HTMLVideoElement & {
     requestVideoFrameCallback?: (
         callback: (now: number, metadata: { presentedFrames?: number }) => void
@@ -95,8 +89,6 @@ type VideoWithFrameCallback = HTMLVideoElement & {
     cancelVideoFrameCallback?: (handle: number) => void;
 };
 
-// One inserted media panel: an image/video fills the tile, anything else
-// (e.g. a Word doc) falls back to a simple file card.
 function MediaTile({
                        item,
                        style,
@@ -282,19 +274,6 @@ function Modeling() {
 
     // ---------- code panel (placeholder input until the interpreter lands) ----------
     const [code, setCode] = useState(DEFAULT_CODE);
-    const codeGutterRef = useRef<HTMLDivElement | null>(null);
-    const lineNumbers = useMemo(
-        () => Array.from({ length: Math.max(code.split("\n").length, 1) }, (_, i) => i + 1),
-        [code]
-    );
-
-    // Keep the line-number gutter's scroll position glued to the textarea's,
-    // since the textarea owns the actual scrolling.
-    function handleCodeScroll(e: React.UIEvent<HTMLTextAreaElement>) {
-        if (codeGutterRef.current) {
-            codeGutterRef.current.scrollTop = e.currentTarget.scrollTop;
-        }
-    }
 
     // ---------- Insert Media & Embeds ----------
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -509,19 +488,7 @@ function Modeling() {
                             </button>
                         </div>
                         <div className="code-editor">
-                            <div className="code-gutter" ref={codeGutterRef}>
-                                {lineNumbers.map((n) => (
-                                    <div className="code-gutter-line" key={n}>{n}</div>
-                                ))}
-                            </div>
-                            <textarea
-                                className="code-textarea"
-                                value={code}
-                                onChange={(e) => setCode(e.target.value)}
-                                onScroll={handleCodeScroll}
-                                spellCheck={false}
-                                aria-label="Simulation code"
-                            />
+                            <CodeEditor value={code} onChange={setCode}/>
                         </div>
                     </div>
 
