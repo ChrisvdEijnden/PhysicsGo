@@ -1,3 +1,5 @@
+import init, { run as runInterpreter } from "../wasm/interpreterGo";
+import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./modeling.css";
@@ -25,7 +27,7 @@ const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
 
 type DragState = {
-    dividerIndex: number; // 0 = between panel 0/1, 1 = between panel 1/2
+    dividerIndex: number;
     startX: number;
     startWidths: [number, number, number];
 };
@@ -264,9 +266,51 @@ function Modeling() {
 
     // ---------- code panel (placeholder input until the interpreter lands) ----------
     const [code, setCode] = useState(DEFAULT_CODE);
+    const editorRef = useRef<CodeEditorHandle>(null);
+    const [wasmReady, setWasmReady] = useState(false);
+
+    useEffect(() => {
+        init().then(() => setWasmReady(true));
+    }, []);
+
+    function splitSource(source: string): { start: string; model: string } {
+        const blankAt = source.indexOf("\n\n");
+        return blankAt === -1
+            ? { start: source, model: "" }
+            : { start: source.slice(0, blankAt), model: source.slice(blankAt + 2) };
+    }
+
+    interface RunResult {
+        ok: boolean;
+        history: Record<string, number>[];
+        errors: { line: number; column: number; message: string; block: string }[];
+    }
 
     function runSimulation() {
-        return 0;
+        if (!wasmReady) {
+            console.warn("wasm not ready yet");
+            return;
+        }
+        editorRef.current?.clearErrors();
+
+        const { start, model } = splitSource(code);
+        console.log("start block:", JSON.stringify(start));
+        console.log("model block:", JSON.stringify(model));
+
+        const result = runInterpreter(start, model, 10_000) as RunResult;
+        console.log("interpreter result:", result);
+
+        if (!result.ok) {
+            const errors: InterpreterError[] = result.errors.map((e) => ({
+                line: e.line,
+                column: e.column,
+                message: `[${e.block}] ${e.message}`,
+            }));
+            editorRef.current?.setErrors(errors);
+            return;
+        }
+
+        console.log(`ran ${result.history.length} steps, final state:`, result.history[result.history.length - 1]);
     }
 
     // ---------- Insert Media & Embeds ----------
@@ -477,12 +521,12 @@ function Modeling() {
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button className="play-btn" aria-label="Run simulation" onClick={runSimulation}>
+                            <button className="play-btn" aria-label="Run simulation" onClick={runSimulation} disabled={!wasmReady}>
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
                             </button>
                         </div>
                         <div className="code-editor">
-                            <CodeEditor value={code} onChange={setCode}/>
+                            <CodeEditor ref={editorRef} value={code} onChange={setCode} onRun={runSimulation}/>
                         </div>
                     </div>
 

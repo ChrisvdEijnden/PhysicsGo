@@ -1,14 +1,4 @@
-mod indent;
-mod interpreter;
-
-use pest::Parser;
-use pest_derive::Parser;
-
-#[derive(Parser)]
-#[grammar = "grammar.pest"]
-struct PhysicsGoParser;
-
-use interpreter::run_simulation;
+use interpreterGo::run_source;
 
 fn main() {
     let startwaarden_src = "
@@ -31,24 +21,17 @@ als x <= 0:
 stop als t >= 10
 ";
 
-    let start_processed = indent::indent_to_braces(startwaarden_src);
-    let model_processed = indent::indent_to_braces(modelregels_src);
+    let result = run_source(startwaarden_src, modelregels_src, 10_000);
 
-    let start_program = PhysicsGoParser::parse(Rule::program, &start_processed)
-        .expect("startvalues contain a syntax error")
-        .next()
-        .unwrap()
-        .into_inner();
-    let model_program = PhysicsGoParser::parse(Rule::program, &model_processed)
-        .expect("model rules contain a mistake")
-        .next()
-        .unwrap()
-        .into_inner();
-
-    let geschiedenis = run_simulation(start_program, model_program, 10_000);
+    if !result.ok {
+        for err in &result.errors {
+            eprintln!("[{}] {}:{}: {}", err.block, err.line, err.column, err.message);
+        }
+        return;
+    }
 
     println!("{:>8} {:>10} {:>10}", "t", "x", "v");
-    for stap in &geschiedenis {
+    for stap in &result.history {
         println!(
             "{:>8.3} {:>10.4} {:>10.4}",
             stap.get("t").unwrap_or(&0.0),
@@ -57,5 +40,5 @@ stop als t >= 10
         );
     }
 
-    println!("\nnumber of timesteps: {}", geschiedenis.len());
+    println!("\nnumber of timesteps: {}", result.history.len());
 }

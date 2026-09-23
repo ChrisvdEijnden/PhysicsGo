@@ -1,0 +1,38 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT    = _{ "//" ~ (!"\n" ~ ANY)* }
+
+program = { SOI ~ statement* ~ EOI }
+
+statement = { if_stmt | stop_stmt | assignment }
+
+assignment = { identifier ~ "=" ~ expr }
+
+if_stmt = { if_kw ~ condition ~ ":" ~ "{" ~ statement* ~ "}" }
+if_kw   = { "als" }
+
+stop_stmt = { stop_kw ~ if_kw ~ condition }
+stop_kw   = { "stop" }
+
+condition     = { expr ~ comparison_op ~ expr }
+comparison_op = { "<=" | ">=" | "==" | "!=" | "<" | ">" }
+
+expr = { term ~ ((add | sub) ~ term)* }
+add  = { "+" }
+sub  = { "-" }
+
+term = { power ~ ((mul | div) ~ power)* }
+mul  = { "*" }
+div  = { "/" }
+
+power  = { unary ~ (pow_op ~ unary)? }
+pow_op = { "^" }
+
+unary  = { sub_op ~ unary | atom }
+sub_op = { "-" }
+
+atom = { function_call | number | identifier | "(" ~ expr ~ ")" }
+
+function_call = { identifier ~ "(" ~ expr ~ ")" }
+
+number     = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
