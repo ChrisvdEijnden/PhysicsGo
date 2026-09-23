@@ -15,16 +15,12 @@ import {Projects} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 
-// Starting content for the editable code field below — this will go away
-// once the real interpreter is wired in, but for now it just seeds the
-// textarea with the same sample program that used to be hard-coded.
 const DEFAULT_CODE = [
     "// Initialize Parameters",
     "dt = 0.01 // in seconds",
     "",
 ].join("\n");
 
-// Panels can't be dragged smaller than this share of the row/column.
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
 
@@ -52,8 +48,6 @@ interface MediaItem {
 
 type AnalysisRow = { kind: "chart" } | { kind: "media"; item: MediaItem };
 
-// The analysis panel is the chart plus at most this many inserted media
-// items, so it never splits into more than 3 stacked panels.
 const MAX_MEDIA_ITEMS = 2;
 
 const ACCEPT_BY_CATEGORY: Record<MediaCategory, string> = {
@@ -104,14 +98,10 @@ function MediaTile({
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [frame, setFrame] = useState(0); // current playback frame, not total frame count
-    const [timeSec, setTimeSec] = useState(0); // current playback time, rounded up to nearest 10ms
-    const fallbackFpsRef = useRef(30); // used when requestVideoFrameCallback isn't available
+    const [frame, setFrame] = useState(0);
+    const [timeSec, setTimeSec] = useState(0);
+    const fallbackFpsRef = useRef(30);
 
-    // Track frame count + elapsed time while the video plays. Prefer
-    // requestVideoFrameCallback (reports the decoder's actual presented-frame
-    // count); fall back to estimating from currentTime at an assumed frame
-    // rate otherwise.
     useEffect(() => {
         if (!isVideo) return;
         const video = videoRef.current as VideoWithFrameCallback | null;
@@ -274,6 +264,10 @@ function Modeling() {
 
     // ---------- code panel (placeholder input until the interpreter lands) ----------
     const [code, setCode] = useState(DEFAULT_CODE);
+
+    function runSimulation() {
+        return 0;
+    }
 
     // ---------- Insert Media & Embeds ----------
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
@@ -483,7 +477,7 @@ function Modeling() {
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button className="play-btn" aria-label="Run simulation">
+                            <button className="play-btn" aria-label="Run simulation" onClick={runSimulation}>
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
                             </button>
                         </div>
