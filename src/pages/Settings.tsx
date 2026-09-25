@@ -24,8 +24,15 @@ function Settings() {
                 </div>
             </div>
 
-
-            <div className="content">
+            <div className="content-settings">
+                <div className="user">
+                    <div className="user-name"></div>
+                    <div className="user-email"></div>
+                    <div className="user-class"></div>
+                </div>
+                <div className="language"></div>
+                <div className="dark-mode"></div>
+                <div className="logout"></div>
             </div>
         </div>
     );

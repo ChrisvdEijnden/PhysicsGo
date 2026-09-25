@@ -354,10 +354,6 @@
     min-height: 0;
 }
 
-/* The div CodeEditor.tsx mounts Monaco into. Monaco's automaticLayout
-   watches this box's size, so it needs a real, non-zero size from the flex
-   chain above — not just "flex: 1" on a parent that never resolves to
-   pixels. */
 .monaco-container {
     flex: 1;
     min-width: 0;

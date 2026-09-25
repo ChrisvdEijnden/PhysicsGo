@@ -5,7 +5,7 @@ interface CodeEditorProps {
     value: string;
     onChange: (value: string) => void;
     language?: string;
-    onRun?: () => void; // Cmd/Ctrl+Enter inside the editor
+    onRun?: () => void;
 }
 
 export interface InterpreterError {

@@ -18,8 +18,11 @@ import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData
 import CodeEditor from "../components/codeEditor.tsx";
 
 const DEFAULT_CODE = [
-    "// Initialize Parameters",
+    "// Initialiseer Parameters",
+    "t = 0",
     "dt = 0.01 // in seconds",
+    "\n",
+    "stop als t >= 10",
     "",
 ].join("\n");
 
