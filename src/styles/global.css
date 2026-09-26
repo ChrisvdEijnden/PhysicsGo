@@ -1,11 +1,57 @@
 @import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
 
+:root {
+    color-scheme: light;
+
+    --color-bg-app: #F8FAFC;
+    --color-bg-surface: #FFFFFF;
+    --color-border: #E2E8F0;
+
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #475569;
+    --color-text-tertiary: #94A3B8;
+
+    --color-brand: #0D9488;
+    --color-brand-accent: #0D9488;
+    --color-brand-subtle-bg: #CCFBF1;
+    --color-on-brand: #FFFFFF;
+    --color-on-brand-muted: #CCFBF1;
+    --color-text-on-brand: #FFFFFF;
+
+    --color-shadow: #0F172A0D;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    --color-bg-app: #0B1220;
+    --color-bg-surface: #1E293B;
+    --color-border: #334155;
+
+    --color-text-primary: #F1F5F9;
+    --color-text-secondary: #94A3B8;
+    --color-text-tertiary: #64748B;
+
+    --color-brand: #0D9488;
+    --color-brand-accent: #2DD4BF;
+    --color-brand-subtle-bg: rgba(45, 212, 191, 0.16);
+    --color-on-brand: #FFFFFF;
+    --color-on-brand-muted: #CCFBF1;
+
+    --color-shadow: rgba(0, 0, 0, 0.45);
+}
+
 html, body, #root {
     height: 100%;
     width: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
+}
+
+body {
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
 }
 
 *, *::before, *::after {
@@ -17,14 +63,15 @@ html, body, #root {
     box-sizing: border-box;
     width: 100%;
     height: 56px;
-    background-color: #fff;
-    border-bottom: 1px solid #E2E8F0;
+    background-color: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border);
     padding-left: 24px;
     padding-right: 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: nowrap;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .brand-and-breadcrumb {
@@ -40,7 +87,7 @@ html, body, #root {
     font-size: 16px;
     font-weight: bold;
     font-family: "Figtree", sans-serif;
-    color: #0f172a;
+    color: var(--color-text-primary);
 }
 
 .brand-and-breadcrumb h2 {
@@ -48,14 +95,14 @@ html, body, #root {
     font-size: 14px;
     font-weight: normal;
     font-family: "Figtree", sans-serif;
-    color: #475569;
+    color: var(--color-text-secondary);
 }
 
 .brand {
     display: flex;
     width: 32px;
     height: 32px;
-    background-color: #0D9488;
+    background-color: var(--color-brand);
     align-items: center;
     justify-content: center;
     border-radius: 8px;
@@ -70,7 +117,7 @@ html, body, #root {
 .spacer {
     width: 1px;
     height: 16px;
-    background-color: #E2E8F0;
+    background-color: var(--color-border);
 }
 
 .system-actions {
@@ -112,6 +159,32 @@ html, body, #root {
     width: 100%;
     height: calc(100vh - 56px);
     padding: 16px;
-    background-color: #F8FAFC;
+    background-color: var(--color-bg-app);
     box-sizing: border-box;
+    transition: background-color 0.2s ease;
+}
+
+/* Settings page */
+.content-settings {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 16px;
+    width: 100%;
+    height: calc(100vh - 56px);
+    padding: 16px;
+    background-color: var(--color-bg-app);
+    box-sizing: border-box;
+    overflow: auto;
+    transition: background-color 0.2s ease;
+}
+
+.content-settings > div {
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
