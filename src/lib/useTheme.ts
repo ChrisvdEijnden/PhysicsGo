@@ -1,36 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export type Theme = "light" | "dark";
 
-const STORAGE_KEY = "physicsgo-theme";
+const STORAGE_KEY = "physicsgo_theme";
 
-function getStoredTheme(): Theme {
-    if (typeof window === "undefined") return "light";
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    return stored === "dark" ? "dark" : "light";
-}
-
-function applyTheme(theme: Theme) {
-    document.documentElement.setAttribute("data-theme", theme);
-}
-
-export function initTheme() {
-    applyTheme(getStoredTheme());
+function getInitialTheme(): Theme {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") {
+        return stored;
+    }
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function useTheme() {
-    const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+    const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
     useEffect(() => {
-        applyTheme(theme);
-        window.localStorage.setItem(STORAGE_KEY, theme);
+        localStorage.setItem(STORAGE_KEY, theme);
+        document.documentElement.setAttribute("data-theme", theme);
     }, [theme]);
 
-    const setTheme = useCallback((next: Theme) => setThemeState(next), []);
-
-    const toggleTheme = useCallback(() => {
-        setThemeState((prev) => (prev === "light" ? "dark" : "light"));
-    }, []);
+    const setTheme = (next: Theme) => setThemeState(next);
+    const toggleTheme = () => setThemeState((prev) => (prev === "dark" ? "light" : "dark"));
 
     return { theme, setTheme, toggleTheme };
 }

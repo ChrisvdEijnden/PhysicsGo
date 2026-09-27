@@ -7,13 +7,13 @@ import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
-import { useLanguage } from "../lib/useLanguage";
+import { useTranslation } from "../lib/useTranslations";
 
 function Settings() {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     const isDark = theme === "dark";
-    const { language, setLanguage } = useLanguage();
+    const { language, setLanguage, t } = useTranslation();
 
     return (
         <div>
@@ -24,7 +24,7 @@ function Settings() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>Settings</h2>
+                    <h2>{t("nav.settings")}</h2>
                 </div>
                 <div className="right-system-actions">
                     <button onClick={() => navigate("/")}>
@@ -42,8 +42,8 @@ function Settings() {
                 <div className="language">
                     <div className="setting-row">
                         <div className="setting-row-text">
-                            <h3>Language</h3>
-                            <p>{language === "nl" ? "Dutch is selected" : "English is selected"}</p>
+                            <h3>{t("settings.languageTitle")}</h3>
+                            <p>{language === "nl" ? t("settings.dutchSelected") : t("settings.englishSelected")}</p>
                         </div>
                         <div
                             className="language-toggle"
@@ -76,15 +76,15 @@ function Settings() {
                 <div className="theme">
                     <div className="setting-row">
                         <div className="setting-row-text">
-                            <h3>Appearance</h3>
-                            <p>{isDark ? "Dark mode is on" : "Light mode is on"}</p>
+                            <h3>{t("settings.appearanceTitle")}</h3>
+                            <p>{isDark ? t("settings.darkModeOn") : t("settings.lightModeOn")}</p>
                         </div>
                         <button
                             type="button"
                             className="theme-toggle"
                             role="switch"
                             aria-checked={isDark}
-                            aria-label="Toggle dark mode"
+                            aria-label={t("settings.toggleDarkMode")}
                             onClick={toggleTheme}
                         >
                             <span className="theme-toggle-icon" aria-hidden="true">
