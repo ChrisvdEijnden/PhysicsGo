@@ -9,9 +9,11 @@ import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import {Projects} from "../data/Projects.tsx";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 import {formatRelativeDate} from "../lib/formatRelativeDate.tsx";
+import { useTranslation } from "../lib/useTranslations";
 
 function AllModels() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     return (
         <div>
             <div className="nav">
@@ -21,7 +23,7 @@ function AllModels() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>All Models</h2>
+                    <h2>{t("nav.allModels")}</h2>
                 </div>
                 <div className="right-system-actions">
                     <button onClick={() => navigate("/settings")}>
@@ -36,13 +38,13 @@ function AllModels() {
             <div className="content-allmodels">
                 <div className="panel">
                     <div className="top-row">
-                        <h2>All Your Projects</h2>
-                        <a onClick={() => navigate("/dashboard")}>Back To Dashboard</a>
+                        <h2>{t("allModels.allYourProjects")}</h2>
+                        <a onClick={() => navigate("/dashboard")}>{t("allModels.backToDashboard")}</a>
                     </div>
                     <div className="header-row">
-                        <p className="project-name">Project Name</p>
-                        <p className="other-filters">Type</p>
-                        <p className="other-filters">Last Edit</p>
+                        <p className="project-name">{t("table.colProjectName")}</p>
+                        <p className="other-filters">{t("table.colType")}</p>
+                        <p className="other-filters">{t("table.colLastEdit")}</p>
                     </div>
                     <div className="recents-list">
                         {Projects

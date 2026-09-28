@@ -16,6 +16,7 @@ import LineChart from "../components/lineChart.tsx";
 import {Projects} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
+import { useTranslation } from "../lib/useTranslations";
 
 const DEFAULT_CODE = [
     "// Initialiseer Parameters",
@@ -97,6 +98,7 @@ function MediaTile({
     style: React.CSSProperties;
     onRemove: () => void;
 }) {
+    const { t } = useTranslation();
     const isImage = item.mime.startsWith("image/");
     const isVideo = item.mime.startsWith("video/");
     const isLooping = item.category === "animation";
@@ -150,7 +152,7 @@ function MediaTile({
                         type="button"
                         className="analysis-media-play"
                         onClick={togglePlay}
-                        aria-label={isPlaying ? "Pause" : "Play"}
+                        aria-label={isPlaying ? t("modeling.pause") : t("modeling.play")}
                     >
                         {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt="PlayIcon20px"/>}
                     </button>
@@ -158,13 +160,13 @@ function MediaTile({
                 <div className="right-btns">
                     <button className="insert-points-btn">
                         <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                        <p>Insert Points</p>
+                        <p>{t("modeling.insertPoints")}</p>
                     </button>
                     <button
                         type="button"
                         className="analysis-media-remove"
                         onClick={onRemove}
-                        aria-label={`Remove ${item.name}`}
+                        aria-label={t("modeling.removeMedia", { name: item.name })}
                     >
                         <img src={CloseIcon20px} alt="CloseIcon20px"/>
                     </button>
@@ -186,9 +188,9 @@ function MediaTile({
                         onPause={() => setIsPlaying(false)}
                     />
                     <span className="analysis-media-framecount">
-                        Frame: <strong>{frame}</strong>
+                        {t("modeling.frame")} <strong>{frame}</strong>
                         <span className="code-footer-dot"> · </span>
-                        Time: <strong>{timeSec.toFixed(2)}s</strong>
+                        {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
                     </span>
                 </>
             ) : (
@@ -203,6 +205,7 @@ function MediaTile({
 
 function Modeling() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const location = useLocation();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
     const project = Projects.find((p) => p.id === presetId);
@@ -474,11 +477,11 @@ function Modeling() {
                         className="insert-media-btn"
                         onClick={openFilePicker}
                         disabled={atMediaCap}
-                        title={atMediaCap ? "Remove a panel to insert another." : "\u2318O / Ctrl+O"}
+                        title={atMediaCap ? t("modeling.removePanelTooltip") : "\u2318O / Ctrl+O"}
                         aria-keyshortcuts="Meta+O Control+O"
                     >
                         <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                        <p>Insert Media &amp; Embeds</p>
+                        <p>{t("modeling.insertMediaEmbeds")}</p>
                     </button>
                     <input
                         ref={fileInputRef}
@@ -488,7 +491,7 @@ function Modeling() {
                     />
                     <button className="hand-in-btn" onClick={() => navigate("/dashboard")}>
                         <img src={arrowIcon14px} alt="ArrowIcon14px"/>
-                        <p>Hand in Assignment</p>
+                        <p>{t("modeling.handInAssignment")}</p>
                     </button>
                     <div className="right-system-actions">
                         <button onClick={() => navigate("/settings")}>
@@ -507,9 +510,9 @@ function Modeling() {
                         <p>{ project?.explanation }</p>
                     </div>
                     <div className="explanation-footer">
-                        <span>Estimated Time: <strong>{project?.estimatedTime} m</strong></span>
+                        <span>{t("modeling.estimatedTime")} <strong>{project?.estimatedTime} m</strong></span>
                         <span className="code-footer-dot">·</span>
-                        <span>Equipment: <strong>{project?.equipment ?? "None"}</strong></span>
+                        <span>{t("modeling.equipment")} <strong>{project?.equipment ?? t("modeling.equipmentNone")}</strong></span>
                     </div>
                 </div>
 
@@ -518,13 +521,13 @@ function Modeling() {
                     onPointerDown={handleDividerPointerDown(0)}
                     role="separator"
                     aria-orientation="vertical"
-                    aria-label="Resize explanation and code panels"
+                    aria-label={t("modeling.resizeExplanationCode")}
                 />
 
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button className="play-btn" aria-label="Run simulation" onClick={runSimulation} disabled={!wasmReady}>
+                            <button className="play-btn" aria-label={t("modeling.runSimulation")} onClick={runSimulation} disabled={!wasmReady}>
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
                             </button>
                         </div>
@@ -534,7 +537,7 @@ function Modeling() {
                     </div>
 
                     <div className="code-footer">
-                        <span>Steps: <input type='number' className="steps-input" placeholder="100000"></input></span>
+                        <span>{t("modeling.steps")} <input type='number' className="steps-input" placeholder="100000"></input></span>
                     </div>
                 </div>
                 <div
@@ -542,7 +545,7 @@ function Modeling() {
                     onPointerDown={handleDividerPointerDown(1)}
                     role="separator"
                     aria-orientation="vertical"
-                    aria-label="Resize code and analysis panels"
+                    aria-label={t("modeling.resizeCodeAnalysis")}
                 />
 
                 <div className="analysis-panel" style={{ flex: `0 0 ${panelWidths[2]}%` }}>
@@ -560,7 +563,7 @@ function Modeling() {
                                             onPointerDown={handleRowDividerPointerDown(index - 1)}
                                             role="separator"
                                             aria-orientation="horizontal"
-                                            aria-label="Resize analysis panels"
+                                            aria-label={t("modeling.resizeAnalysisPanels")}
                                         />
                                     )}
                                     {row.kind === "chart" ? (
@@ -568,22 +571,22 @@ function Modeling() {
                                             <div className="analysis-panel-actions">
                                                 <button className="insert-points-btn">
                                                     <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                                                    <p>Insert Points</p>
+                                                    <p>{t("modeling.insertPoints")}</p>
                                                 </button>
                                                 <button
                                                     type="button"
                                                     className="analysis-media-remove"
                                                     onClick={closeChart}
-                                                    aria-label="Close graph"
+                                                    aria-label={t("modeling.closeGraph")}
                                                 >
                                                     <img src={CloseIcon20px} alt="CloseIcon20px"/>
                                                 </button>
                                             </div>
                                             <LineChart/>
                                             <div className="analysis-footer">
-                                                <span>Domain: <strong> [{minDomainLineData}, {maxDomainLineData}]</strong></span>
+                                                <span>{t("modeling.domain")} <strong> [{minDomainLineData}, {maxDomainLineData}]</strong></span>
                                                 <span className="code-footer-dot">·</span>
-                                                <span>Range: <strong>[{minRangeLineData}, {maxRangeLineData}]</strong></span>
+                                                <span>{t("modeling.range")} <strong>[{minRangeLineData}, {maxRangeLineData}]</strong></span>
                                             </div>
                                         </div>
 

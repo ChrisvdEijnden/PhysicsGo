@@ -1,0 +1,124 @@
+.setting-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+}
+
+.setting-row-text h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: "Figtree", sans-serif;
+    color: var(--color-text-primary);
+}
+
+.setting-row-text p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    font-weight: 400;
+    font-family: "Figtree", sans-serif;
+    color: var(--color-text-tertiary);
+}
+
+.theme-toggle {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 52px;
+    height: 28px;
+    padding: 0 6px;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    box-sizing: border-box;
+}
+
+.theme-toggle-icon {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 14px;
+    height: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.theme-toggle-icon img {
+    width: 16px;
+    height: 16px;
+    display: block;
+}
+
+.theme-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--color-brand);
+    box-shadow: 0 1px 2px var(--color-shadow);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.theme-toggle[aria-checked="true"] .theme-toggle-thumb {
+    transform: translateX(24px);
+}
+
+/* Language toggle switch */
+.language-toggle {
+    position: relative;
+    display: flex;
+    width: 80px;
+    height: 28px;
+    padding: 2px;
+    border-radius: 14px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    box-sizing: border-box;
+}
+
+.language-toggle-option {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: "Figtree", sans-serif;
+    letter-spacing: 0.02em;
+    color: var(--color-text-tertiary);
+    transition: color 0.2s ease;
+}
+
+.language-toggle-option[aria-checked="true"] {
+    color: var(--color-text-on-brand, #ffffff);
+}
+
+.language-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: calc(50% - 2px);
+    height: 22px;
+    border-radius: 11px;
+    background-color: var(--color-brand);
+    box-shadow: 0 1px 2px var(--color-shadow);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.language-toggle[data-active="en"] .language-toggle-thumb {
+    transform: translateX(100%);
+}

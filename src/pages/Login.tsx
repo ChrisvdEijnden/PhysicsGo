@@ -9,12 +9,14 @@ import HelpIcon21px from "../assets/icons/help-21px.svg";
 import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
+import { useTranslation } from "../lib/useTranslations";
 
 const CODE_LENGTH = 12;
 const DASH_AFTER = [3, 7];
 
 function Login() {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -60,7 +62,7 @@ function Login() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>Login</h2>
+                    <h2>{t("nav.login")}</h2>
                 </div>
                 <div className="right-system-actions">
                     <button onClick={() => navigate("/settings")}>
@@ -80,7 +82,7 @@ function Login() {
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>
-                        <h3>Enter your invitation or teacher's code to open your workspace.</h3>
+                        <h3>{t("login.invitationPrompt")}</h3>
                     </div>
                     <div className="access-code">
                         {code.map((char, index) => (

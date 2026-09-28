@@ -6,9 +6,10 @@
     width: 100%;
     height: calc(100vh - 56px);
     padding: 16px;
-    background-color: #F8FAFC;
+    background-color: var(--color-bg-app);
     box-sizing: border-box;
     gap: 16px;
+    transition: background-color 0.2s ease;
 }
 
 .left-panel {
@@ -28,8 +29,9 @@
     padding: 16px;
     gap: 16px;
     border-radius: 16px;
-    background-color: #fff;
-    border: 1px #E2E8F0 solid;
+    background-color: var(--color-bg-surface);
+    border: 1px var(--color-border) solid;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .right-panel {
@@ -44,7 +46,7 @@
     font-weight: 600;
     font-family: "Figtree", sans-serif;
     margin: 0;
-    color: #0F172A;
+    color: var(--color-text-primary);
 }
 
 .dual-action-buttons {
@@ -70,12 +72,13 @@
 }
 
 .action-new {
-    background-color: #0D9488;
+    background-color: var(--color-brand);
 }
 
 .action-open {
-    background-color: #fff;
-    border: 1px solid #E2E8F0;
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .action-open img, .action-new img {
@@ -104,16 +107,15 @@
     margin: 0;
 }
 
-.action-new .action-text h3 {color: #fff;}
-.action-new .action-text p {color: #CCFBF1;}
-.action-new img {color: #0D9488;}
+.action-new .action-text h3 {color: var(--color-on-brand);}
+.action-new .action-text p {color: var(--color-on-brand-muted);}
+.action-new img {color: var(--color-on-brand);}
 
-.action-open .action-text h3 {color: #0F172A;}
-.action-open .action-text p {color: #94A3B8;}
-.action-new img {color: #fff;}
+.action-open .action-text h3 {color: var(--color-text-primary);}
+.action-open .action-text p {color: var(--color-text-tertiary);}
 
 .curriculum-card h2 {
-    color: #475569;
+    color: var(--color-text-secondary);
     text-transform: uppercase;
 }
 
@@ -130,7 +132,7 @@
     font-weight: 500;
     font-family: "Figtree", sans-serif;
     margin: 0;
-    color: #0D9488;
+    color: var(--color-brand-accent);
 }
 
 .top-row a:hover {
@@ -143,7 +145,7 @@
     width: 100%;
     height: fit-content;
     gap: 12px;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid var(--color-border);
     padding: 8px 12px;
 }
 
@@ -152,7 +154,7 @@
     font-weight: 500;
     font-family: "Figtree", sans-serif;
     text-align: left;
-    color: #475569;
+    color: var(--color-text-secondary);
     margin: 0;
 }
 
@@ -177,10 +179,11 @@
     align-items: center;
     justify-content: space-between;
     padding: 12px;
-    background-color: #F8FAFC;
+    background-color: var(--color-bg-app);
     width: 100%;
     box-sizing: border-box;
     border-radius: 10px;
+    transition: background-color 0.2s ease;
 }
 
 .preset-item img {
@@ -203,7 +206,7 @@
     font-family: "Figtree", sans-serif;
     margin: 0;
     text-align: left;
-    color: #0F172A;
+    color: var(--color-text-primary);
 }
 
 .preset-item-text p {
@@ -212,7 +215,7 @@
     font-family: "Figtree", sans-serif;
     margin: 0;
     text-align: left;
-    color: #475569;
+    color: var(--color-text-secondary);
 }
 
 .recents-list {
@@ -229,13 +232,14 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
-    background-color: #fff;
+    background-color: var(--color-bg-surface);
     border-radius: 8px;
     box-sizing: border-box;
+    transition: background-color 0.2s ease;
 }
 
 .recent-item:active, .recent-item:hover {
-    background-color: #F8FAFC;
+    background-color: var(--color-bg-app);
 }
 
 .project-recent-name {
@@ -252,7 +256,7 @@
     font-weight: 500;
     font-family: "Figtree", sans-serif;
     margin: 0;
-    color: #0F172A;
+    color: var(--color-text-primary);
     text-align: left;
     height: fit-content;
 }
@@ -261,7 +265,7 @@
     font-weight: 400;
     font-family: "Figtree", sans-serif;
     margin: 0;
-    color: #475569;
+    color: var(--color-text-secondary);
     text-align: left;
     width: 120px;
     height: fit-content;
