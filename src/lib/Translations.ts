@@ -4,6 +4,7 @@ export const translations = {
         "nav.settings": "Settings",
         "nav.allModels": "All Models",
         "nav.login": "Login",
+        "nav.user": "Login",
 
         "settings.appearanceTitle": "Appearance",
         "settings.darkModeOn": "Dark mode is on",
@@ -12,6 +13,9 @@ export const translations = {
         "settings.languageTitle": "Language",
         "settings.dutchSelected": "Dutch is selected",
         "settings.englishSelected": "English is selected",
+        "settings.logoutTitle": "Account",
+        "settings.logoutDescription": "Sign out of this device",
+        "settings.logout": "Logout",
 
         "table.colProjectName": "Project Name",
         "table.colType": "Type",
@@ -30,6 +34,13 @@ export const translations = {
         "allModels.backToDashboard": "Back To Dashboard",
 
         "login.invitationPrompt": "Enter your invitation or teacher's code to open your workspace.",
+        "login.invalidCode": "That code isn't valid. Please try again.",
+
+        "user.name": "Name",
+        "user.class": "Class",
+        "user.email": "Email",
+        "user.emailExample": "student@example.com",
+
 
         "modeling.insertMediaEmbeds": "Insert Media & Embeds",
         "modeling.removePanelTooltip": "Remove a panel to insert another.",
@@ -51,12 +62,31 @@ export const translations = {
         "modeling.removeMedia": "Remove {{name}}",
         "modeling.frame": "Frame:",
         "modeling.time": "Time:",
+
+        "nav.register": "Create account",
+        "auth.password": "Password",
+        "auth.confirmPassword": "Confirm",
+        "login.signInPrompt": "Log in with your email and password.",
+        "login.signIn": "Log in",
+        "login.noAccount": "No account yet? Use an invitation code",
+        "login.haveAccount": "Already have an account? Log in",
+        "register.prompt": "Create your account to get started.",
+        "register.submit": "Create account",
+        "auth.errInvalidCredentials": "Incorrect email or password.",
+        "auth.errInvalidName": "Enter your name.",
+        "auth.errInvalidEmail": "Enter a valid email address.",
+        "auth.errWeakPassword": "Use at least 10 characters.",
+        "auth.errMismatch": "Passwords don't match.",
+        "auth.errEmailTaken": "This email is already in use.",
+        "auth.errRateLimit": "Too many attempts. Try again in a few minutes.",
+        "auth.errGeneric": "Something went wrong. Please try again.",
     },
     nl: {
         "nav.dashboard": "Dashboard",
         "nav.settings": "Instellingen",
         "nav.allModels": "Alle Modellen",
         "nav.login": "Inloggen",
+        "nav.user": "Inloggen",
 
         "settings.appearanceTitle": "Weergave",
         "settings.darkModeOn": "Donkere modus is aan",
@@ -65,6 +95,9 @@ export const translations = {
         "settings.languageTitle": "Taal",
         "settings.dutchSelected": "Nederlands is geselecteerd",
         "settings.englishSelected": "Engels is geselecteerd",
+        "settings.logoutTitle": "Account",
+        "settings.logoutDescription": "Uitloggen op dit apparaat",
+        "settings.logout": "Uitloggen",
 
         "table.colProjectName": "Projectnaam",
         "table.colType": "Type",
@@ -83,6 +116,12 @@ export const translations = {
         "allModels.backToDashboard": "Terug Naar Dashboard",
 
         "login.invitationPrompt": "Voer je uitnodigings- of docentcode in om je werkruimte te openen.",
+        "login.invalidCode": "Deze code is niet geldig. Probeer het opnieuw.",
+
+        "user.name": "Naam",
+        "user.class": "Klas",
+        "user.email": "E-mail",
+        "user.emailExample": "leerling@voorbeeld.com",
 
         "modeling.insertMediaEmbeds": "Media & Embeds Invoegen",
         "modeling.removePanelTooltip": "Verwijder een paneel om er nog een in te voegen.",
@@ -104,6 +143,24 @@ export const translations = {
         "modeling.removeMedia": "Verwijder {{name}}",
         "modeling.frame": "Frame:",
         "modeling.time": "Tijd:",
+
+        "nav.register": "Account aanmaken",
+        "auth.password": "Wachtwoord",
+        "auth.confirmPassword": "Bevestig",
+        "login.signInPrompt": "Log in met je e-mailadres en wachtwoord.",
+        "login.signIn": "Inloggen",
+        "login.noAccount": "Nog geen account? Gebruik een uitnodigingscode",
+        "login.haveAccount": "Heb je al een account? Log in",
+        "register.prompt": "Maak je account aan om te beginnen.",
+        "register.submit": "Account aanmaken",
+        "auth.errInvalidCredentials": "Onjuist e-mailadres of wachtwoord.",
+        "auth.errInvalidName": "Vul je naam in.",
+        "auth.errInvalidEmail": "Voer een geldig e-mailadres in.",
+        "auth.errWeakPassword": "Gebruik minimaal 10 tekens.",
+        "auth.errMismatch": "Wachtwoorden komen niet overeen.",
+        "auth.errEmailTaken": "Dit e-mailadres is al in gebruik.",
+        "auth.errRateLimit": "Te veel pogingen. Probeer het over een paar minuten opnieuw.",
+        "auth.errGeneric": "Er ging iets mis. Probeer het opnieuw.",
     },
 } as const;
 

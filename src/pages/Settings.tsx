@@ -8,12 +8,24 @@ import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
 import { useTranslation } from "../lib/useTranslations";
+import { useAuth } from "../lib/useAuth";
+import {useEffect} from "react";
 
 function Settings() {
     const navigate = useNavigate();
     const { theme, toggleTheme } = useTheme();
     const isDark = theme === "dark";
     const { language, setLanguage, t } = useTranslation();
+    const { user, logout } = useAuth();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate("/login", { replace: true });
+    };
+
+    useEffect(() => {
+        if (!user) navigate("/login", { replace: true });
+    }, [user, navigate]);
 
     return (
         <div>
@@ -35,9 +47,19 @@ function Settings() {
 
             <div className="content-settings">
                 <div className="user">
-                    <div className="user-name"></div>
-                    <div className="user-email"></div>
-                    <div className="user-class"></div>
+                    <div className="user-top-row">
+                        <div className="user-name">
+                            <h3>{user?.name ?? "—"}</h3>
+                        </div>
+                        {user?.class && (
+                            <div className="user-class">
+                                <h3>({user.class})</h3>
+                            </div>
+                        )}
+                    </div>
+                    <div className="user-email">
+                        <p>{user?.email ?? "—"}</p>
+                    </div>
                 </div>
                 <div className="language">
                     <div className="setting-row">
@@ -97,7 +119,17 @@ function Settings() {
                         </button>
                     </div>
                 </div>
-                <div className="logout"></div>
+                <div className="logout">
+                    <div className="setting-row">
+                        <div className="setting-row-text">
+                            <h3>{t("settings.logoutTitle")}</h3>
+                            <p>{t("settings.logoutDescription")}</p>
+                        </div>
+                        <button type="button" className="logout-button" onClick={handleLogout}>
+                            {t("settings.logout")}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

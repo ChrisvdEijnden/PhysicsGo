@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useRef, useState, useEffect } from "react";
 
 import "../styles/global.css";
-import "./login.css"
+import "./login.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
@@ -10,6 +10,8 @@ import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
+import { useAuth } from "../lib/useAuth.tsx";
+import { authErrorKey } from "../lib/authErrors";
 
 const CODE_LENGTH = 12;
 const DASH_AFTER = [3, 7];
@@ -17,24 +19,38 @@ const DASH_AFTER = [3, 7];
 function Login() {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { checkCode } = useAuth();
     const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
+    const [error, setError] = useState<string | null>(null);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const isComplete = code.every((c) => c !== "");
 
-    const saveCode = (fullCode: string) => {
-        // Placeholder persistence
-        localStorage.setItem("physicsgo_login_code", fullCode);
-    };
-
     useEffect(() => {
-        if (isComplete) {
-            saveCode(code.join(""));
-            navigate("/dashboard");
-        }
-    }, [code, isComplete]);
+        if (!isComplete) return;
+
+        // Ignore the response if the code changed or the page was left while waiting
+        let cancelled = false;
+        const value = code.join("");
+
+        checkCode(value).then((res) => {
+            if (cancelled) return;
+            if (res.ok) {
+                navigate("/register", { state: { code: value }, replace: true });
+            } else {
+                setError(res.error);
+                setCode(Array(CODE_LENGTH).fill(""));
+                inputRefs.current[0]?.focus();
+            }
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [code, isComplete, checkCode, navigate]);
 
     const handleChange = (index: number, value: string) => {
+        setError(null);
         const char = value.slice(-1).toUpperCase();
         setCode((prev) => {
             const next = [...prev];
@@ -102,8 +118,18 @@ function Login() {
                             </div>
                         ))}
                     </div>
+                    <div className="auth-actions">
+                        {error && (
+                            <p className="auth-error" role="alert">
+                                {t(authErrorKey(error))}
+                            </p>
+                        )}
+                        <button className="auth-link" type="button" onClick={() => navigate("/login")}>
+                            {t("login.haveAccount")}
+                        </button>
+                    </div>
                     <div className="footer-context">
-                        <p>PhysicsGo v0.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>
+                        <p>PhysicsGo v1.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>
                     </div>
                 </div>
             </div>

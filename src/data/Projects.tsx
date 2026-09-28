@@ -1,3 +1,10 @@
+export interface User {
+    name: string;
+    email: string;
+    class: string;
+    projects: Project[];
+}
+
 export interface Project {
     id: string;
     title: string;

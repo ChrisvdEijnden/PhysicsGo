@@ -14,6 +14,7 @@ export default defineConfig(() => ({
     clearScreen: false,
     server: {
         port: 1420,
+        roxy: { "/api": "http://localhost:3001" },
         strictPort: true,
         host: host || false,
         hmr: host

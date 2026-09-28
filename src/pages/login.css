@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
 
-.auth-card {
+.auth-card, .user-card {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -136,4 +136,128 @@
     overflow: hidden;
     width: 750px;
     height: 750px;
+}
+
+.info {
+    width: 80%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 16px;
+    background-color: var(--color-bg-app);
+    border: 2px solid var(--color-border);
+    padding: 8px 12px;
+    border-radius: 12px;
+    cursor: text;
+    transition: border-color 0.2s ease;
+}
+
+.info-row:focus-within {
+    border-color: var(--color-brand);
+}
+
+.info-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    text-align: left;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.info-input:focus {
+    color: var(--color-text-primary);
+}
+
+.info-label {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    width: 40px;
+    margin: 0;
+}
+
+.info-value {
+    font-weight: 600;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    outline: none;
+    text-align: left;
+    color: var(--color-text-secondary);
+    width: fit-content;
+}
+
+.info-wide .info-label {
+    width: 104px;
+}
+
+.auth-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    width: 80%;
+}
+
+.auth-button {
+    width: 100%;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 12px;
+    background-color: var(--color-brand);
+    color: #fff;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.auth-button:hover {
+    opacity: 0.9;
+}
+
+.auth-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.auth-error {
+    margin: 0;
+    width: 100%;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: center;
+    color: #d64545;
+}
+
+.auth-link {
+    padding: 0;
+    background: none;
+    border: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.auth-link:hover {
+    color: var(--color-text-primary);
 }
