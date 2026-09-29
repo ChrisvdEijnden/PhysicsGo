@@ -14,14 +14,14 @@ import LogoIcon35px from "../assets/icons/logo-35px.svg";
 function User() {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const [draft, setDraft] = useState({ name: "", class: "", email: "" });
+    const [draft, setDraft] = useState({ name: "", email: "" });
     const { user, loading, updateUser } = useAuth();
 
     useEffect(() => {
-        if (user) setDraft({ name: user.name, class: user.class, email: user.email });
+        if (user) setDraft({ name: user.name, email: user.email });
     }, [user]);
 
-    const commit = (field: "name" | "class" | "email") => {
+    const commit = (field: "name" | "email") => {
         if (!user) return;
         const value = draft[field].trim();
 
@@ -96,18 +96,6 @@ function User() {
                                 onKeyDown={handleKeyDown}
                             />
                         </label>
-                        <label className="set-class info-row">
-                            <span className="info-label">{t("user.class")}</span>
-                            <input
-                                className="info-input"
-                                type="text"
-                                value={draft.class}
-                                placeholder="V6A"
-                                onChange={(e) => setDraft({ ...draft, class: e.target.value })}
-                                onBlur={() => commit("class")}
-                                onKeyDown={handleKeyDown}
-                            />
-                        </label>
                         <label className="set-email info-row">
                             <span className="info-label">{t("user.email")}</span>
                             <input
@@ -121,6 +109,15 @@ function User() {
                                 onKeyDown={handleKeyDown}
                             />
                         </label>
+                        {/* Class membership is managed through class codes, not edited here */}
+                        <div className="set-class info-row">
+                            <span className="info-label">{t("user.class")}</span>
+                            <span className="info-value">
+                                {user.role === "teacher"
+                                    ? t("user.roleTeacher")
+                                    : user.classes.map((c) => c.name).join(", ") || "—"}
+                            </span>
+                        </div>
                     </div>
                     <div className="footer-context">
                         <p>PhysicsGo v1.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>

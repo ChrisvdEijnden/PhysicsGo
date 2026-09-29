@@ -11,6 +11,7 @@ import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
+import type { CodeInfo } from "../lib/useAuth";
 import { authErrorKey } from "../lib/authErrors";
 
 function Register() {
@@ -19,6 +20,7 @@ function Register() {
     const { t } = useTranslation();
     const { register } = useAuth();
     const code: string | undefined = location.state?.code;
+    const info: CodeInfo | undefined = location.state?.info;
 
     const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
     const [error, setError] = useState<string | null>(null);
@@ -42,8 +44,8 @@ function Register() {
         const res = await register({ code, name: form.name, email: form.email, password: form.password });
         setBusy(false);
 
-        if (res.ok) navigate("/", { replace: true });
-        else if (res.error === "invalid_code") navigate("/join", { replace: true });
+        // A code error here means the class code was regenerated or closed after it was checked
+        if (res.ok) navigate("/dashboard", { replace: true });
         else setError(res.error);
     };
 
@@ -78,7 +80,13 @@ function Register() {
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>
-                        <h3>{t("register.prompt")}</h3>
+                        <h3>
+                            {info?.kind === "teacher"
+                                ? t("register.teacherPrompt")
+                                : info?.kind === "class"
+                                    ? t("register.classPrompt", { name: info.className })
+                                    : t("register.prompt")}
+                        </h3>
                     </div>
                     <div className="info info-wide">
                         <label className="info-row">

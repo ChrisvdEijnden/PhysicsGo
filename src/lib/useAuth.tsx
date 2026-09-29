@@ -1,46 +1,42 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { api, errorOf } from "./api";
+import type { Result } from "./api";
+
+export type Role = "student" | "teacher";
+
+export interface ClassRef {
+    id: number;
+    name: string;
+}
 
 export interface AuthUser {
     name: string;
-    class: string;
     email: string;
+    role: Role;
+    classes: ClassRef[];
 }
 
-export type AuthResult = { ok: true } | { ok: false; error: string };
+export type AuthResult = Result;
 
-interface ApiData {
-    error?: string;
+// What an enrollment code unlocks at registration
+export type CodeInfo = { kind: "class"; className: string } | { kind: "teacher" };
+
+interface UserData {
     user?: AuthUser | null;
 }
 
 interface AuthContextValue {
     user: AuthUser | null;
     loading: boolean;
-    checkCode: (code: string) => Promise<AuthResult>;
+    checkCode: (code: string) => Promise<Result<{ info: CodeInfo }>>;
     register: (input: { code: string; name: string; email: string; password: string }) => Promise<AuthResult>;
     login: (email: string, password: string) => Promise<AuthResult>;
     logout: () => Promise<void>;
-    updateUser: (patch: Partial<AuthUser>) => Promise<AuthResult>;
+    updateUser: (patch: Partial<Pick<AuthUser, "name" | "email">>) => Promise<AuthResult>;
+    joinClass: (code: string) => Promise<Result<{ joined: ClassRef }>>;
+    refresh: () => Promise<void>;
 }
-
-async function api(path: string, method = "GET", body?: unknown): Promise<{ ok: boolean; data: ApiData }> {
-    try {
-        const res = await fetch(`/api${path}`, {
-            method,
-            headers: body ? { "Content-Type": "application/json" } : undefined,
-            body: body ? JSON.stringify(body) : undefined,
-        });
-        if (res.status === 429) return { ok: false, data: { error: "rate_limited" } };
-        const data: ApiData = await res.json().catch(() => ({}));
-        return { ok: res.ok, data };
-    } catch {
-        return { ok: false, data: { error: "network" } };
-    }
-}
-
-const toResult = ({ ok, data }: { ok: boolean; data: ApiData }): AuthResult =>
-    ok ? { ok: true } : { ok: false, error: data.error ?? "server_error" };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -48,47 +44,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        api("/auth/me").then(({ data }) => {
-            setUser(data.user ?? null);
-            setLoading(false);
-        });
+    const refresh = useCallback(async () => {
+        const { data } = await api<UserData>("/auth/me");
+        setUser(data.user ?? null);
     }, []);
 
-    const checkCode = useCallback(
-        async (code: string) => toResult(await api("/auth/code", "POST", { code })),
-        []
-    );
+    useEffect(() => {
+        refresh().then(() => setLoading(false));
+    }, [refresh]);
+
+    // Shared by every call that returns the updated account
+    const withUser = useCallback(async (res: Promise<{ ok: boolean; data: UserData & { error?: string } }>) => {
+        const { ok, data } = await res;
+        if (!ok) return { ok: false as const, error: errorOf(data) };
+        setUser(data.user ?? null);
+        return { ok: true as const };
+    }, []);
+
+    const checkCode = useCallback(async (code: string): Promise<Result<{ info: CodeInfo }>> => {
+        const { ok, data } = await api<{ kind: CodeInfo["kind"]; className: string | null }>(
+            "/auth/code", "POST", { code }
+        );
+        if (!ok) return { ok: false, error: errorOf(data) };
+        const info: CodeInfo = data.kind === "teacher"
+            ? { kind: "teacher" }
+            : { kind: "class", className: data.className ?? "" };
+        return { ok: true, info };
+    }, []);
 
     const register = useCallback(
-        async (input: { code: string; name: string; email: string; password: string }) => {
-            const res = await api("/auth/register", "POST", input);
-            if (res.ok) setUser(res.data.user ?? null);
-            return toResult(res);
-        },
-        []
+        (input: { code: string; name: string; email: string; password: string }) =>
+            withUser(api<UserData>("/auth/register", "POST", input)),
+        [withUser]
     );
 
-    const login = useCallback(async (email: string, password: string) => {
-        const res = await api("/auth/login", "POST", { email, password });
-        if (res.ok) setUser(res.data.user ?? null);
-        return toResult(res);
-    }, []);
+    const login = useCallback(
+        (email: string, password: string) => withUser(api<UserData>("/auth/login", "POST", { email, password })),
+        [withUser]
+    );
 
     const logout = useCallback(async () => {
         await api("/auth/logout", "POST");
         setUser(null);
     }, []);
 
-    const updateUser = useCallback(async (patch: Partial<AuthUser>) => {
-        const res = await api("/auth/me", "PATCH", patch);
-        if (res.ok) setUser(res.data.user ?? null);
-        return toResult(res);
+    const updateUser = useCallback(
+        (patch: Partial<Pick<AuthUser, "name" | "email">>) => withUser(api<UserData>("/auth/me", "PATCH", patch)),
+        [withUser]
+    );
+
+    const joinClass = useCallback(async (code: string): Promise<Result<{ joined: ClassRef }>> => {
+        const { ok, data } = await api<UserData & { class: ClassRef }>("/classes/join", "POST", { code });
+        if (!ok || !data.class) return { ok: false, error: errorOf(data) };
+        setUser(data.user ?? null);
+        return { ok: true, joined: data.class };
     }, []);
 
     const value = useMemo(
-        () => ({ user, loading, checkCode, register, login, logout, updateUser }),
-        [user, loading, checkCode, register, login, logout, updateUser]
+        () => ({ user, loading, checkCode, register, login, logout, updateUser, joinClass, refresh }),
+        [user, loading, checkCode, register, login, logout, updateUser, joinClass, refresh]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -51,9 +51,12 @@ function Settings() {
                         <div className="user-name">
                             <h3>{user?.name ?? "—"}</h3>
                         </div>
-                        {user?.class && (
+                        {user && (
                             <div className="user-class">
-                                <h3>({user.class})</h3>
+                                <h3>
+                                    ({user.role === "teacher" ? t("user.roleTeacher") : t("user.roleStudent")}
+                                    {user.classes.length > 0 && ` · ${user.classes.map((c) => c.name).join(", ")}`})
+                                </h3>
                             </div>
                         )}
                     </div>

@@ -23,7 +23,7 @@ function SignIn() {
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        if (user) navigate("/", { replace: true });
+        if (user) navigate("/dashboard", { replace: true });
     }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {

@@ -1,0 +1,354 @@
+.breadcrumb-link {
+    cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+}
+
+.classes-left {
+    width: 320px;
+    flex-shrink: 0;
+}
+
+.classes-list-card {
+    justify-content: flex-start;
+    align-items: stretch;
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.new-class-form {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    width: 100%;
+}
+
+.class-input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 2px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.class-input:focus {
+    border-color: var(--color-brand);
+}
+
+.class-button {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.class-button:hover {
+    background-color: var(--color-bg-app);
+}
+
+.class-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.class-button.primary {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+.class-button.primary:hover {
+    opacity: 0.9;
+}
+
+.class-button.danger {
+    color: #d64545;
+    border-color: currentColor;
+    background: transparent;
+}
+
+.class-button.danger:hover, .class-button.armed {
+    background: rgba(214, 69, 69, 0.1);
+}
+
+.class-button.armed {
+    color: #d64545;
+    border-color: currentColor;
+    font-weight: 600;
+}
+
+.class-item {
+    border: 2px solid transparent;
+    font: inherit;
+    cursor: pointer;
+    gap: 8px;
+}
+
+.class-item:hover {
+    border-color: var(--color-border);
+}
+
+.class-item.selected {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.class-badge {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    font-family: "Figtree", sans-serif;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+.classes-empty, .section-hint, .join-row p {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    text-align: left;
+    color: var(--color-text-tertiary);
+}
+
+.class-error {
+    text-align: left;
+}
+
+.class-detail {
+    justify-content: flex-start;
+    align-items: stretch;
+    height: auto;
+    overflow-y: auto;
+}
+
+.class-name-input {
+    flex: 1;
+    min-width: 0;
+    margin: 0 12px 0 0;
+    padding: 4px 8px;
+    margin-left: -8px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    font-family: "Figtree", sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.class-name-input:hover {
+    border-color: var(--color-border);
+}
+
+.class-name-input:focus {
+    border-color: var(--color-brand);
+}
+
+.class-meta {
+    flex-shrink: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.class-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+}
+
+.section-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+
+.section-heading h3 {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.section-heading p {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.code-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.class-code {
+    padding: 8px 16px;
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    border: 1px solid var(--color-border);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--color-text-primary);
+    user-select: all;
+}
+
+.class-code.closed {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+}
+
+.class-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 24px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.class-switch[aria-checked="true"] {
+    background-color: var(--color-brand);
+    border-color: var(--color-brand);
+}
+
+.class-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 1px 2px var(--color-shadow);
+    transition: transform 0.2s ease;
+}
+
+.class-switch[aria-checked="true"] .class-switch-thumb {
+    transform: translateX(20px);
+}
+
+.member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.member-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.member-row:hover {
+    background-color: var(--color-bg-app);
+}
+
+.member-text {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+}
+
+.member-name, .member-sub {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.member-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+}
+
+.member-sub {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.member-date {
+    flex-shrink: 0;
+}
+
+.member-you {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+}
+
+/* Dashboard class cards */
+.class-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.class-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: var(--color-brand-subtle-bg);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-brand-accent);
+}
+
+.action-open, .action-new {
+    cursor: pointer;
+}
+
+.action-wide {
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Student join page */
+.join-success {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-brand-accent);
+}

@@ -5,6 +5,7 @@ import rateLimit from "express-rate-limit";
 import argon from "argon2";
 import crypto from "node:crypto";
 import db from "./db.js";
+import { classesOf, classesRouter, lookupCode } from "./classes.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -23,12 +24,20 @@ const DUMMY_HASH = await argon.hash("dummy-password-for-timing");
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const str = (v) => (typeof v === "string" ? v : "");
-const publicUser = (u) => ({ name: u.name, class: u.class, email: u.email });
+const publicUser = (u) => ({ name: u.name, email: u.email, role: u.role, classes: classesOf(u) });
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Separate budget for class codes so a few mistyped codes don't block logging in
+const joinLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -60,10 +69,6 @@ function requireAuth(req, res, next) {
     next();
 }
 
-const normalizeCode = (c) => str(c).trim().toUpperCase();
-const findInvite = (code) =>
-    db.prepare("SELECT class FROM invite_codes WHERE code = ? AND uses_left > 0").get(code);
-
 const api = express.Router();
 
 api.get("/auth/me", (req, res) => {
@@ -71,19 +76,22 @@ api.get("/auth/me", (req, res) => {
     res.json({ user: user ? publicUser(user) : null });
 });
 
+// Checked before showing the registration form: a class code signs up a student,
+// a teacher invitation signs up a teacher
 api.post("/auth/code", authLimiter, (req, res) => {
-    const code = normalizeCode(req.body?.code);
-    if (!code || !findInvite(code)) return res.status(400).json({ error: "invalid_code" });
-    res.json({ ok: true });
+    const found = lookupCode(req.body?.code);
+    if (found.error) return res.status(400).json({ error: found.error });
+    res.json({ kind: found.kind, className: found.class?.name ?? null });
 });
 
 api.post("/auth/register", authLimiter, wrap(async (req, res) => {
-    const code = normalizeCode(req.body?.code);
+    const code = req.body?.code;
     const name = str(req.body?.name).trim();
     const email = str(req.body?.email).trim().toLowerCase();
     const password = str(req.body?.password);
 
-    if (!code) return res.status(400).json({ error: "invalid_code" });
+    const codeError = lookupCode(code).error;
+    if (codeError) return res.status(400).json({ error: codeError });
     if (!name || name.length > 100) return res.status(400).json({ error: "invalid_name" });
     if (!EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ error: "invalid_email" });
     if (password.length < 10 || password.length > 128) return res.status(400).json({ error: "weak_password" });
@@ -91,13 +99,23 @@ api.post("/auth/register", authLimiter, wrap(async (req, res) => {
     const hash = await argon.hash(password); // argon2id, random salt included in the hash
 
     const create = db.transaction(() => {
-        const invite = findInvite(code);
-        if (!invite) return { error: "invalid_code" };
+        // Looked up again inside the transaction: the code may have changed since /auth/code
+        const found = lookupCode(code);
+        if (found.error) return found;
         if (db.prepare("SELECT 1 FROM users WHERE email = ?").get(email)) return { error: "email_taken" };
-        db.prepare("UPDATE invite_codes SET uses_left = uses_left - 1 WHERE code = ?").run(code);
+
+        const now = Date.now();
+        const role = found.kind === "teacher" ? "teacher" : "student";
         const info = db.prepare(
-            "INSERT INTO users (name, class, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)"
-        ).run(name, invite.class, email, hash, Date.now());
+            "INSERT INTO users (name, email, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)"
+        ).run(name, email, role, hash, now);
+
+        if (found.kind === "teacher") {
+            db.prepare("UPDATE teacher_invites SET uses_left = uses_left - 1 WHERE code = ?").run(found.code);
+        } else {
+            db.prepare("INSERT INTO class_students (class_id, user_id, joined_at) VALUES (?, ?, ?)")
+                .run(found.class.id, info.lastInsertRowid, now);
+        }
         return { id: info.lastInsertRowid };
     });
 
@@ -106,7 +124,7 @@ api.post("/auth/register", authLimiter, wrap(async (req, res) => {
         return res.status(result.error === "email_taken" ? 409 : 400).json({ error: result.error });
     }
     startSession(res, result.id);
-    res.status(201).json({ user: { name, class: findInvite(code)?.class ?? "", email } });
+    res.status(201).json({ user: publicUser(db.prepare("SELECT * FROM users WHERE id = ?").get(result.id)) });
 }));
 
 api.post("/auth/login", authLimiter, wrap(async (req, res) => {
@@ -134,17 +152,12 @@ api.post("/auth/logout", (req, res) => {
 
 api.patch("/auth/me", requireAuth, (req, res) => {
     const body = req.body ?? {};
-    const next = publicUser(req.user);
+    const next = { name: req.user.name, email: req.user.email };
 
     if ("name" in body) {
         const v = str(body.name).trim();
         if (!v || v.length > 100) return res.status(400).json({ error: "invalid_name" });
         next.name = v;
-    }
-    if ("class" in body) {
-        const v = str(body.class).trim();
-        if (v.length > 20) return res.status(400).json({ error: "invalid_class" });
-        next.class = v;
     }
     if ("email" in body) {
         const v = str(body.email).trim().toLowerCase();
@@ -153,14 +166,16 @@ api.patch("/auth/me", requireAuth, (req, res) => {
     }
 
     try {
-        db.prepare("UPDATE users SET name = ?, class = ?, email = ? WHERE id = ?")
-            .run(next.name, next.class, next.email, req.user.id);
+        db.prepare("UPDATE users SET name = ?, email = ? WHERE id = ?")
+            .run(next.name, next.email, req.user.id);
     } catch (e) {
         if (e.code === "SQLITE_CONSTRAINT_UNIQUE") return res.status(409).json({ error: "email_taken" });
         throw e;
     }
-    res.json({ user: next });
+    res.json({ user: publicUser({ ...req.user, ...next }) });
 });
+
+api.use("/classes", classesRouter({ requireAuth, joinLimiter, publicUser }));
 
 app.use("/api", api);
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));

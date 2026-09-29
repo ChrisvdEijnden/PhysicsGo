@@ -1,8 +1,9 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 import "../styles/global.css";
 import "./login.css";
+import "./classes.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
@@ -10,25 +11,42 @@ import LogoIcon26px from "../assets/icons/logo-26px.svg";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
-import { useAuth } from "../lib/useAuth.tsx";
+import { useAuth } from "../lib/useAuth";
+import type { ClassRef } from "../lib/useAuth";
 import { authErrorKey } from "../lib/authErrors";
 import CodeInput from "../components/CodeInput";
 
-function Login() {
+// Lets a signed-in student join another class with the code their teacher shared
+function JoinClass() {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { checkCode } = useAuth();
+    const { user, loading, joinClass } = useAuth();
     const [error, setError] = useState<string | null>(null);
+    const [joined, setJoined] = useState<ClassRef | null>(null);
+    const [attempt, setAttempt] = useState(0);
+
+    useEffect(() => {
+        if (loading) return;
+        if (!user) navigate("/login", { replace: true });
+        else if (user.role === "teacher") navigate("/classes", { replace: true });
+    }, [loading, user, navigate]);
 
     const handleComplete = async (code: string) => {
-        const res = await checkCode(code);
+        const res = await joinClass(code);
         if (!res.ok) {
             setError(res.error);
             return false;
         }
-        navigate("/register", { state: { code, info: res.info }, replace: true });
+        setJoined(res.joined);
         return true;
     };
+
+    const joinAnother = () => {
+        setJoined(null);
+        setAttempt((n) => n + 1); // remounts the code input empty
+    };
+
+    if (loading || !user) return null;
 
     return (
         <div>
@@ -40,7 +58,9 @@ function Login() {
                     </div>
                     <h1>PhysicsGo</h1>
                     <div className="spacer"></div>
-                    <h2>{t("nav.login")}</h2>
+                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
+                    <div className="spacer"></div>
+                    <h2>{t("nav.joinClass")}</h2>
                 </div>
                 <div className="right-system-actions">
                     <button onClick={() => navigate("/settings")}>
@@ -60,17 +80,29 @@ function Login() {
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>
-                        <h3>{t("login.invitationPrompt")}</h3>
+                        <h3>{t("joinClass.prompt")}</h3>
                     </div>
-                    <CodeInput onComplete={handleComplete} onEdit={() => setError(null)} />
+                    {joined
+                        ? <p className="join-success" role="status">{t("joinClass.success", { name: joined.name })}</p>
+                        : <CodeInput key={attempt} onComplete={handleComplete} onEdit={() => setError(null)} />}
+                    {user.classes.length > 0 && (
+                        <div className="class-chip-list" aria-label={t("dashboard.yourClasses")}>
+                            {user.classes.map((c) => <span key={c.id} className="class-chip">{c.name}</span>)}
+                        </div>
+                    )}
                     <div className="auth-actions">
-                        {error && (
-                            <p className="auth-error" role="alert">
-                                {t(authErrorKey(error))}
-                            </p>
+                        {error && <p className="auth-error" role="alert">{t(authErrorKey(error))}</p>}
+                        {joined && (
+                            <button className="auth-button" type="button" onClick={() => navigate("/dashboard")}>
+                                {t("joinClass.backToDashboard")}
+                            </button>
                         )}
-                        <button className="auth-link" type="button" onClick={() => navigate("/login")}>
-                            {t("login.haveAccount")}
+                        <button
+                            className="auth-link"
+                            type="button"
+                            onClick={joined ? joinAnother : () => navigate("/dashboard")}
+                        >
+                            {joined ? t("joinClass.joinAnother") : t("joinClass.backToDashboard")}
                         </button>
                     </div>
                     <div className="footer-context">
@@ -82,4 +114,4 @@ function Login() {
     );
 }
 
-export default Login;
+export default JoinClass;

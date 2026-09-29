@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./dashboard.css";
+import "./classes.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
@@ -15,10 +16,13 @@ import FileCode18px from "../assets/icons/filecode-18px.svg";
 import { Projects } from "../data/Projects.tsx";
 import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
+import { useAuth } from "../lib/useAuth";
 
 function Dashboard() {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { user } = useAuth();
+    const isTeacher = user?.role === "teacher";
     return (
         <div>
             <div className="nav">
@@ -61,6 +65,33 @@ function Dashboard() {
                             </div>
                         </div>
                     </div>
+                    {user && (
+                        <div className="curriculum-card">
+                            <h2>{isTeacher ? t("dashboard.manageClassesTitle") : t("dashboard.yourClasses")}</h2>
+                            {user.classes.length > 0
+                                ? (
+                                    <div className="class-chip-list">
+                                        {user.classes.map((c) => <span key={c.id} className="class-chip">{c.name}</span>)}
+                                    </div>
+                                )
+                                : !isTeacher && <p className="classes-empty">{t("dashboard.noClasses")}</p>}
+                            <div className="presets-list">
+                                <div
+                                    className="preset-item"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => navigate(isTeacher ? "/classes" : "/join-class")}
+                                    onKeyDown={(e) => e.key === "Enter" && navigate(isTeacher ? "/classes" : "/join-class")}
+                                >
+                                    <div className="preset-item-text">
+                                        <h3>{isTeacher ? t("nav.classes") : t("dashboard.joinClassTitle")}</h3>
+                                        <p>{isTeacher ? t("dashboard.manageClassesDesc") : t("dashboard.joinClassDesc")}</p>
+                                    </div>
+                                    <img src={AscewArrow67px} alt=""/>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     <div className="curriculum-card">
                         <h2>{t("dashboard.curriculumPresets")}</h2>
                         <div className="presets-list">
