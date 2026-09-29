@@ -88,3 +88,33 @@ export const Projects: Project[] = [
         equipment: null,
     },
 ];
+
+// Edit times are kept in localStorage until projects are saved on the server
+const EDITS_KEY = "physicsgo_project_edits";
+
+function readEdits(): Record<string, number> {
+    try {
+        const edits = JSON.parse(localStorage.getItem(EDITS_KEY) ?? "{}");
+        return edits && typeof edits === "object" ? edits : {};
+    } catch {
+        return {};
+    }
+}
+
+for (const [id, time] of Object.entries(readEdits())) {
+    const project = Projects.find((p) => p.id === id);
+    if (project && typeof time === "number") project.lastEdit = new Date(time);
+}
+
+export function markProjectEdited(id: string) {
+    const project = Projects.find((p) => p.id === id);
+    if (!project) return;
+    project.lastEdit = new Date();
+    try {
+        localStorage.setItem(EDITS_KEY, JSON.stringify({ ...readEdits(), [id]: project.lastEdit.getTime() }));
+    } catch {
+        // Storage can be unavailable; the edit time then lasts until the app reloads
+    }
+}
+
+export const byLastEdit = (a: Project, b: Project) => b.lastEdit.getTime() - a.lastEdit.getTime();

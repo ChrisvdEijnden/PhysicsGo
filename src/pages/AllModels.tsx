@@ -7,7 +7,7 @@ import "./classes.css";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
-import {Projects} from "../data/Projects.tsx";
+import {Projects, byLastEdit} from "../data/Projects.tsx";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 import {formatRelativeDate} from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
@@ -45,14 +45,15 @@ function AllModels() {
                         <p className="other-filters">{t("table.colLastEdit")}</p>
                     </div>
                     <div className="recents-list">
-                        {Projects
+                        {[...Projects]
+                            .sort(byLastEdit)
                             .map((project) => (
                                 <div
                                     key={project.id}
                                     className="recent-item"
                                     onClick={() => navigate(
                                         "/modeling",
-                                        { state: { projectId: project.id } })}
+                                        { state: { presetId: project.id } })}
                                 >
                                     <div className="left-side">
                                         <img src={FileCode18px} alt="" />

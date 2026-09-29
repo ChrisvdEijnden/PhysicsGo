@@ -13,7 +13,7 @@ import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 
 import LineChart from "../components/lineChart.tsx";
-import {Projects} from "../data/Projects.tsx";
+import {Projects, markProjectEdited} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
@@ -275,6 +275,13 @@ function Modeling() {
     const editorRef = useRef<CodeEditorHandle>(null);
     const [wasmReady, setWasmReady] = useState(false);
 
+    // The editor also reports values set from outside, so only real changes count as an edit
+    function handleCodeChange(value: string) {
+        if (value === code) return;
+        setCode(value);
+        if (project) markProjectEdited(project.id);
+    }
+
     useEffect(() => {
         init().then(() => setWasmReady(true));
     }, []);
@@ -371,9 +378,11 @@ function Modeling() {
             mime: file.type,
         };
         setMediaItems((prev) => [...prev, newItem]);
+        if (project) markProjectEdited(project.id);
     }
 
     function removeMediaItem(id: string) {
+        if (project) markProjectEdited(project.id);
         setMediaItems((prev) => {
             const target = prev.find((item) => item.id === id);
             if (target) URL.revokeObjectURL(target.url);
@@ -529,7 +538,7 @@ function Modeling() {
                             </button>
                         </div>
                         <div className="code-editor">
-                            <CodeEditor ref={editorRef} value={code} onChange={setCode} onRun={runSimulation}/>
+                            <CodeEditor ref={editorRef} value={code} onChange={handleCodeChange} onRun={runSimulation}/>
                         </div>
                     </div>
 
