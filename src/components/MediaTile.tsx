@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
+import UndoIcon16px from "../assets/icons/undo-16px.svg";
+import TrashIcon16px from "../assets/icons/trash-16px.svg";
 import Graph from "./Graph.tsx";
 import ConfirmButton from "./ConfirmButton";
 import type { MediaPoint, SavedMedia } from "../data/Projects.tsx";
@@ -306,11 +308,6 @@ export default function MediaTile({
                         />
                         {overlay}
                     </div>
-                    <span className="analysis-media-framecount">
-                        {t("modeling.frame")} <strong>{frame}</strong>
-                        <span className="code-footer-dot"> · </span>
-                        {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
-                    </span>
                 </>
             ) : (
                 <div className="analysis-media-file">
@@ -319,33 +316,58 @@ export default function MediaTile({
                 </div>
             )}
 
-            {pointMode && !showGraph && (
-                <div className="points-bar">
-                    <span>{t("modeling.pointCount", { count: item.points.length })}</span>
+            {/* Part of the panel, below the media, so nothing covers the picture */}
+            {!showGraph && !fileMissing && (isVideo || pointMode) && (
+                <div className="analysis-footer media-footer">
                     {isVideo && (
-                        <label className="points-step">
-                            {t("modeling.pointStep")}
-                            <input
-                                type="number"
-                                min={0.001}
-                                step={0.001}
-                                value={stepDraft}
-                                onChange={(e) => setStepDraft(e.target.value)}
-                                onBlur={(e) => commitStep(e.target.value)}
-                                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                            />
-                            s
-                        </label>
+                        <span className="media-footer-time">
+                            {t("modeling.frame")} <strong>{frame}</strong>
+                            <span className="code-footer-dot"> · </span>
+                            {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
+                        </span>
                     )}
-                    <button type="button" onClick={undoPoint} disabled={item.points.length === 0}>
-                        {t("modeling.undoPoint")}
-                    </button>
-                    <ConfirmButton
-                        className="points-clear"
-                        label={t("modeling.clearPoints")}
-                        disabled={item.points.length === 0}
-                        onConfirm={() => onChange({ ...item, points: [] })}
-                    />
+                    {pointMode && (
+                        <div className="points-bar">
+                            <span>
+                                {item.points.length === 1
+                                    ? t("modeling.pointCountOne")
+                                    : t("modeling.pointCount", { count: item.points.length })}
+                            </span>
+                            {isVideo && (
+                                <label className="points-step">
+                                    {t("modeling.pointStep")}
+                                    <input
+                                        type="number"
+                                        min={0.001}
+                                        step={0.001}
+                                        value={stepDraft}
+                                        onChange={(e) => setStepDraft(e.target.value)}
+                                        onBlur={(e) => commitStep(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                                    />
+                                    s
+                                </label>
+                            )}
+                            <button
+                                type="button"
+                                className="points-icon-btn"
+                                onClick={undoPoint}
+                                disabled={item.points.length === 0}
+                                aria-label={t("modeling.undoPoint")}
+                                title={t("modeling.undoPoint")}
+                            >
+                                <img src={UndoIcon16px} alt=""/>
+                            </button>
+                            <ConfirmButton
+                                className="points-icon-btn"
+                                label={t("modeling.clearPoints")}
+                                disabled={item.points.length === 0}
+                                onConfirm={() => onChange({ ...item, points: [] })}
+                            >
+                                <img src={TrashIcon16px} alt=""/>
+                            </ConfirmButton>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
