@@ -7,7 +7,7 @@ import "./classes.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
@@ -217,10 +217,7 @@ function Classes() {
         <div>
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
                     <div className="spacer"></div>

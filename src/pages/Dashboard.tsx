@@ -6,7 +6,7 @@ import "./classes.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
 import NewFile24px from "../assets/icons/newfile-24px.svg";
 import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
@@ -27,10 +27,7 @@ function Dashboard() {
         <div>
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.dashboard")}</h2>
                 </div>
@@ -107,7 +104,7 @@ function Dashboard() {
                                         )}>
                                         <div className="preset-item-text">
                                             <h3>{project.title}</h3>
-                                            <p>{project.type}</p>
+                                            <span className="class-chip">{project.className}</span>
                                         </div>
                                         <img src={AscewArrow67px} alt="AscewArrow67px"/>
                                     </div>
@@ -122,7 +119,7 @@ function Dashboard() {
                     </div>
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
-                        <p className="other-filters">{t("table.colType")}</p>
+                        <p className="other-filters">{t("table.colClass")}</p>
                         <p className="other-filters">{t("table.colLastEdit")}</p>
                     </div>
                     <div className="recents-list">
@@ -142,7 +139,7 @@ function Dashboard() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-type">{project.type}</p>
+                                        <span className="class-chip">{project.className}</span>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>

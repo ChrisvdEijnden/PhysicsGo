@@ -6,7 +6,7 @@ import "./login.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
@@ -35,10 +35,7 @@ function Login() {
             <img className="background-logo" src={LogoIcon750px} alt="LogoIcon750px" />
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.login")}</h2>
                 </div>

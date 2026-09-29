@@ -324,6 +324,9 @@
 }
 
 .class-chip {
+    align-self: flex-start;
+    width: fit-content;
+    white-space: nowrap;
     padding: 4px 10px;
     border-radius: 999px;
     background-color: var(--color-brand-subtle-bg);

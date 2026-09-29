@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import "../styles/global.css";
 import "./settings.css";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
@@ -31,10 +31,7 @@ function Settings() {
         <div>
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.settings")}</h2>
                 </div>

@@ -18,7 +18,7 @@ export const translations = {
         "settings.logout": "Logout",
 
         "table.colProjectName": "Project Name",
-        "table.colType": "Type",
+        "table.colClass": "Class",
         "table.colLastEdit": "Last Edit",
 
         "dashboard.startNewModel": "Start New Model",
@@ -168,7 +168,7 @@ export const translations = {
         "settings.logout": "Uitloggen",
 
         "table.colProjectName": "Projectnaam",
-        "table.colType": "Type",
+        "table.colClass": "Klas",
         "table.colLastEdit": "Laatst Bewerkt",
 
         "dashboard.startNewModel": "Nieuw Model Starten",

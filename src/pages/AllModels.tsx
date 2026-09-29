@@ -2,10 +2,11 @@ import { useNavigate } from "react-router-dom";
 
 import "./allmodels.css";
 import "./dashboard.css";
+import "./classes.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import {Projects} from "../data/Projects.tsx";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 import {formatRelativeDate} from "../lib/formatRelativeDate.tsx";
@@ -18,10 +19,7 @@ function AllModels() {
         <div>
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.allModels")}</h2>
                 </div>
@@ -43,7 +41,7 @@ function AllModels() {
                     </div>
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
-                        <p className="other-filters">{t("table.colType")}</p>
+                        <p className="other-filters">{t("table.colClass")}</p>
                         <p className="other-filters">{t("table.colLastEdit")}</p>
                     </div>
                     <div className="recents-list">
@@ -63,7 +61,7 @@ function AllModels() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-type">{project.type}</p>
+                                        <span className="class-chip">{project.className}</span>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>

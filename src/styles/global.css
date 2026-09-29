@@ -188,3 +188,15 @@ body {
     box-sizing: border-box;
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
+
+/* Logo + name in the nav bar, clickable to go home */
+.nav-home {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}

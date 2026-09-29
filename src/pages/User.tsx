@@ -1,7 +1,7 @@
 import "../styles/global.css";
 import "./login.css";
 
-import LogoIcon26px from "../assets/icons/logo-26px.svg";
+import NavBrand from "../components/NavBrand";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import {useNavigate} from "react-router-dom";
@@ -55,10 +55,7 @@ function User() {
             <img className="background-logo" src={LogoIcon750px} alt="LogoIcon750px" />
             <div className="nav">
                 <div className="brand-and-breadcrumb">
-                    <div className="brand">
-                        <img src={LogoIcon26px} alt="LogoIcon26px"/>
-                    </div>
-                    <h1>PhysicsGo</h1>
+                    <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.user")}</h2>
                 </div>

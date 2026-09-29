@@ -133,6 +133,19 @@
     align-items: flex-start;
 }
 
+/* Same 16px padding as the other cards; drop the default heading/paragraph margins */
+.user h3, .user p {
+    margin: 0;
+}
+
+.user-top-row {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    margin: 0;
+    gap: 6px;
+}
+
 .user-title {
     display: flex;
     flex-direction: row;
@@ -146,7 +159,9 @@
     border: 1px solid currentColor;
     background: transparent;
     color: #d64545;
-    font: inherit;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
 }
 
