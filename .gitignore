@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local SQLite database (accounts, sessions)
+server/physicsgo.db
+server/physicsgo.db-*
