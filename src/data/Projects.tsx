@@ -8,7 +8,7 @@ export interface User {
 export interface Project {
     id: string;
     title: string;
-    className: string; // class the project is assigned to
+    className: string | null; // class the project is assigned to; null for personal projects
     lastEdit: Date;
     explanation: string;
     curriculum: boolean;
@@ -89,19 +89,28 @@ export const Projects: Project[] = [
     },
 ];
 
-// Edit times are kept in localStorage until projects are saved on the server
+// Edit times and each project's work are kept in localStorage until projects are saved on the server
 const EDITS_KEY = "physicsgo_project_edits";
+const WORK_KEY = "physicsgo_project_work";
 
-function readEdits(): Record<string, number> {
+function readStore<T>(key: string): Record<string, T> {
     try {
-        const edits = JSON.parse(localStorage.getItem(EDITS_KEY) ?? "{}");
-        return edits && typeof edits === "object" ? edits : {};
+        const stored = JSON.parse(localStorage.getItem(key) ?? "{}");
+        return stored && typeof stored === "object" ? stored : {};
     } catch {
         return {};
     }
 }
 
-for (const [id, time] of Object.entries(readEdits())) {
+function writeStore<T>(key: string, id: string, value: T) {
+    try {
+        localStorage.setItem(key, JSON.stringify({ ...readStore<T>(key), [id]: value }));
+    } catch {
+        // Storage can be unavailable; the change then lasts until the app reloads
+    }
+}
+
+for (const [id, time] of Object.entries(readStore<number>(EDITS_KEY))) {
     const project = Projects.find((p) => p.id === id);
     if (project && typeof time === "number") project.lastEdit = new Date(time);
 }
@@ -110,11 +119,29 @@ export function markProjectEdited(id: string) {
     const project = Projects.find((p) => p.id === id);
     if (!project) return;
     project.lastEdit = new Date();
-    try {
-        localStorage.setItem(EDITS_KEY, JSON.stringify({ ...readEdits(), [id]: project.lastEdit.getTime() }));
-    } catch {
-        // Storage can be unavailable; the edit time then lasts until the app reloads
-    }
+    writeStore(EDITS_KEY, id, project.lastEdit.getTime());
 }
 
-export const byLastEdit = (a: Project, b: Project) => b.lastEdit.getTime() - a.lastEdit.getTime();
+// What the student has written in a project: the model code and the number of steps to run
+export interface ProjectWork {
+    code: string;
+    steps: string;
+}
+
+export function loadProjectWork(id: string): ProjectWork | null {
+    const work = readStore<ProjectWork>(WORK_KEY)[id];
+    return work && typeof work.code === "string" ? { code: work.code, steps: String(work.steps ?? "") } : null;
+}
+
+export function saveProjectWork(id: string, work: ProjectWork) {
+    writeStore(WORK_KEY, id, work);
+}
+
+// Personal projects are always shown; class projects only to members (students or teachers) of that class
+export function isVisibleTo(project: Project, classNames: string[]) {
+    if (!project.className) return true;
+    const name = project.className.trim().toLowerCase();
+    return classNames.some((c) => c.trim().toLowerCase() === name);
+}
+
+export const byLastEdit =(a: Project, b: Project) => b.lastEdit.getTime() - a.lastEdit.getTime();

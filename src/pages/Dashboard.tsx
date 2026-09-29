@@ -13,7 +13,7 @@ import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // holds all the projects edited by the user
-import { Projects, byLastEdit } from "../data/Projects.tsx";
+import { Projects, byLastEdit, isVisibleTo } from "../data/Projects.tsx";
 import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
@@ -23,6 +23,8 @@ function Dashboard() {
     const { t } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
+    const visibleProjects = Projects.filter((project) =>
+        isVisibleTo(project, user?.classes.map((c) => c.name) ?? []));
     return (
         <div>
             <div className="nav">
@@ -92,7 +94,7 @@ function Dashboard() {
                     <div className="curriculum-card">
                         <h2>{t("dashboard.curriculumPresets")}</h2>
                         <div className="presets-list">
-                            {Projects
+                            {visibleProjects
                                 .filter((project) => project.curriculum)
                                 .map((project) => (
                                     <div
@@ -105,7 +107,7 @@ function Dashboard() {
                                         <div className="preset-item-text">
                                             <h3>{project.title}</h3>
                                         </div>
-                                        <span className="class-chip">{project.className}</span>
+                                        {project.className && <span className="class-chip">{project.className}</span>}
                                         <img src={AscewArrow67px} alt="AscewArrow67px"/>
                                     </div>
                                 ))}
@@ -123,7 +125,7 @@ function Dashboard() {
                         <p className="other-filters">{t("table.colLastEdit")}</p>
                     </div>
                     <div className="recents-list">
-                        {[...Projects]
+                        {[...visibleProjects]
                             .sort(byLastEdit)
                             .map((project) => (
                                 <div
@@ -140,7 +142,7 @@ function Dashboard() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        <span className="class-chip">{project.className}</span>
+                                        {project.className && <span className="class-chip">{project.className}</span>}
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>

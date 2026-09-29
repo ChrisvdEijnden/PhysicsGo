@@ -13,7 +13,7 @@ import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 
 import LineChart from "../components/lineChart.tsx";
-import {Projects, markProjectEdited} from "../data/Projects.tsx";
+import {Projects, markProjectEdited, loadProjectWork, saveProjectWork} from "../data/Projects.tsx";
 import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
@@ -26,6 +26,10 @@ const DEFAULT_CODE = [
     "stop als t >= 10",
     "",
 ].join("\n");
+
+const DEFAULT_STEPS = 100_000;
+// The interpreter keeps every step in memory, so very large runs would freeze the app
+const MAX_STEPS = 1_000_000;
 
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
@@ -270,8 +274,11 @@ function Modeling() {
         [panelWidths, handlePointerMove, handlePointerUp]
     );
 
-    // ---------- code panel (placeholder input until the interpreter lands) ----------
-    const [code, setCode] = useState(DEFAULT_CODE);
+    // ---------- code panel ----------
+    // A project reopens with the code and steps saved for it; an empty project starts fresh
+    const [savedWork] = useState(() => (project ? loadProjectWork(project.id) : null));
+    const [code, setCode] = useState(savedWork?.code ?? DEFAULT_CODE);
+    const [steps, setSteps] = useState(savedWork?.steps ?? "");
     const editorRef = useRef<CodeEditorHandle>(null);
     const [wasmReady, setWasmReady] = useState(false);
 
@@ -279,7 +286,25 @@ function Modeling() {
     function handleCodeChange(value: string) {
         if (value === code) return;
         setCode(value);
-        if (project) markProjectEdited(project.id);
+        if (project) {
+            saveProjectWork(project.id, { code: value, steps });
+            markProjectEdited(project.id);
+        }
+    }
+
+    function handleStepsChange(value: string) {
+        setSteps(value);
+        if (project) {
+            saveProjectWork(project.id, { code, steps: value });
+            markProjectEdited(project.id);
+        }
+    }
+
+    // An empty field runs the placeholder's number of steps
+    function stepCount() {
+        const n = Math.floor(Number(steps));
+        if (!steps.trim() || !Number.isFinite(n)) return DEFAULT_STEPS;
+        return Math.min(MAX_STEPS, Math.max(1, n));
     }
 
     useEffect(() => {
@@ -310,7 +335,7 @@ function Modeling() {
         console.log("start block:", JSON.stringify(start));
         console.log("model block:", JSON.stringify(model));
 
-        const result = runInterpreter(start, model, 10_000) as RunResult;
+        const result = runInterpreter(start, model, stepCount()) as RunResult;
         console.log("interpreter result:", result);
 
         if (!result.ok) {
@@ -543,7 +568,20 @@ function Modeling() {
                     </div>
 
                     <div className="code-footer">
-                        <span>{t("modeling.steps")} <input type='number' className="steps-input" placeholder="100000"></input></span>
+                        <span>
+                            {t("modeling.steps")}{" "}
+                            <input
+                                type="number"
+                                className="steps-input"
+                                min={1}
+                                max={MAX_STEPS}
+                                step={1}
+                                placeholder={String(DEFAULT_STEPS)}
+                                value={steps}
+                                onChange={(e) => handleStepsChange(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && runSimulation()}
+                            />
+                        </span>
                     </div>
                 </div>
                 <div
