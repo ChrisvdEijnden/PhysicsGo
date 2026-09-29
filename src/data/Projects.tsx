@@ -122,19 +122,30 @@ export function markProjectEdited(id: string) {
     writeStore(EDITS_KEY, id, project.lastEdit.getTime());
 }
 
-// What the student has written in a project: the model code and the number of steps to run
+// What the student has done in a project: the model code, the number of steps to run
+// and the variables plotted on the chart's axes ("" when none is chosen)
 export interface ProjectWork {
     code: string;
     steps: string;
+    xAxis: string;
+    yAxis: string;
 }
 
 export function loadProjectWork(id: string): ProjectWork | null {
-    const work = readStore<ProjectWork>(WORK_KEY)[id];
-    return work && typeof work.code === "string" ? { code: work.code, steps: String(work.steps ?? "") } : null;
+    const work = readStore<Partial<ProjectWork>>(WORK_KEY)[id];
+    if (!work || typeof work.code !== "string") return null;
+    return {
+        code: work.code,
+        steps: String(work.steps ?? ""),
+        xAxis: String(work.xAxis ?? ""),
+        yAxis: String(work.yAxis ?? ""),
+    };
 }
 
-export function saveProjectWork(id: string, work: ProjectWork) {
-    writeStore(WORK_KEY, id, work);
+// Only the given fields change; the rest of the saved work is kept
+export function saveProjectWork(id: string, changes: Partial<ProjectWork>) {
+    const current = readStore<ProjectWork>(WORK_KEY)[id];
+    writeStore(WORK_KEY, id, { ...current, ...changes });
 }
 
 // Personal projects are always shown; class projects only to members (students or teachers) of that class

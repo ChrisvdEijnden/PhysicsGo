@@ -62,6 +62,11 @@ export const translations = {
         "modeling.removeMedia": "Remove {{name}}",
         "modeling.frame": "Frame:",
         "modeling.time": "Time:",
+        "modeling.xAxis": "X:",
+        "modeling.yAxis": "Y:",
+        "modeling.pickVariable": "Choose variable",
+        "modeling.chartPickAxes": "Choose a variable for each axis below.",
+        "modeling.chartRunPrompt": "Run the model to plot the chosen variables.",
 
         "nav.register": "Create account",
         "auth.password": "Password",
@@ -211,6 +216,11 @@ export const translations = {
         "modeling.removeMedia": "Verwijder {{name}}",
         "modeling.frame": "Frame:",
         "modeling.time": "Tijd:",
+        "modeling.xAxis": "X:",
+        "modeling.yAxis": "Y:",
+        "modeling.pickVariable": "Kies variabele",
+        "modeling.chartPickAxes": "Kies hieronder een variabele voor elke as.",
+        "modeling.chartRunPrompt": "Voer het model uit om de gekozen variabelen te plotten.",
 
         "nav.register": "Account aanmaken",
         "auth.password": "Wachtwoord",

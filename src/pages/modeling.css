@@ -454,3 +454,66 @@
     justify-content: center;
 
 }
+/* Chart footer: axis pickers on one row, domain and range on the next */
+.chart-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.chart-footer-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+
+.axis-picker {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.axis-select {
+    flex: 1;
+    min-width: 0;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.axis-select:focus {
+    outline: none;
+    border-color: var(--color-brand);
+}
+
+.chart-area {
+    position: relative;
+}
+
+.chart-empty {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 0 24px;
+    text-align: center;
+    pointer-events: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-tertiary);
+}

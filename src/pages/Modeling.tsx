@@ -12,9 +12,10 @@ import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 
-import LineChart from "../components/lineChart.tsx";
+import LineChart, { formatTick } from "../components/lineChart.tsx";
+import type { ChartPoint } from "../components/lineChart.tsx";
 import {Projects, markProjectEdited, loadProjectWork, saveProjectWork} from "../data/Projects.tsx";
-import {minRangeLineData, maxRangeLineData, minDomainLineData, maxDomainLineData} from "../data/chartData.tsx";
+import type { ProjectWork } from "../data/Projects.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
 
@@ -28,8 +29,20 @@ const DEFAULT_CODE = [
 ].join("\n");
 
 const DEFAULT_STEPS = 100_000;
-// The interpreter keeps every step in memory, so very large runs would freeze the app
 const MAX_STEPS = 1_000_000;
+
+// Plotting every step of a long run would make the chart slow; this many points is plenty
+const MAX_CHART_POINTS = 2000;
+
+// Variables the code assigns (`name = ...`), in the order they first appear
+function codeVariables(source: string): string[] {
+    const names = new Set<string>();
+    for (const line of source.split("\n")) {
+        const match = line.replace(/\/\/.*$/, "").match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/);
+        if (match) names.add(match[1]);
+    }
+    return [...names];
+}
 
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
@@ -279,25 +292,33 @@ function Modeling() {
     const [savedWork] = useState(() => (project ? loadProjectWork(project.id) : null));
     const [code, setCode] = useState(savedWork?.code ?? DEFAULT_CODE);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
+    const [xAxis, setXAxis] = useState(savedWork?.xAxis ?? "");
+    const [yAxis, setYAxis] = useState(savedWork?.yAxis ?? "");
     const editorRef = useRef<CodeEditorHandle>(null);
     const [wasmReady, setWasmReady] = useState(false);
+
+    // Every change to a project is saved with it and counts as an edit
+    function saveWork(changes: Partial<ProjectWork>) {
+        if (!project) return;
+        saveProjectWork(project.id, { code, steps, xAxis, yAxis, ...changes });
+        markProjectEdited(project.id);
+    }
 
     // The editor also reports values set from outside, so only real changes count as an edit
     function handleCodeChange(value: string) {
         if (value === code) return;
         setCode(value);
-        if (project) {
-            saveProjectWork(project.id, { code: value, steps });
-            markProjectEdited(project.id);
-        }
+        saveWork({ code: value });
     }
 
     function handleStepsChange(value: string) {
         setSteps(value);
-        if (project) {
-            saveProjectWork(project.id, { code, steps: value });
-            markProjectEdited(project.id);
-        }
+        saveWork({ steps: value });
+    }
+
+    function handleAxisChange(axis: "xAxis" | "yAxis", value: string) {
+        (axis === "xAxis" ? setXAxis : setYAxis)(value);
+        saveWork({ [axis]: value });
     }
 
     // An empty field runs the placeholder's number of steps
@@ -311,18 +332,54 @@ function Modeling() {
         init().then(() => setWasmReady(true));
     }, []);
 
-    function splitSource(source: string): { start: string; model: string } {
-        const blankAt = source.indexOf("\n\n");
-        return blankAt === -1
-            ? { start: source, model: "" }
-            : { start: source.slice(0, blankAt), model: source.slice(blankAt + 2) };
+    // The first blank line (spaces allowed) separates the start values from the model rules.
+    // modelLineOffset turns a model-block line number into a line number in the editor.
+    function splitSource(source: string): { start: string; model: string; modelLineOffset: number } {
+        const blank = /\n[ \t]*\n/.exec(source);
+        if (!blank) return { start: source, model: "", modelLineOffset: 0 };
+        const modelStart = blank.index + blank[0].length;
+        return {
+            start: source.slice(0, blank.index),
+            model: source.slice(modelStart),
+            modelLineOffset: source.slice(0, modelStart).split("\n").length - 1,
+        };
     }
 
     interface RunResult {
         ok: boolean;
-        history: Record<string, number>[];
+        // One entry per step: every variable's value after that step
+        history: Map<string, number>[];
         errors: { line: number; column: number; message: string; block: string }[];
     }
+
+    // Results of the last run; the chart stays empty until the model has run
+    const [history, setHistory] = useState<Map<string, number>[] | null>(null);
+
+    // Variables from the code, plus any the last run produced that the code no longer shows
+    const variables = useMemo(() => {
+        const names = codeVariables(code);
+        for (const name of history?.[0]?.keys() ?? []) {
+            if (!names.includes(name)) names.push(name);
+        }
+        return names;
+    }, [code, history]);
+
+    const chartPoints = useMemo((): ChartPoint[] => {
+        if (!history || !xAxis || !yAxis) return [];
+        const stride = Math.ceil(history.length / MAX_CHART_POINTS);
+        const points: ChartPoint[] = [];
+        for (let i = 0; i < history.length; i += stride) {
+            const x = history[i].get(xAxis);
+            const y = history[i].get(yAxis);
+            if (x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+        }
+        return points;
+    }, [history, xAxis, yAxis]);
+
+    const chartRange = (key: "x" | "y") => {
+        const values = chartPoints.map((p) => p[key]);
+        return `[${formatTick(Math.min(...values))}, ${formatTick(Math.max(...values))}]`;
+    };
 
     function runSimulation() {
         if (!wasmReady) {
@@ -331,7 +388,7 @@ function Modeling() {
         }
         editorRef.current?.clearErrors();
 
-        const { start, model } = splitSource(code);
+        const { start, model, modelLineOffset } = splitSource(code);
         console.log("start block:", JSON.stringify(start));
         console.log("model block:", JSON.stringify(model));
 
@@ -339,8 +396,9 @@ function Modeling() {
         console.log("interpreter result:", result);
 
         if (!result.ok) {
+            // Line numbers are relative to their own block; the model block starts after the blank line
             const errors: InterpreterError[] = result.errors.map((e) => ({
-                line: e.line,
+                line: e.block === "model" ? e.line + modelLineOffset : e.line,
                 column: e.column,
                 message: `[${e.block}] ${e.message}`,
             }));
@@ -349,6 +407,7 @@ function Modeling() {
         }
 
         console.log(`ran ${result.history.length} steps, final state:`, result.history[result.history.length - 1]);
+        setHistory(result.history);
     }
 
     // ---------- Insert Media & Embeds ----------
@@ -626,11 +685,40 @@ function Modeling() {
                                                     <img src={CloseIcon20px} alt="CloseIcon20px"/>
                                                 </button>
                                             </div>
-                                            <LineChart/>
-                                            <div className="analysis-footer">
-                                                <span>{t("modeling.domain")} <strong> [{minDomainLineData}, {maxDomainLineData}]</strong></span>
-                                                <span className="code-footer-dot">·</span>
-                                                <span>{t("modeling.range")} <strong>[{minRangeLineData}, {maxRangeLineData}]</strong></span>
+                                            <LineChart
+                                                points={chartPoints}
+                                                xLabel={xAxis}
+                                                yLabel={yAxis}
+                                                emptyMessage={!xAxis || !yAxis ? t("modeling.chartPickAxes") : t("modeling.chartRunPrompt")}
+                                            />
+                                            <div className="analysis-footer chart-footer">
+                                                <div className="chart-footer-row">
+                                                    {(["xAxis", "yAxis"] as const).map((axis) => {
+                                                        const value = axis === "xAxis" ? xAxis : yAxis;
+                                                        // Keep a saved choice listed even if the code no longer assigns it
+                                                        const options = value && !variables.includes(value) ? [...variables, value] : variables;
+                                                        return (
+                                                            <label key={axis} className="axis-picker">
+                                                                {axis === "xAxis" ? t("modeling.xAxis") : t("modeling.yAxis")}
+                                                                <select
+                                                                    className="axis-select"
+                                                                    value={value}
+                                                                    onChange={(e) => handleAxisChange(axis, e.target.value)}
+                                                                >
+                                                                    <option value="">{t("modeling.pickVariable")}</option>
+                                                                    {options.map((name) => <option key={name} value={name}>{name}</option>)}
+                                                                </select>
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {chartPoints.length > 0 && (
+                                                    <div className="chart-footer-row">
+                                                        <span>{t("modeling.domain")} <strong>{chartRange("x")}</strong></span>
+                                                        <span className="code-footer-dot">·</span>
+                                                        <span>{t("modeling.range")} <strong>{chartRange("y")}</strong></span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
