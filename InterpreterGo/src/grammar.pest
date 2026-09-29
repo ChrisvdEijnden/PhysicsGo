@@ -1,17 +1,21 @@
-WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
-COMMENT    = _{ "//" ~ (!"\n" ~ ANY)* }
+// Newlines end statements, so they're not part of the implicit whitespace.
+// indent.rs has already turned indentation into braces and removed comments;
+// COMMENT stays so the grammar also accepts hand-written braced source.
+WHITESPACE = _{ " " | "\t" }
+COMMENT    = _{ "//" ~ (!NEWLINE ~ ANY)* }
 
-program = { SOI ~ statement* ~ EOI }
+program = { SOI ~ NEWLINE* ~ (statement ~ (NEWLINE+ | &EOI))* ~ EOI }
 
 statement = { if_stmt | stop_stmt | assignment }
 
-assignment = { identifier ~ "=" ~ expr }
+assignment = { identifier ~ assign_op ~ expr }
+assign_op  = { "+=" | "-=" | "*=" | "/=" | "=" }
 
-if_stmt = { if_kw ~ condition ~ ":" ~ "{" ~ statement* ~ "}" }
-if_kw   = { "als" }
+if_stmt = { if_kw ~ condition ~ ":" ~ "{" ~ NEWLINE+ ~ (statement ~ NEWLINE+)* ~ "}" }
+if_kw   = @{ "als" ~ !ident_char }
 
 stop_stmt = { stop_kw ~ if_kw ~ condition }
-stop_kw   = { "stop" }
+stop_kw   = @{ "stop" ~ !ident_char }
 
 condition     = { expr ~ comparison_op ~ expr }
 comparison_op = { "<=" | ">=" | "==" | "!=" | "<" | ">" }
@@ -20,19 +24,27 @@ expr = { term ~ ((add | sub) ~ term)* }
 add  = { "+" }
 sub  = { "-" }
 
-term = { power ~ ((mul | div) ~ power)* }
+term = { unary ~ ((mul | div) ~ unary)* }
 mul  = { "*" }
 div  = { "/" }
 
-power  = { unary ~ (pow_op ~ unary)? }
-pow_op = { "^" }
-
-unary  = { sub_op ~ unary | atom }
+// Negation binds looser than ^, so -2^2 is -(2^2); ^ is right-associative, so 2^3^2 is 2^(3^2)
+unary  = { sub_op ~ unary | power }
 sub_op = { "-" }
+
+power  = { atom ~ (pow_op ~ unary)? }
+pow_op = { "^" }
 
 atom = { function_call | number | identifier | "(" ~ expr ~ ")" }
 
 function_call = { identifier ~ "(" ~ expr ~ ")" }
 
-number     = @{ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
-identifier = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+// 12, 0.5, .5, 3. and scientific notation such as 6.674e-11
+number = @{
+    (ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT*)? | "." ~ ASCII_DIGIT+)
+    ~ (^"e" ~ ("+" | "-")? ~ ASCII_DIGIT+)?
+}
+
+identifier = @{ !keyword ~ (ASCII_ALPHA | "_") ~ ident_char* }
+keyword    = _{ ("als" | "stop") ~ !ident_char }
+ident_char = _{ ASCII_ALPHANUMERIC | "_" }

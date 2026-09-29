@@ -8,6 +8,7 @@
     "build": "tsc && vite build --configLoader native",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build:wasm": "wasm-pack build InterpreterGo --target web --out-dir ../src/wasm",
     "dev:all": "npx --yes concurrently -n api,web \"npm --prefix server run dev\" \"npm run dev\""
   },
   "dependencies": {
