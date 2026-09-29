@@ -67,6 +67,18 @@ const MIGRATIONS = [
     CREATE INDEX class_teachers_user ON class_teachers(user_id);
     CREATE INDEX class_students_user ON class_students(user_id);
     `,
+    // 3: projects published to classes. Projects themselves live in the app, so they're
+    // referred to by their id; deleting a class unpublishes everything from it.
+    `
+    CREATE TABLE project_classes (
+        project_id TEXT NOT NULL,
+        class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+        published_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        published_at INTEGER NOT NULL,
+        PRIMARY KEY (project_id, class_id)
+    );
+    CREATE INDEX project_classes_class ON project_classes(class_id);
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

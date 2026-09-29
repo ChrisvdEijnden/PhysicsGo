@@ -13,18 +13,21 @@ import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // holds all the projects edited by the user
-import { Projects, byLastEdit, isVisibleTo } from "../data/Projects.tsx";
+import { Projects, byLastEdit } from "../data/Projects.tsx";
 import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
+import { canSeeProject, usePublished } from "../lib/usePublished";
+import ProjectClasses from "../components/ProjectClasses";
+import PublishButton from "../components/PublishButton";
 
 function Dashboard() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
-    const visibleProjects = Projects.filter((project) =>
-        isVisibleTo(project, user?.classes.map((c) => c.name) ?? []));
+    const { published, setProjectClasses } = usePublished();
+    const visibleProjects = Projects.filter((project) => canSeeProject(user, published, project.id));
     return (
         <div>
             <div className="nav">
@@ -107,7 +110,14 @@ function Dashboard() {
                                         <div className="preset-item-text">
                                             <h3>{project.title}</h3>
                                         </div>
-                                        {project.className && <span className="class-chip">{project.className}</span>}
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
+                                        {isTeacher && (
+                                            <PublishButton
+                                                title={project.title}
+                                                classes={published[project.id]}
+                                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                            />
+                                        )}
                                         <img src={AscewArrow67px} alt="AscewArrow67px"/>
                                     </div>
                                 ))}
@@ -123,6 +133,7 @@ function Dashboard() {
                         <p className="project-name">{t("table.colProjectName")}</p>
                         <p className="other-filters">{t("table.colClass")}</p>
                         <p className="other-filters">{t("table.colLastEdit")}</p>
+                        {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
                         {[...visibleProjects]
@@ -142,11 +153,20 @@ function Dashboard() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        {project.className && <span className="class-chip">{project.className}</span>}
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>
                                     </div>
+                                    {isTeacher && (
+                                        <div className="publish-col">
+                                            <PublishButton
+                                                title={project.title}
+                                                classes={published[project.id]}
+                                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                     </div>

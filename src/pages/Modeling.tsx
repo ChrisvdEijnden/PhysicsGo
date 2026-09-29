@@ -22,6 +22,9 @@ import { newGraph } from "../data/Projects.tsx";
 import type { GraphConfig, MediaCategory, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
+import { useAuth } from "../lib/useAuth";
+import { usePublished } from "../lib/usePublished";
+import PublishDialog from "../components/PublishDialog";
 
 const DEFAULT_CODE = [
     "// Initialiseer Parameters",
@@ -97,6 +100,10 @@ function Modeling() {
     const location = useLocation();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
     const project = Projects.find((p) => p.id === presetId);
+    const { user } = useAuth();
+    const isTeacher = user?.role === "teacher";
+    const { published, setProjectClasses } = usePublished();
+    const [publishOpen, setPublishOpen] = useState(false);
 
     // ---------- explanation / code / analysis column widths ----------
     const contentRef = useRef<HTMLDivElement | null>(null);
@@ -540,10 +547,28 @@ function Modeling() {
                         onChange={handleFileChange}
                         style={{ display: "none" }}
                     />
-                    <button className="hand-in-btn" onClick={() => navigate("/dashboard")}>
-                        <img src={arrowIcon14px} alt="ArrowIcon14px"/>
-                        <p>{t("modeling.handInAssignment")}</p>
-                    </button>
+                    {/* Teachers publish projects to their classes; students hand them in */}
+                    {isTeacher ? (
+                        project && (
+                            <button className="hand-in-btn" onClick={() => setPublishOpen(true)}>
+                                <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                                <p>{t("publish.button")}</p>
+                            </button>
+                        )
+                    ) : (
+                        <button className="hand-in-btn" onClick={() => navigate("/dashboard")}>
+                            <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                            <p>{t("modeling.handInAssignment")}</p>
+                        </button>
+                    )}
+                    {publishOpen && project && (
+                        <PublishDialog
+                            title={project.title}
+                            current={published[project.id] ?? []}
+                            onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                            onClose={() => setPublishOpen(false)}
+                        />
+                    )}
                     <div className="right-system-actions">
                         <button onClick={() => navigate("/settings")}>
                             <img src={SettingsIcon21px} alt="SettingsIcon21px"/>

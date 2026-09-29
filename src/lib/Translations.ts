@@ -101,6 +101,15 @@ export const translations = {
         "auth.errRateLimit": "Too many attempts. Try again in a few minutes.",
         "auth.errGeneric": "Something went wrong. Please try again.",
 
+        "publish.button": "Publish",
+        "publish.title": "Publish “{{title}}”",
+        "publish.description": "Choose the classes that can open this project.",
+        "publish.noClasses": "You don't have any classes yet. Create a class first to publish projects to it.",
+        "publish.createClass": "Go to Classes",
+        "publish.cancel": "Cancel",
+        "publish.save": "Save",
+        "publish.notPublished": "Not published",
+
         "nav.classes": "Classes",
         "nav.joinClass": "Join Class",
 
@@ -269,6 +278,15 @@ export const translations = {
         "auth.errEmailTaken": "Dit e-mailadres is al in gebruik.",
         "auth.errRateLimit": "Te veel pogingen. Probeer het over een paar minuten opnieuw.",
         "auth.errGeneric": "Er ging iets mis. Probeer het opnieuw.",
+
+        "publish.button": "Publiceren",
+        "publish.title": "“{{title}}” publiceren",
+        "publish.description": "Kies de klassen die dit project kunnen openen.",
+        "publish.noClasses": "Je hebt nog geen klassen. Maak eerst een klas aan om projecten naar te publiceren.",
+        "publish.createClass": "Naar Klassen",
+        "publish.cancel": "Annuleren",
+        "publish.save": "Opslaan",
+        "publish.notPublished": "Niet gepubliceerd",
 
         "nav.classes": "Klassen",
         "nav.joinClass": "Klas Toevoegen",

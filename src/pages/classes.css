@@ -355,3 +355,152 @@
     font-weight: 600;
     color: var(--color-brand-accent);
 }
+
+/* Classes a project is open to */
+.project-classes {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.project-classes .class-chip:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.class-chip.more {
+    flex-shrink: 0;
+}
+
+.class-chip.muted {
+    background-color: var(--color-bg-app);
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-tertiary);
+    font-weight: 400;
+}
+
+/* Publish icon button on project rows */
+.publish-col {
+    width: 28px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.publish-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+}
+
+.publish-btn img {
+    width: 16px;
+    height: 16px;
+}
+
+.publish-btn:hover {
+    background-color: var(--color-brand-subtle-bg);
+}
+
+/* Overlay dialog */
+.dialog-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background-color: rgba(15, 23, 42, 0.35);
+    cursor: default;
+}
+
+.dialog {
+    width: 380px;
+    max-width: 100%;
+    max-height: calc(100vh - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 16px 32px var(--color-shadow);
+    text-align: left;
+}
+
+.dialog-header h2 {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.dialog-header p, .dialog-empty p {
+    margin: 4px 0 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.dialog-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.publish-classes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+}
+
+.publish-class {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.publish-class.checked {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.publish-class input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--color-brand);
+}
+
+.dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}

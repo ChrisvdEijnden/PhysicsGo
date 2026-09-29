@@ -7,8 +7,11 @@ import "./classes.css";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
-import {Projects, byLastEdit, isVisibleTo} from "../data/Projects.tsx";
+import {Projects, byLastEdit} from "../data/Projects.tsx";
 import { useAuth } from "../lib/useAuth";
+import { canSeeProject, usePublished } from "../lib/usePublished";
+import ProjectClasses from "../components/ProjectClasses";
+import PublishButton from "../components/PublishButton";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 import {formatRelativeDate} from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
@@ -17,7 +20,8 @@ function AllModels() {
     const navigate = useNavigate();
     const { t } = useTranslation();
     const { user } = useAuth();
-    const classNames = user?.classes.map((c) => c.name) ?? [];
+    const isTeacher = user?.role === "teacher";
+    const { published, setProjectClasses } = usePublished();
     return (
         <div>
             <div className="nav">
@@ -46,10 +50,11 @@ function AllModels() {
                         <p className="project-name">{t("table.colProjectName")}</p>
                         <p className="other-filters">{t("table.colClass")}</p>
                         <p className="other-filters">{t("table.colLastEdit")}</p>
+                        {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
                         {Projects
-                            .filter((project) => isVisibleTo(project, classNames))
+                            .filter((project) => canSeeProject(user, published, project.id))
                             .sort(byLastEdit)
                             .map((project) => (
                                 <div
@@ -66,11 +71,20 @@ function AllModels() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        {project.className && <span className="class-chip">{project.className}</span>}
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>
                                     </div>
+                                    {isTeacher && (
+                                        <div className="publish-col">
+                                            <PublishButton
+                                                title={project.title}
+                                                classes={published[project.id]}
+                                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                     </div>

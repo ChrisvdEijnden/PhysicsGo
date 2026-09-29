@@ -6,6 +6,7 @@ import argon from "argon2";
 import crypto from "node:crypto";
 import db from "./db.js";
 import { classesOf, classesRouter, lookupCode } from "./classes.js";
+import { projectsRouter } from "./projects.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -176,6 +177,7 @@ api.patch("/auth/me", requireAuth, (req, res) => {
 });
 
 api.use("/classes", classesRouter({ requireAuth, joinLimiter, publicUser }));
+api.use("/projects", projectsRouter({ requireAuth }));
 
 app.use("/api", api);
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));
