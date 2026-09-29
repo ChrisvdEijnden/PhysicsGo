@@ -12,6 +12,7 @@ import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
+import ConfirmButton from "../components/ConfirmButton";
 
 interface ClassSummary {
     id: number;
@@ -48,39 +49,6 @@ const summarize = (c: ClassDetail): ClassSummary => ({
     studentCount: c.students.length,
     teacherCount: c.teachers.length,
 });
-
-// Two-step button for destructive actions: the first click arms it, the second confirms
-function ConfirmButton({ label, onConfirm, className, disabled }: {
-    label: string;
-    onConfirm: () => void;
-    className: string;
-    disabled?: boolean;
-}) {
-    const { t } = useTranslation();
-    const [armed, setArmed] = useState(false);
-
-    useEffect(() => {
-        if (!armed) return;
-        const timer = setTimeout(() => setArmed(false), 4000);
-        return () => clearTimeout(timer);
-    }, [armed]);
-
-    return (
-        <button
-            type="button"
-            className={`${className}${armed ? " armed" : ""}`}
-            disabled={disabled}
-            onClick={() => {
-                if (!armed) return setArmed(true);
-                setArmed(false);
-                onConfirm();
-            }}
-            onBlur={() => setArmed(false)}
-        >
-            {armed ? t("classes.confirm") : label}
-        </button>
-    );
-}
 
 function Classes() {
     const navigate = useNavigate();

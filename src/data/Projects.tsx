@@ -122,24 +122,83 @@ export function markProjectEdited(id: string) {
     writeStore(EDITS_KEY, id, project.lastEdit.getTime());
 }
 
-// What the student has done in a project: the model code, the number of steps to run
-// and the variables plotted on the chart's axes ("" when none is chosen)
+export type MediaCategory = "photo" | "video" | "animation" | "document";
+
+// A point plotted on media, in pixels of the original file with y pointing up (0 at the bottom).
+// t is the video time in seconds, the click order for an animation, and null for a photo.
+export interface MediaPoint {
+    t: number | null;
+    x: number;
+    y: number;
+}
+
+// Media added to a project; the file itself is stored separately (see lib/mediaStore)
+export interface SavedMedia {
+    id: string;
+    name: string;
+    mime: string;
+    category: MediaCategory;
+    // Base for the code variables of its points, e.g. "video1" gives x_video1 and y_video1
+    varName: string;
+    // Seconds a video jumps ahead after each plotted point
+    step: number;
+    points: MediaPoint[];
+    // Variables on the axes of the points graph: one X, any number of Y lines
+    graphX: string;
+    graphYs: YLine[];
+}
+
+// A line on a graph: its Y variable and its colour (an index into the graph palette),
+// kept per line so removing one line doesn't recolour the others
+export interface YLine {
+    name: string;
+    color: number;
+}
+
+// A graph panel: one shared X variable ("" when none is chosen) and a line per Y variable
+export interface GraphConfig {
+    id: string;
+    x: string;
+    ys: YLine[];
+}
+
+// What the student has done in a project: the model code, the number of steps to run,
+// the graph panels and the added media
 export interface ProjectWork {
     code: string;
     steps: string;
-    xAxis: string;
-    yAxis: string;
+    graphs: GraphConfig[];
+    media: SavedMedia[];
 }
 
+// Work saved by earlier versions: a single chart, single-line media graphs, Y lines without colours
+type StoredWork = Omit<Partial<ProjectWork>, "graphs"> & {
+    graphs?: (Omit<GraphConfig, "ys"> & { ys: (YLine | string)[] })[];
+    xAxis?: string;
+    yAxis?: string;
+};
+type StoredMedia = Omit<SavedMedia, "graphYs"> & { graphYs?: (YLine | string)[]; graphY?: string };
+
+const toLines = (ys: (YLine | string)[]): YLine[] =>
+    ys.map((y, i) => (typeof y === "string" ? { name: y, color: i } : y));
+
+export const newGraph = (x = "", ys: YLine[] = []): GraphConfig => ({
+    id: `graph-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    x,
+    ys,
+});
+
 export function loadProjectWork(id: string): ProjectWork | null {
-    const work = readStore<Partial<ProjectWork>>(WORK_KEY)[id];
+    const work = readStore<StoredWork>(WORK_KEY)[id];
     if (!work || typeof work.code !== "string") return null;
-    return {
-        code: work.code,
-        steps: String(work.steps ?? ""),
-        xAxis: String(work.xAxis ?? ""),
-        yAxis: String(work.yAxis ?? ""),
-    };
+    const graphs = Array.isArray(work.graphs)
+        ? work.graphs.map((g) => ({ ...g, ys: toLines(g.ys) }))
+        : [newGraph(String(work.xAxis ?? ""), work.yAxis ? toLines([work.yAxis]) : [])];
+    const media = (Array.isArray(work.media) ? work.media as StoredMedia[] : []).map(({ graphY, ...m }) => ({
+        ...m,
+        graphYs: toLines(Array.isArray(m.graphYs) ? m.graphYs : graphY ? [graphY] : []),
+    }));
+    return { code: work.code, steps: String(work.steps ?? ""), graphs, media };
 }
 
 // Only the given fields change; the rest of the saved work is kept

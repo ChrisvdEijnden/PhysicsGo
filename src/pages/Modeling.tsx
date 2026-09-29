@@ -1,4 +1,4 @@
-import init, { run as runInterpreter } from "../wasm/interpreterGo";
+import init, { run_with_data as runInterpreter } from "../wasm/interpreterGo";
 import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -12,10 +12,14 @@ import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 
-import LineChart, { formatTick } from "../components/lineChart.tsx";
+import Graph from "../components/Graph.tsx";
+import MediaTile, { DEFAULT_POINT_STEP, pointSeries } from "../components/MediaTile.tsx";
+import type { MediaItem } from "../components/MediaTile.tsx";
+import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/mediaStore";
 import type { ChartPoint } from "../components/lineChart.tsx";
 import {Projects, markProjectEdited, loadProjectWork, saveProjectWork} from "../data/Projects.tsx";
-import type { ProjectWork } from "../data/Projects.tsx";
+import { newGraph } from "../data/Projects.tsx";
+import type { GraphConfig, MediaCategory, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
 
@@ -30,9 +34,6 @@ const DEFAULT_CODE = [
 
 const DEFAULT_STEPS = 100_000;
 const MAX_STEPS = 1_000_000;
-
-// Plotting every step of a long run would make the chart slow; this many points is plenty
-const MAX_CHART_POINTS = 2000;
 
 // Variables the code assigns (`name = ...`), in the order they first appear
 function codeVariables(source: string): string[] {
@@ -59,19 +60,10 @@ type RowDragState = {
     startHeights: number[];
 };
 
-type MediaCategory = "photo" | "video" | "animation" | "document";
+type AnalysisRow = { kind: "graph"; graph: GraphConfig } | { kind: "media"; item: MediaItem };
 
-interface MediaItem {
-    id: string;
-    category: MediaCategory;
-    name: string;
-    url: string;
-    mime: string;
-}
-
-type AnalysisRow = { kind: "chart" } | { kind: "media"; item: MediaItem };
-
-const MAX_MEDIA_ITEMS = 2;
+// Graphs and media share the right-hand column
+const MAX_PANELS = 3;
 
 const ACCEPT_BY_CATEGORY: Record<MediaCategory, string> = {
     photo: "image/*",
@@ -79,16 +71,6 @@ const ACCEPT_BY_CATEGORY: Record<MediaCategory, string> = {
     animation: "image/gif,video/mp4,video/webm",
     document: ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
-
-function DocumentGlyph() {
-    return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 1.5H9L12.5 5V13.5C12.5 14.05 12.05 14.5 11.5 14.5H4.5C3.95 14.5 3.5 14.05 3.5 13.5V2.5C3.5 1.95 3.95 1.5 4 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-            <path d="M9 1.5V5H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-            <path d="M5.5 8.5H10.5M5.5 10.5H10.5M5.5 12H8.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-        </svg>
-    );
-}
 
 function inferMediaCategory(file: File): MediaCategory {
     if (file.type === "image/gif") return "animation";
@@ -99,125 +81,14 @@ function inferMediaCategory(file: File): MediaCategory {
 
 const ALL_MEDIA_ACCEPT = Object.values(ACCEPT_BY_CATEGORY).join(",");
 
-type VideoWithFrameCallback = HTMLVideoElement & {
-    requestVideoFrameCallback?: (
-        callback: (now: number, metadata: { presentedFrames?: number }) => void
-    ) => number;
-    cancelVideoFrameCallback?: (handle: number) => void;
-};
+const toSaved = (items: MediaItem[]): SavedMedia[] => items.map(({ url: _url, ...saved }) => saved);
 
-function MediaTile({
-                       item,
-                       style,
-                       onRemove,
-                   }: {
-    item: MediaItem;
-    style: React.CSSProperties;
-    onRemove: () => void;
-}) {
-    const { t } = useTranslation();
-    const isImage = item.mime.startsWith("image/");
-    const isVideo = item.mime.startsWith("video/");
-    const isLooping = item.category === "animation";
-
-    const videoRef = useRef<HTMLVideoElement | null>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [frame, setFrame] = useState(0);
-    const [timeSec, setTimeSec] = useState(0);
-    const fallbackFpsRef = useRef(30);
-
-    useEffect(() => {
-        if (!isVideo) return;
-        const video = videoRef.current as VideoWithFrameCallback | null;
-        if (!video) return;
-
-        const supportsRVFC = typeof video.requestVideoFrameCallback === "function";
-        let rvfcId: number | null = null;
-
-        if (supportsRVFC) {
-            const onVideoFrame = (_now: number, metadata: { presentedFrames?: number }) => {
-                setFrame(metadata.presentedFrames ?? Math.round(video.currentTime * fallbackFpsRef.current));
-                setTimeSec(Math.round(video.currentTime * 100) / 100);
-                rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
-            };
-            rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
-            return () => {
-                if (rvfcId !== null) video.cancelVideoFrameCallback?.(rvfcId);
-            };
-        }
-
-        const onTimeUpdate = () => {
-            setFrame(Math.round(video.currentTime * fallbackFpsRef.current));
-            setTimeSec(Math.ceil(video.currentTime * 100) / 100);
-        };
-        video.addEventListener("timeupdate", onTimeUpdate);
-        return () => video.removeEventListener("timeupdate", onTimeUpdate);
-    }, [isVideo]);
-
-    function togglePlay() {
-        const video = videoRef.current;
-        if (!video) return;
-        if (video.paused) video.play();
-        else video.pause();
-    }
-
-    return (
-        <div className="analysis-media" style={style}>
-            <div className="analysis-media-actions">
-                {isVideo && (
-                    <button
-                        type="button"
-                        className="analysis-media-play"
-                        onClick={togglePlay}
-                        aria-label={isPlaying ? t("modeling.pause") : t("modeling.play")}
-                    >
-                        {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt="PlayIcon20px"/>}
-                    </button>
-                )}
-                <div className="right-btns">
-                    <button className="insert-points-btn">
-                        <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                        <p>{t("modeling.insertPoints")}</p>
-                    </button>
-                    <button
-                        type="button"
-                        className="analysis-media-remove"
-                        onClick={onRemove}
-                        aria-label={t("modeling.removeMedia", { name: item.name })}
-                    >
-                        <img src={CloseIcon20px} alt="CloseIcon20px"/>
-                    </button>
-                </div>
-            </div>
-            {isImage ? (
-                <img className="analysis-media-content" src={item.url} alt={item.name}/>
-            ) : isVideo ? (
-                <>
-                    <video
-                        ref={videoRef}
-                        className="analysis-media-content"
-                        src={item.url}
-                        autoPlay={isLooping}
-                        loop={isLooping}
-                        muted={isLooping}
-                        playsInline
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                    />
-                    <span className="analysis-media-framecount">
-                        {t("modeling.frame")} <strong>{frame}</strong>
-                        <span className="code-footer-dot"> · </span>
-                        {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
-                    </span>
-                </>
-            ) : (
-                <div className="analysis-media-file">
-                    <DocumentGlyph/>
-                    <span>{item.name}</span>
-                </div>
-            )}
-        </div>
-    );
+// First free name like video1, video2, photo1 for a new media's point variables
+function nextVarName(category: MediaCategory, items: SavedMedia[]) {
+    const taken = new Set(items.map((item) => item.varName));
+    let n = 1;
+    while (taken.has(`${category}${n}`)) n++;
+    return `${category}${n}`;
 }
 
 function Modeling() {
@@ -292,15 +163,20 @@ function Modeling() {
     const [savedWork] = useState(() => (project ? loadProjectWork(project.id) : null));
     const [code, setCode] = useState(savedWork?.code ?? DEFAULT_CODE);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
-    const [xAxis, setXAxis] = useState(savedWork?.xAxis ?? "");
-    const [yAxis, setYAxis] = useState(savedWork?.yAxis ?? "");
+    // A new project starts with one empty graph
+    const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs ?? [newGraph()]);
+    // Media is loaded from this device after opening; mediaLoaded is false until then
+    const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+    const mediaLoaded = useRef(!project);
     const editorRef = useRef<CodeEditorHandle>(null);
     const [wasmReady, setWasmReady] = useState(false);
 
     // Every change to a project is saved with it and counts as an edit
     function saveWork(changes: Partial<ProjectWork>) {
         if (!project) return;
-        saveProjectWork(project.id, { code, steps, xAxis, yAxis, ...changes });
+        // Until the media files have loaded, keep the media that was saved before
+        const media = mediaLoaded.current ? toSaved(mediaItems) : savedWork?.media ?? [];
+        saveProjectWork(project.id, { code, steps, graphs, media, ...changes });
         markProjectEdited(project.id);
     }
 
@@ -316,9 +192,13 @@ function Modeling() {
         saveWork({ steps: value });
     }
 
-    function handleAxisChange(axis: "xAxis" | "yAxis", value: string) {
-        (axis === "xAxis" ? setXAxis : setYAxis)(value);
-        saveWork({ [axis]: value });
+    function setGraphList(next: GraphConfig[]) {
+        setGraphs(next);
+        saveWork({ graphs: next });
+    }
+
+    function updateGraph(id: string, x: string, ys: YLine[]) {
+        setGraphList(graphs.map((g) => (g.id === id ? { ...g, x, ys } : g)));
     }
 
     // An empty field runs the placeholder's number of steps
@@ -355,31 +235,32 @@ function Modeling() {
     // Results of the last run; the chart stays empty until the model has run
     const [history, setHistory] = useState<Map<string, number>[] | null>(null);
 
-    // Variables from the code, plus any the last run produced that the code no longer shows
+    // Points plotted on videos, as variables the code can read at the current t
+    const measuredData = useMemo(() => mediaItems.flatMap(pointSeries), [mediaItems]);
+
+    // Variables from the code and the measured data, plus any the last run produced that neither shows anymore
     const variables = useMemo(() => {
         const names = codeVariables(code);
-        for (const name of history?.[0]?.keys() ?? []) {
+        for (const name of [...measuredData.map((s) => s.name), ...(history?.[0]?.keys() ?? [])]) {
             if (!names.includes(name)) names.push(name);
         }
         return names;
-    }, [code, history]);
+    }, [code, history, measuredData]);
 
-    const chartPoints = useMemo((): ChartPoint[] => {
-        if (!history || !xAxis || !yAxis) return [];
-        const stride = Math.ceil(history.length / MAX_CHART_POINTS);
-        const points: ChartPoint[] = [];
-        for (let i = 0; i < history.length; i += stride) {
-            const x = history[i].get(xAxis);
-            const y = history[i].get(yAxis);
-            if (x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
+    // The measured points themselves, drawn as dots with the line of their variable when
+    // the graph's X is t or the same video's other coordinate
+    const markersFor = useCallback((x: string, y: string): ChartPoint[] => {
+        for (const item of mediaItems) {
+            if (item.category !== "video") continue;
+            const [xName, yName] = [`x_${item.varName}`, `y_${item.varName}`];
+            const pick = (axis: string): "t" | "x" | "y" | null =>
+                axis === "t" ? "t" : axis === xName ? "x" : axis === yName ? "y" : null;
+            const [px, py] = [pick(x), pick(y)];
+            if (!px || !py || py === "t") continue;
+            return item.points.map((p) => ({ x: px === "t" ? p.t ?? 0 : p[px], y: p[py] }));
         }
-        return points;
-    }, [history, xAxis, yAxis]);
-
-    const chartRange = (key: "x" | "y") => {
-        const values = chartPoints.map((p) => p[key]);
-        return `[${formatTick(Math.min(...values))}, ${formatTick(Math.max(...values))}]`;
-    };
+        return [];
+    }, [mediaItems]);
 
     function runSimulation() {
         if (!wasmReady) {
@@ -392,7 +273,7 @@ function Modeling() {
         console.log("start block:", JSON.stringify(start));
         console.log("model block:", JSON.stringify(model));
 
-        const result = runInterpreter(start, model, stepCount()) as RunResult;
+        const result = runInterpreter(start, model, stepCount(), measuredData) as RunResult;
         console.log("interpreter result:", result);
 
         if (!result.ok) {
@@ -411,7 +292,7 @@ function Modeling() {
     }
 
     // ---------- Insert Media & Embeds ----------
-    const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
+    // Media, its points and settings are saved with the project; the files themselves in IndexedDB
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const mediaItemsRef = useRef<MediaItem[]>([]);
 
@@ -419,15 +300,38 @@ function Modeling() {
         mediaItemsRef.current = mediaItems;
     }, [mediaItems]);
 
+    // Reopening a project brings back its media; a file missing on this device keeps its points
+    useEffect(() => {
+        if (!project) return;
+        let cancelled = false;
+        const saved = savedWork?.media ?? [];
+        Promise.all(saved.map(async (media): Promise<MediaItem> => {
+            const file = await loadMediaFile(mediaKey(project.id, media.id)).catch(() => undefined);
+            return { ...media, url: file ? URL.createObjectURL(file) : "" };
+        })).then((items) => {
+            if (cancelled) {
+                items.forEach((item) => item.url && URL.revokeObjectURL(item.url));
+                return;
+            }
+            mediaLoaded.current = true;
+            setMediaItems(items);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [project, savedWork]);
+
     // Revoke every blob URL on unmount so nothing leaks.
     useEffect(() => {
         return () => {
-            mediaItemsRef.current.forEach((item) => URL.revokeObjectURL(item.url));
+            mediaItemsRef.current.forEach((item) => item.url && URL.revokeObjectURL(item.url));
         };
     }, []);
 
+    const panelCountRef = useRef(0);
+
     const openFilePicker = useCallback(() => {
-        if (mediaItemsRef.current.length >= MAX_MEDIA_ITEMS) return;
+        if (panelCountRef.current >= MAX_PANELS) return;
         const input = fileInputRef.current;
         if (!input) return;
         input.accept = ALL_MEDIA_ACCEPT;
@@ -448,46 +352,86 @@ function Modeling() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [openFilePicker]);
 
+    function setMedia(items: MediaItem[]) {
+        setMediaItems(items);
+        saveWork({ media: toSaved(items) });
+    }
+
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0];
         e.target.value = ""; // allow picking the same file again later
 
-        if (!file || mediaItems.length >= MAX_MEDIA_ITEMS) return;
+        if (!file || !mediaLoaded.current || panelCount >= MAX_PANELS) return;
 
+        const category = inferMediaCategory(file);
         const newItem: MediaItem = {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-            category: inferMediaCategory(file),
+            category,
             name: file.name,
             url: URL.createObjectURL(file),
             mime: file.type,
+            varName: nextVarName(category, mediaItems),
+            step: DEFAULT_POINT_STEP,
+            points: [],
+            graphX: category === "photo" ? "x" : "t",
+            graphYs: [{ name: "y", color: 0 }],
         };
-        setMediaItems((prev) => [...prev, newItem]);
-        if (project) markProjectEdited(project.id);
+        setMedia([...mediaItems, newItem]);
+        if (project) saveMediaFile(mediaKey(project.id, newItem.id), file).catch((err) => console.error("couldn't save media", err));
+    }
+
+    function updateMediaItem(updated: MediaItem) {
+        setMedia(mediaItems.map((item) => (item.id === updated.id ? updated : item)));
     }
 
     function removeMediaItem(id: string) {
-        if (project) markProjectEdited(project.id);
-        setMediaItems((prev) => {
-            const target = prev.find((item) => item.id === id);
-            if (target) URL.revokeObjectURL(target.url);
-            return prev.filter((item) => item.id !== id);
-        });
+        const target = mediaItems.find((item) => item.id === id);
+        if (target?.url) URL.revokeObjectURL(target.url);
+        setMedia(mediaItems.filter((item) => item.id !== id));
+        if (project) deleteMediaFile(mediaKey(project.id, id)).catch(() => {});
     }
 
-    // ---------- analysis panel rows (chart + inserted media) ----------
-    const [showChart, setShowChart] = useState(true);
-
-    function closeChart() {
-        setShowChart(false);
-    }
-
+    // ---------- analysis panel rows (graphs, then media) ----------
     const rows: AnalysisRow[] = useMemo(
         () => [
-            ...(showChart ? [{ kind: "chart" as const }] : []),
-            ...mediaItems.slice(0, MAX_MEDIA_ITEMS).map((item) => ({ kind: "media" as const, item })),
+            ...graphs.map((graph) => ({ kind: "graph" as const, graph })),
+            ...mediaItems.map((item) => ({ kind: "media" as const, item })),
         ],
-        [mediaItems, showChart]
+        [graphs, mediaItems]
     );
+    const panelCount = rows.length;
+    panelCountRef.current = panelCount;
+    const panelsFull = panelCount >= MAX_PANELS;
+
+    // Insert Media & Embeds opens a small menu: a new graph, or a file from this computer
+    const [insertMenuOpen, setInsertMenuOpen] = useState(false);
+    const insertMenuRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (!insertMenuOpen) return;
+        function handlePointerDown(e: PointerEvent) {
+            if (!insertMenuRef.current?.contains(e.target as Node)) setInsertMenuOpen(false);
+        }
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === "Escape") setInsertMenuOpen(false);
+        }
+        window.addEventListener("pointerdown", handlePointerDown);
+        window.addEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("pointerdown", handlePointerDown);
+            window.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [insertMenuOpen]);
+
+    function insertGraph() {
+        setInsertMenuOpen(false);
+        if (!panelsFull) setGraphList([...graphs, newGraph()]);
+    }
+
+    function insertMediaFile() {
+        setInsertMenuOpen(false);
+        openFilePicker();
+    }
 
     const analysisStackRef = useRef<HTMLDivElement | null>(null);
     const rowDragState = useRef<RowDragState | null>(null);
@@ -550,8 +494,6 @@ function Modeling() {
         [rowHeights, handleRowPointerMove, handleRowPointerUp]
     );
 
-    const atMediaCap = mediaItems.length >= MAX_MEDIA_ITEMS;
-
     return (
         <div>
             <div className="nav">
@@ -562,17 +504,36 @@ function Modeling() {
                 </div>
 
                 <div className="system-actions">
-                    <button
-                        type="button"
-                        className="insert-media-btn"
-                        onClick={openFilePicker}
-                        disabled={atMediaCap}
-                        title={atMediaCap ? t("modeling.removePanelTooltip") : "\u2318O / Ctrl+O"}
-                        aria-keyshortcuts="Meta+O Control+O"
-                    >
-                        <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                        <p>{t("modeling.insertMediaEmbeds")}</p>
-                    </button>
+                    <div className="insert-menu-anchor" ref={insertMenuRef}>
+                        <button
+                            type="button"
+                            className="insert-media-btn"
+                            onClick={() => setInsertMenuOpen(!insertMenuOpen)}
+                            disabled={panelsFull}
+                            title={panelsFull ? t("modeling.removePanelTooltip") : undefined}
+                            aria-haspopup="menu"
+                            aria-expanded={insertMenuOpen}
+                        >
+                            <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                            <p>{t("modeling.insertMediaEmbeds")}</p>
+                        </button>
+                        {insertMenuOpen && (
+                            <div className="insert-menu" role="menu">
+                                <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
+                                    {t("modeling.insertGraph")}
+                                </button>
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={insertMediaFile}
+                                    aria-keyshortcuts="Meta+O Control+O"
+                                >
+                                    {t("modeling.insertMediaFile")}
+                                    <span className="insert-menu-shortcut">⌘O</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     <input
                         ref={fileInputRef}
                         type="file"
@@ -654,7 +615,7 @@ function Modeling() {
                 <div className="analysis-panel" style={{ flex: `0 0 ${panelWidths[2]}%` }}>
                     <div className="analysis-stack" ref={analysisStackRef}>
                         {rows.map((row, index) => {
-                            const key = row.kind === "chart" ? "chart" : row.item.id;
+                            const key = row.kind === "graph" ? row.graph.id : row.item.id;
                             const rowStyle: React.CSSProperties = {
                                 flex: `0 0 ${rowHeights[index] ?? 100 / rows.length}%`,
                             };
@@ -669,61 +630,35 @@ function Modeling() {
                                             aria-label={t("modeling.resizeAnalysisPanels")}
                                         />
                                     )}
-                                    {row.kind === "chart" ? (
+                                    {row.kind === "graph" ? (
                                         <div className="analysis" style={rowStyle}>
                                             <div className="analysis-panel-actions">
-                                                <button className="insert-points-btn">
-                                                    <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                                                    <p>{t("modeling.insertPoints")}</p>
-                                                </button>
                                                 <button
                                                     type="button"
                                                     className="analysis-media-remove"
-                                                    onClick={closeChart}
+                                                    onClick={() => setGraphList(graphs.filter((g) => g.id !== row.graph.id))}
                                                     aria-label={t("modeling.closeGraph")}
                                                 >
                                                     <img src={CloseIcon20px} alt="CloseIcon20px"/>
                                                 </button>
                                             </div>
-                                            <LineChart
-                                                points={chartPoints}
-                                                xLabel={xAxis}
-                                                yLabel={yAxis}
-                                                emptyMessage={!xAxis || !yAxis ? t("modeling.chartPickAxes") : t("modeling.chartRunPrompt")}
+                                            <Graph
+                                                samples={history}
+                                                variables={variables}
+                                                x={row.graph.x}
+                                                ys={row.graph.ys}
+                                                onChange={(x, ys) => updateGraph(row.graph.id, x, ys)}
+                                                markersFor={markersFor}
+                                                runPrompt={t("modeling.chartRunPrompt")}
                                             />
-                                            <div className="analysis-footer chart-footer">
-                                                <div className="chart-footer-row">
-                                                    {(["xAxis", "yAxis"] as const).map((axis) => {
-                                                        const value = axis === "xAxis" ? xAxis : yAxis;
-                                                        // Keep a saved choice listed even if the code no longer assigns it
-                                                        const options = value && !variables.includes(value) ? [...variables, value] : variables;
-                                                        return (
-                                                            <label key={axis} className="axis-picker">
-                                                                {axis === "xAxis" ? t("modeling.xAxis") : t("modeling.yAxis")}
-                                                                <select
-                                                                    className="axis-select"
-                                                                    value={value}
-                                                                    onChange={(e) => handleAxisChange(axis, e.target.value)}
-                                                                >
-                                                                    <option value="">{t("modeling.pickVariable")}</option>
-                                                                    {options.map((name) => <option key={name} value={name}>{name}</option>)}
-                                                                </select>
-                                                            </label>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {chartPoints.length > 0 && (
-                                                    <div className="chart-footer-row">
-                                                        <span>{t("modeling.domain")} <strong>{chartRange("x")}</strong></span>
-                                                        <span className="code-footer-dot">·</span>
-                                                        <span>{t("modeling.range")} <strong>{chartRange("y")}</strong></span>
-                                                    </div>
-                                                )}
-                                            </div>
                                         </div>
-
                                     ) : (
-                                        <MediaTile item={row.item} style={rowStyle} onRemove={() => removeMediaItem(row.item.id)}/>
+                                        <MediaTile
+                                            item={row.item}
+                                            style={rowStyle}
+                                            onRemove={() => removeMediaItem(row.item.id)}
+                                            onChange={updateMediaItem}
+                                        />
                                     )}
                                 </Fragment>
                             );

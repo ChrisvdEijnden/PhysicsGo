@@ -517,3 +517,234 @@
     font-size: 13px;
     color: var(--color-text-tertiary);
 }
+
+/* Plotting points on media: the SVG covers the media exactly (both use "contain"), so its
+   viewBox is the media's own pixels */
+.media-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+}
+
+.media-points {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.media-points.plotting {
+    pointer-events: auto;
+    cursor: crosshair;
+}
+
+.media-point {
+    fill: #F59E0B;
+    stroke: #FFFFFF;
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+}
+
+.media-point.current {
+    fill: var(--color-brand);
+}
+
+.media-points-path {
+    fill: none;
+    stroke: #F59E0B;
+    stroke-opacity: 0.6;
+}
+
+.insert-points-btn.active {
+    background-color: var(--color-brand);
+}
+
+.insert-points-btn.active p {
+    color: var(--color-on-brand);
+}
+
+.points-bar {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 2;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 8px;
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.points-bar button {
+    height: 22px;
+    padding: 0 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.points-bar button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.points-bar button.armed {
+    color: #d64545;
+    border-color: currentColor;
+}
+
+.points-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.points-step input {
+    width: 64px;
+    height: 22px;
+    padding: 0 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-primary);
+}
+
+.media-graph {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 16px 2px 0;
+}
+
+/* Insert Media & Embeds: small menu under the button */
+.insert-menu-anchor {
+    position: relative;
+}
+
+.insert-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 20;
+    min-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.insert-menu button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.insert-menu button:hover, .insert-menu button:focus-visible {
+    outline: none;
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.insert-menu-shortcut {
+    font-weight: 400;
+    color: var(--color-text-tertiary);
+}
+
+/* Y lines: one chip per variable, coloured like its line; doubles as the legend */
+.y-lines {
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+.y-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 24px;
+    padding: 0 2px 0 6px;
+    border: 1px solid;
+    border-radius: 6px;
+    background-color: var(--color-bg-surface);
+}
+
+.y-line-swatch {
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.y-line-select {
+    max-width: 100px;
+    border: none;
+    background: transparent;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.y-line-select:focus {
+    outline: none;
+}
+
+.y-line-remove {
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: none;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--color-text-tertiary);
+    cursor: pointer;
+}
+
+.y-line-remove:hover {
+    color: #d64545;
+    background-color: rgba(214, 69, 69, 0.1);
+}
+
+.axis-select.y-line-add {
+    flex: 0 1 auto;
+    width: auto;
+}
+
+.axis-picker-x {
+    flex: 0 1 auto;
+    min-width: 50%;
+}

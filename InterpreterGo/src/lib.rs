@@ -8,6 +8,7 @@ pub mod interpreter;
 
 use indent::{indent_to_braces, SourcePos};
 use interpreter::{run_simulation, Block, Env};
+pub use interpreter::DataSeries;
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -39,11 +40,26 @@ pub fn run(start_src: &str, model_src: &str, max_steps: usize) -> JsValue {
     serde_wasm_bindgen::to_value(&run_source(start_src, model_src, max_steps)).unwrap()
 }
 
+/// Like `run`, with measured data series (`[{ name, t: [...], values: [...] }]`)
+/// that the code can read as variables at the current t
+#[wasm_bindgen]
+pub fn run_with_data(start_src: &str, model_src: &str, max_steps: usize, data: JsValue) -> JsValue {
+    let result = match serde_wasm_bindgen::from_value::<Vec<DataSeries>>(data) {
+        Ok(data) => run_source_with_data(start_src, model_src, max_steps, &data),
+        Err(e) => failed(RunError { line: 1, column: 1, message: format!("invalid measured data: {e}"), block: "start" }),
+    };
+    serde_wasm_bindgen::to_value(&result).unwrap()
+}
+
 fn failed(error: RunError) -> RunResult {
     RunResult { ok: false, history: vec![], errors: vec![error] }
 }
 
 pub fn run_source(start_src: &str, model_src: &str, max_steps: usize) -> RunResult {
+    run_source_with_data(start_src, model_src, max_steps, &[])
+}
+
+pub fn run_source_with_data(start_src: &str, model_src: &str, max_steps: usize, data: &[DataSeries]) -> RunResult {
     let start = match indent_to_braces(start_src) {
         Ok(result) => result,
         Err(e) => return failed(RunError { line: e.line, column: 1, message: e.message, block: "start" }),
@@ -64,7 +80,7 @@ pub fn run_source(start_src: &str, model_src: &str, max_steps: usize) -> RunResu
 
     let start_block = Block { name: "start", line_map: &start.line_map };
     let model_block = Block { name: "model", line_map: &model.line_map };
-    let (history, error) = run_simulation(start_pairs, model_pairs, max_steps, &start_block, &model_block);
+    let (history, error) = run_simulation(start_pairs, model_pairs, max_steps, data, &start_block, &model_block);
     RunResult { ok: error.is_none(), history, errors: error.into_iter().collect() }
 }
 
@@ -143,8 +159,9 @@ mod tests {
 
     #[test]
     fn time_advances_automatically_when_the_model_leaves_t_alone() {
+        // The step taken at t = 2 stops the run and records the state it computed, at t = 2.5
         let state = final_state("t = 0\ndt = 0.5\n", "stop als t >= 2", 100);
-        assert_eq!(state["t"], 2.0);
+        assert_eq!(state["t"], 2.5);
     }
 
     #[test]
@@ -218,6 +235,32 @@ mod tests {
         assert!(error_of("x = 1\nals x > 0:\n", "").message.contains("expected an indented line"));
         let e = error_of("x = 1\nals x > 0:\n    y = 2\n  z = 3\n", "");
         assert_eq!(e.line, 4);
+    }
+
+    fn series(name: &str, t: &[f64], values: &[f64]) -> DataSeries {
+        DataSeries { name: name.into(), t: t.to_vec(), values: values.to_vec() }
+    }
+
+    #[test]
+    fn measured_data_is_interpolated_at_t() {
+        let data = [series("y_video1", &[0.0, 1.0, 2.0], &[10.0, 20.0, 40.0])];
+        let result = run_source_with_data("t = 0\ndt = 0.5\n", "verschil = y_video1 - 10\nstop als t >= 1.5", 10, &data);
+        assert!(result.ok, "{:?}", result.errors);
+        let ys: Vec<f64> = result.history.iter().map(|s| s["y_video1"]).collect();
+        assert_eq!(ys, [10.0, 15.0, 20.0, 30.0, 40.0]);
+        // The model reads the value at the start of its step
+        assert_eq!(result.history[2]["verschil"], 5.0);
+    }
+
+    #[test]
+    fn measured_data_is_nan_outside_its_range() {
+        let s = series("x", &[1.0, 2.0], &[5.0, 6.0]);
+        assert!(s.at(0.5).is_nan());
+        assert!(s.at(2.5).is_nan());
+        assert!(s.at(f64::NAN).is_nan());
+        assert_eq!(s.at(1.0), 5.0);
+        assert_eq!(s.at(2.0), 6.0);
+        assert!(series("x", &[], &[]).at(0.0).is_nan());
     }
 
     #[test]

@@ -174,6 +174,44 @@ pub fn run_statements(pairs: Pairs<Rule>, env: &mut Env, block: &Block) -> Eval<
     Ok(StepResult::Continue)
 }
 
+/// Measured values (e.g. points tracked in a video) that the code can read as a variable.
+/// `t` is sorted ascending and has the same length as `values`.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct DataSeries {
+    pub name: String,
+    pub t: Vec<f64>,
+    pub values: Vec<f64>,
+}
+
+impl DataSeries {
+    /// Linear interpolation at time `t`; NaN outside the measured range, so a
+    /// calculation with it gives no value instead of a made-up one
+    pub fn at(&self, t: f64) -> f64 {
+        let (first, last) = match (self.t.first(), self.t.last()) {
+            (Some(&first), Some(&last)) => (first, last),
+            _ => return f64::NAN,
+        };
+        if !(t >= first && t <= last) {
+            return f64::NAN;
+        }
+        // First sample at or after t
+        let i = self.t.partition_point(|&ti| ti < t);
+        if self.t[i] == t || i == 0 {
+            return self.values[i];
+        }
+        let (t0, t1) = (self.t[i - 1], self.t[i]);
+        let (v0, v1) = (self.values[i - 1], self.values[i]);
+        v0 + (t - t0) / (t1 - t0) * (v1 - v0)
+    }
+}
+
+fn set_data(env: &mut Env, data: &[DataSeries]) {
+    let t = env.get("t").copied().unwrap_or(f64::NAN);
+    for series in data {
+        env.insert(series.name.clone(), series.at(t));
+    }
+}
+
 /// Whether the program assigns `name` anywhere, including inside `als` blocks
 fn assigns(program: &Pairs<Rule>, name: &str) -> bool {
     program
@@ -189,6 +227,7 @@ pub fn run_simulation(
     start_program: Pairs<Rule>,
     model_program: Pairs<Rule>,
     max_steps: usize,
+    data: &[DataSeries],
     start_block: &Block,
     model_block: &Block,
 ) -> (Vec<Env>, Option<RunError>) {
@@ -198,6 +237,8 @@ pub fn run_simulation(
     if let Err(e) = run_statements(start_program, &mut env, start_block) {
         return (geschiedenis, Some(e));
     }
+    // Measured data follows t: it's refreshed before every step and recorded with it
+    set_data(&mut env, data);
     geschiedenis.push(env.clone());
 
     // Models that don't advance time themselves get t = t + dt after every step;
@@ -210,17 +251,18 @@ pub fn run_simulation(
             Err(e) => return (geschiedenis, Some(e)),
         };
 
-        let stop = matches!(result, StepResult::Stop);
-        // No advance on the stopping step, so `stop als t >= 10` ends at t = 10, not 10 + dt
-        if advance_time && !stop {
+        // Every step, including the one that stops, moves the whole state one dt ahead,
+        // so the recorded t always matches the values the model computed for it
+        if advance_time {
             let dt = env.get("dt").copied().unwrap_or(0.0);
             let t = env.get("t").copied().unwrap_or(0.0) + dt;
             env.insert("t".to_string(), t);
         }
 
+        set_data(&mut env, data);
         geschiedenis.push(env.clone());
 
-        if stop {
+        if let StepResult::Stop = result {
             break;
         }
     }

@@ -1,0 +1,353 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import PlayIcon20px from "../assets/icons/play-20px.svg";
+import PlusIcon14px from "../assets/icons/plus-14px.svg";
+import CloseIcon20px from "../assets/icons/close-20px.svg";
+import Graph from "./Graph.tsx";
+import ConfirmButton from "./ConfirmButton";
+import type { MediaPoint, SavedMedia } from "../data/Projects.tsx";
+import { useTranslation } from "../lib/useTranslations";
+
+// Saved media plus the URL of its file for this session ("" when the file isn't on this device)
+export interface MediaItem extends SavedMedia {
+    url: string;
+}
+
+export const DEFAULT_POINT_STEP = 1 / 30;
+
+// Axes a media's points can be plotted on: photos have no time
+export const pointAxes = (item: SavedMedia) => (item.category === "photo" ? ["x", "y"] : ["t", "x", "y"]);
+
+// Only video points have a real time, so only they become variables in the code
+export function pointSeries(item: SavedMedia) {
+    if (item.category !== "video" || item.points.length === 0) return [];
+    const sorted = [...item.points].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    const t = sorted.map((p) => p.t ?? 0);
+    return [
+        { name: `x_${item.varName}`, t, values: sorted.map((p) => p.x) },
+        { name: `y_${item.varName}`, t, values: sorted.map((p) => p.y) },
+    ];
+}
+
+function DocumentGlyph() {
+    return (
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 1.5H9L12.5 5V13.5C12.5 14.05 12.05 14.5 11.5 14.5H4.5C3.95 14.5 3.5 14.05 3.5 13.5V2.5C3.5 1.95 3.95 1.5 4 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+            <path d="M9 1.5V5H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
+            <path d="M5.5 8.5H10.5M5.5 10.5H10.5M5.5 12H8.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
+        </svg>
+    );
+}
+
+type VideoWithFrameCallback = HTMLVideoElement & {
+    requestVideoFrameCallback?: (
+        callback: (now: number, metadata: { presentedFrames?: number }) => void
+    ) => number;
+    cancelVideoFrameCallback?: (handle: number) => void;
+};
+
+const round = (value: number, decimals: number) => Math.round(value * 10 ** decimals) / 10 ** decimals;
+
+export default function MediaTile({
+    item,
+    style,
+    onRemove,
+    onChange,
+}: {
+    item: MediaItem;
+    style: React.CSSProperties;
+    onRemove: () => void;
+    // Called with the updated media whenever its points or settings change
+    onChange: (item: MediaItem) => void;
+}) {
+    const { t } = useTranslation();
+    const isImage = item.mime.startsWith("image/");
+    const isVideo = item.mime.startsWith("video/");
+    const isLooping = item.category === "animation";
+    const canPlot = item.category !== "document";
+    const fileMissing = item.url === "";
+
+    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [frame, setFrame] = useState(0);
+    const [timeSec, setTimeSec] = useState(0);
+    const fallbackFpsRef = useRef(30);
+
+    const [pointMode, setPointMode] = useState(false);
+    const [showGraph, setShowGraph] = useState(false);
+    // Size of the original file in pixels; points are stored in these coordinates
+    const [size, setSize] = useState<{ width: number; height: number } | null>(null);
+    const [stepDraft, setStepDraft] = useState(String(round(item.step, 4)));
+
+    useEffect(() => {
+        if (!isVideo) return;
+        const video = videoRef.current as VideoWithFrameCallback | null;
+        if (!video) return;
+
+        const supportsRVFC = typeof video.requestVideoFrameCallback === "function";
+        let rvfcId: number | null = null;
+
+        if (supportsRVFC) {
+            const onVideoFrame = (_now: number, metadata: { presentedFrames?: number }) => {
+                setFrame(metadata.presentedFrames ?? Math.round(video.currentTime * fallbackFpsRef.current));
+                setTimeSec(Math.round(video.currentTime * 100) / 100);
+                rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
+            };
+            rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
+            return () => {
+                if (rvfcId !== null) video.cancelVideoFrameCallback?.(rvfcId);
+            };
+        }
+
+        const onTimeUpdate = () => {
+            setFrame(Math.round(video.currentTime * fallbackFpsRef.current));
+            setTimeSec(Math.ceil(video.currentTime * 100) / 100);
+        };
+        video.addEventListener("timeupdate", onTimeUpdate);
+        return () => video.removeEventListener("timeupdate", onTimeUpdate);
+    }, [isVideo, showGraph]);
+
+    function togglePlay() {
+        const video = videoRef.current;
+        if (!video) return;
+        if (video.paused) video.play();
+        else video.pause();
+    }
+
+    function togglePointMode() {
+        const next = !pointMode;
+        setPointMode(next);
+        if (next) {
+            setShowGraph(false);
+            videoRef.current?.pause(); // points are plotted on a still frame
+        }
+    }
+
+    // Click on the media: store the position in pixels of the original file, y up from the bottom
+    function handlePlot(e: React.MouseEvent<SVGSVGElement>) {
+        if (!pointMode || !size) return;
+        const svg = e.currentTarget;
+        const matrix = svg.getScreenCTM();
+        if (!matrix) return;
+        const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
+        // Clicks on the empty bands around the media don't count
+        if (at.x < 0 || at.y < 0 || at.x > size.width || at.y > size.height) return;
+
+        const x = round(at.x, 1);
+        const y = round(size.height - at.y, 1);
+        const video = videoRef.current;
+
+        if (isVideo && video) {
+            const time = round(video.currentTime, 4);
+            // One point per moment: plotting again at the same frame replaces that point
+            const points = item.points
+                .filter((p) => Math.abs((p.t ?? 0) - time) >= item.step / 2)
+                .concat({ t: time, x, y })
+                .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+            onChange({ ...item, points });
+            // Some recordings (e.g. WebM) report no duration; seeking still works for them
+            const next = time + item.step;
+            video.currentTime = Number.isFinite(video.duration) ? Math.min(video.duration, next) : next;
+        } else {
+            const point: MediaPoint = { t: item.category === "animation" ? item.points.length : null, x, y };
+            onChange({ ...item, points: [...item.points, point] });
+        }
+    }
+
+    // Removes the most recently plotted point; for a video, steps back to its frame
+    function undoPoint() {
+        if (item.points.length === 0) return;
+        const video = videoRef.current;
+        if (isVideo && video) {
+            const current = video.currentTime;
+            // The point just before the current frame is the one plotted last when stepping forward
+            const before = item.points.filter((p) => (p.t ?? 0) < current - item.step / 2);
+            const last = before.length > 0 ? before[before.length - 1] : item.points[item.points.length - 1];
+            onChange({ ...item, points: item.points.filter((p) => p !== last) });
+            video.currentTime = last.t ?? 0;
+        } else {
+            onChange({ ...item, points: item.points.slice(0, -1) });
+        }
+    }
+
+    function commitStep(value: string) {
+        const step = Number(value);
+        if (Number.isFinite(step) && step > 0) onChange({ ...item, step });
+        else setStepDraft(String(round(item.step, 4)));
+    }
+
+    // Each plotted point as a sample for the graph; photos have no time
+    const graphSamples = useMemo(
+        () => item.points.map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]])),
+        [item.points]
+    );
+
+    // Dots scale with the media, so size them relative to it
+    const dotRadius = size ? Math.max(size.width, size.height) / 120 : 0;
+    const currentPoint = isVideo
+        ? item.points.find((p) => Math.abs((p.t ?? 0) - timeSec) < item.step / 2)
+        : undefined;
+
+    const overlay = size && (
+        <svg
+            className={`media-points${pointMode ? " plotting" : ""}`}
+            viewBox={`0 0 ${size.width} ${size.height}`}
+            preserveAspectRatio="xMidYMid meet"
+            onClick={handlePlot}
+        >
+            {item.points.length > 1 && (
+                <polyline
+                    className="media-points-path"
+                    points={item.points.map((p) => `${p.x},${size.height - p.y}`).join(" ")}
+                    strokeWidth={dotRadius / 2}
+                />
+            )}
+            {item.points.map((p, i) => (
+                <circle
+                    key={`${p.t}-${i}`}
+                    className={`media-point${p === currentPoint ? " current" : ""}`}
+                    cx={p.x}
+                    cy={size.height - p.y}
+                    r={p === currentPoint ? dotRadius * 1.5 : dotRadius}
+                />
+            ))}
+        </svg>
+    );
+
+    return (
+        <div className="analysis-media" style={style}>
+            <div className="analysis-media-actions">
+                {isVideo && !showGraph && !fileMissing && (
+                    <button
+                        type="button"
+                        className="analysis-media-play"
+                        onClick={togglePlay}
+                        aria-label={isPlaying ? t("modeling.pause") : t("modeling.play")}
+                    >
+                        {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt="PlayIcon20px"/>}
+                    </button>
+                )}
+                <div className="right-btns">
+                    {canPlot && !fileMissing && (
+                        <button
+                            type="button"
+                            className={`insert-points-btn${pointMode ? " active" : ""}`}
+                            aria-pressed={pointMode}
+                            onClick={togglePointMode}
+                        >
+                            {!pointMode && <img src={PlusIcon14px} alt="PlusIcon14px"/>}
+                            <p>{pointMode ? t("modeling.pointsDone") : t("modeling.insertPoints")}</p>
+                        </button>
+                    )}
+                    {canPlot && (
+                        <button
+                            type="button"
+                            className={`insert-points-btn${showGraph ? " active" : ""}`}
+                            aria-pressed={showGraph}
+                            onClick={() => {
+                                setShowGraph(!showGraph);
+                                setPointMode(false);
+                            }}
+                        >
+                            <p>{showGraph ? t("modeling.showMedia") : t("modeling.showGraph")}</p>
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="analysis-media-remove"
+                        onClick={onRemove}
+                        aria-label={t("modeling.removeMedia", { name: item.name })}
+                    >
+                        <img src={CloseIcon20px} alt="CloseIcon20px"/>
+                    </button>
+                </div>
+            </div>
+
+            {showGraph ? (
+                <div className="media-graph">
+                    <Graph
+                        samples={graphSamples}
+                        variables={pointAxes(item)}
+                        x={item.graphX}
+                        ys={item.graphYs}
+                        onChange={(graphX, graphYs) => onChange({ ...item, graphX, graphYs })}
+                        runPrompt={t("modeling.pointsGraphEmpty")}
+                    />
+                </div>
+            ) : fileMissing ? (
+                <div className="analysis-media-file">
+                    <DocumentGlyph/>
+                    <span>{t("modeling.mediaMissing", { name: item.name })}</span>
+                </div>
+            ) : isImage ? (
+                <div className="media-stage">
+                    <img
+                        className="analysis-media-content"
+                        src={item.url}
+                        alt={item.name}
+                        onLoad={(e) => setSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+                    />
+                    {overlay}
+                </div>
+            ) : isVideo ? (
+                <>
+                    <div className="media-stage">
+                        <video
+                            ref={videoRef}
+                            className="analysis-media-content"
+                            src={item.url}
+                            autoPlay={isLooping && !pointMode}
+                            loop={isLooping}
+                            muted={isLooping}
+                            playsInline
+                            onLoadedMetadata={(e) => setSize({ width: e.currentTarget.videoWidth, height: e.currentTarget.videoHeight })}
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                        />
+                        {overlay}
+                    </div>
+                    <span className="analysis-media-framecount">
+                        {t("modeling.frame")} <strong>{frame}</strong>
+                        <span className="code-footer-dot"> · </span>
+                        {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
+                    </span>
+                </>
+            ) : (
+                <div className="analysis-media-file">
+                    <DocumentGlyph/>
+                    <span>{item.name}</span>
+                </div>
+            )}
+
+            {pointMode && !showGraph && (
+                <div className="points-bar">
+                    <span>{t("modeling.pointCount", { count: item.points.length })}</span>
+                    {isVideo && (
+                        <label className="points-step">
+                            {t("modeling.pointStep")}
+                            <input
+                                type="number"
+                                min={0.001}
+                                step={0.001}
+                                value={stepDraft}
+                                onChange={(e) => setStepDraft(e.target.value)}
+                                onBlur={(e) => commitStep(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                            />
+                            s
+                        </label>
+                    )}
+                    <button type="button" onClick={undoPoint} disabled={item.points.length === 0}>
+                        {t("modeling.undoPoint")}
+                    </button>
+                    <ConfirmButton
+                        className="points-clear"
+                        label={t("modeling.clearPoints")}
+                        disabled={item.points.length === 0}
+                        onConfirm={() => onChange({ ...item, points: [] })}
+                    />
+                </div>
+            )}
+        </div>
+    );
+}

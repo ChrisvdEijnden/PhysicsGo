@@ -14,6 +14,24 @@ export interface ChartPoint {
     y: number;
 }
 
+// One row per sample: the shared x value, plus each line's value under that line's key
+// (missing where the line has no value, which leaves a gap)
+export type ChartRow = { x: number } & Record<string, number | undefined>;
+
+export interface ChartLine {
+    key: string;
+    label: string;
+    color: string;
+}
+
+// Separate dots drawn in a line's colour, e.g. measured points to compare with the line
+export interface ChartMarkers {
+    key: string;
+    label: string;
+    color: string;
+    points: ChartPoint[];
+}
+
 type Domain = [number, number];
 
 // Axes shown while there is nothing to plot yet
@@ -31,14 +49,31 @@ function extent(values: number[]): Domain {
     return min === max ? [min - 1, max + 1] : [min, max];
 }
 
-export default function LineChart({ points, xLabel, yLabel, emptyMessage }: {
-    points: ChartPoint[];
+const NO_MARKERS: ChartMarkers[] = [];
+
+export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, emptyMessage }: {
+    rows: ChartRow[];
+    // Drawn in order through the rows, one per Y variable
+    lines: ChartLine[];
+    markers?: ChartMarkers[];
     xLabel: string;
-    yLabel: string;
     emptyMessage: string;
 }) {
-    const isEmpty = points.length === 0;
-    const [xMin, xMax] = useMemo(() => extent(points.map((p) => p.x)), [points]);
+    // Every plotted (x, y) pair, used to size the axes
+    const all = useMemo((): ChartPoint[] => {
+        const pairs: ChartPoint[] = [];
+        for (const row of rows) {
+            for (const line of lines) {
+                const y = row[line.key];
+                if (y !== undefined) pairs.push({ x: row.x, y });
+            }
+        }
+        for (const m of markers) pairs.push(...m.points);
+        return pairs;
+    }, [rows, lines, markers]);
+
+    const isEmpty = all.length === 0;
+    const [xMin, xMax] = useMemo(() => extent(all.map((p) => p.x)), [all]);
     const fullSpan = xMax - xMin;
     // Narrowest allowed zoom window, as a fraction of the full range — keeps you
     // from zooming into a span with nothing visibly left to look at.
@@ -105,15 +140,15 @@ export default function LineChart({ points, xLabel, yLabel, emptyMessage }: {
         };
     }, [applyZoom, isEmpty, xMin, xMax]);
 
-    // Rescales to the points inside the zoomed-in x-range, with a floor on the
-    // span so a very flat or very narrow window doesn't collapse the axis.
+    // One shared Y axis for every line. Rescales to the points inside the zoomed-in
+    // x-range, with a floor on the span so a flat or narrow window doesn't collapse it.
     const yScale = useMemo(() => {
         if (isEmpty) return niceScale(...EMPTY_DOMAIN);
         const [lo, hi] = domain;
-        const visible = points.filter((p) => p.x >= lo && p.x <= hi).map((p) => p.y);
-        let [min, max] = extent(visible.length > 0 ? visible : points.map((p) => p.y));
+        const visible = all.filter((p) => p.x >= lo && p.x <= hi).map((p) => p.y);
+        let [min, max] = extent(visible.length > 0 ? visible : all.map((p) => p.y));
 
-        const [fullMin, fullMax] = extent(points.map((p) => p.y));
+        const [fullMin, fullMax] = extent(all.map((p) => p.y));
         const floor = (fullMax - fullMin) * 0.05;
         if (max - min < floor) {
             const mid = (max + min) / 2;
@@ -123,14 +158,16 @@ export default function LineChart({ points, xLabel, yLabel, emptyMessage }: {
 
         const padding = (max - min) * 0.1;
         return niceScale(min - padding, max + padding);
-    }, [domain, points, isEmpty]);
+    }, [domain, all, isEmpty]);
+
+    const labels = useMemo(() => new Map(lines.map((l) => [l.key, l.label])), [lines]);
 
     return (
         <div className="chart-area" ref={chartAreaRef}>
             {isEmpty && <p className="chart-empty">{emptyMessage}</p>}
             <ResponsiveContainer width="100%" height="100%">
                 <RechartsLineChart
-                    data={points}
+                    data={rows}
                     margin={{
                         top: 0,
                         right: 0,
@@ -166,7 +203,7 @@ export default function LineChart({ points, xLabel, yLabel, emptyMessage }: {
 
                     {!isEmpty && (
                         <Tooltip
-                            formatter={(value) => [formatTick(Number(value)), yLabel]}
+                            formatter={(value, key) => [formatTick(Number(value)), labels.get(String(key)) ?? String(key)]}
                             labelFormatter={(value) => `${xLabel} = ${formatTick(Number(value))}`}
                             contentStyle={{
                                 fontSize: "13px",
@@ -182,14 +219,33 @@ export default function LineChart({ points, xLabel, yLabel, emptyMessage }: {
                         />
                     )}
 
-                    <Line
-                        type="linear"
-                        dataKey="y"
-                        stroke="#0D9488"
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                    />
+                    {lines.map((line) => (
+                        <Line
+                            key={line.key}
+                            type="linear"
+                            dataKey={line.key}
+                            name={line.key}
+                            stroke={line.color}
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                        />
+                    ))}
+                    {markers.map((m) => (
+                        <Line
+                            key={`markers-${m.key}`}
+                            data={m.points}
+                            type="linear"
+                            dataKey="y"
+                            name={m.label}
+                            stroke="none"
+                            dot={{ r: 3, fill: m.color, stroke: "#FFFFFF", strokeWidth: 1 }}
+                            activeDot={false}
+                            tooltipType="none"
+                            legendType="none"
+                            isAnimationActive={false}
+                        />
+                    ))}
                 </RechartsLineChart>
             </ResponsiveContainer>
         </div>
