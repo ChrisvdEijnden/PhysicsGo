@@ -7,19 +7,19 @@
     "dev": "vite --configLoader native",
     "build": "tsc && vite build --configLoader native",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "dev:all": "npx --yes concurrently -n api,web \"npm --prefix server run dev\" \"npm run dev\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-opener": "^2",
-    "monaco-editor": "0.55.1",
+    "monaco-editor": "^0.57.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1"
   },
   "devDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.2.7",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
