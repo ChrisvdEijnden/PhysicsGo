@@ -7,6 +7,7 @@ import { FIT_KINDS, fitCurve, fitFormula } from "../lib/fit";
 import type { Fit } from "../lib/fit";
 import { column } from "../lib/samples";
 import type { SampleTable } from "../lib/samples";
+import { withUnit } from "../lib/units";
 import { useTranslation } from "../lib/useTranslations";
 
 // Line colours, readable on light and dark backgrounds
@@ -40,6 +41,7 @@ interface FitTarget {
     y: string;
     measured: boolean;
     color: string;
+    axis: ChartLine["axis"];
     points: ChartPoint[];
 }
 
@@ -62,6 +64,7 @@ export default function Graph({
     onFitChange,
     markersFor,
     runPrompt,
+    units,
 }: {
     samples: SampleTable | null;
     variables: string[];
@@ -77,12 +80,16 @@ export default function Graph({
     markersFor?: (x: string, y: string) => ChartPoint[];
     // Shown when both axes are chosen but there's nothing to plot yet
     runPrompt: string;
+    // The quantities' units, for axis titles, the legend and the table (see lib/units)
+    units?: Map<string, string>;
 }) {
     const { t } = useTranslation();
 
     const lines = useMemo(
-        (): ChartLine[] => ys.map((y, i) => ({ key: `s${i}`, label: y.name, color: lineColor(y.color) })),
-        [ys]
+        (): ChartLine[] => ys.map((y, i) => ({
+            key: `s${i}`, label: y.name, color: lineColor(y.color), unit: units?.get(y.name), axis: y.axis ?? "left",
+        })),
+        [ys, units]
     );
 
     const { rows, stride } = useMemo(() => {
@@ -105,7 +112,7 @@ export default function Graph({
     const markers = useMemo((): ChartMarkers[] => {
         if (!markersFor || !x) return [];
         return lines
-            .map((line) => ({ key: line.key, label: line.label, color: line.color, points: markersFor(x, line.label) }))
+            .map((line) => ({ key: line.key, label: line.label, color: line.color, unit: line.unit, axis: line.axis, points: markersFor(x, line.label) }))
             .filter((m) => m.points.length > 0);
     }, [markersFor, x, lines]);
 
@@ -113,13 +120,13 @@ export default function Graph({
         const list: FitTarget[] = [];
         lines.forEach((line) => {
             const measured = markers.find((m) => m.key === line.key);
-            if (measured) list.push({ y: line.label, measured: true, color: line.color, points: measured.points });
+            if (measured) list.push({ y: line.label, measured: true, color: line.color, axis: line.axis, points: measured.points });
             const points: ChartPoint[] = [];
             for (const row of rows) {
                 const y = row[line.key];
                 if (y !== undefined) points.push({ x: row.x, y });
             }
-            if (points.length > 0) list.push({ y: line.label, measured: samplesMeasured, color: line.color, points });
+            if (points.length > 0) list.push({ y: line.label, measured: samplesMeasured, color: line.color, axis: line.axis, points });
         });
         return list;
     }, [lines, markers, rows, samplesMeasured]);
@@ -137,7 +144,7 @@ export default function Graph({
             const py = fitted.at(px);
             if (Number.isFinite(py)) points.push({ x: px, y: py });
         }
-        return [{ key: "fit", color: target.color, points }];
+        return [{ key: "fit", color: target.color, axis: target.axis, points }];
     }, [fitted, target]);
 
     // Domain and range of everything drawn, for the footer
@@ -182,9 +189,10 @@ export default function Graph({
     return (
         <>
             {view === "table" ? (
-                <ValueTable x={x} lines={lines} rows={rows} markers={markers} stride={stride} emptyMessage={emptyMessage}/>
+                <ValueTable x={withUnit(x, units?.get(x))} lines={lines} rows={rows} markers={markers} stride={stride} emptyMessage={emptyMessage}/>
             ) : (
-                <LineChart rows={rows} lines={lines} markers={markers} curves={curves} xLabel={x} emptyMessage={emptyMessage}/>
+                <LineChart rows={rows} lines={lines} markers={markers} curves={curves} xLabel={x} xUnit={units?.get(x)}
+                           emptyMessage={emptyMessage}/>
             )}
             <div className="analysis-footer chart-footer">
                 <div className="chart-footer-row">
@@ -216,6 +224,19 @@ export default function Graph({
                             >
                                 {optionsWith(y.name).map((name) => <option key={name} value={name}>{name}</option>)}
                             </select>
+                            {/* A second axis on the right, once there are two lines to tell apart */}
+                            {ys.length > 1 && (
+                                <button
+                                    type="button"
+                                    className={`y-line-axis${y.axis === "right" ? " right" : ""}`}
+                                    aria-pressed={y.axis === "right"}
+                                    aria-label={t("modeling.rightAxis", { name: y.name })}
+                                    title={t("modeling.rightAxis", { name: y.name })}
+                                    onClick={() => onChange(x, ys.map((old, j) => (j === i ? { ...old, axis: old.axis === "right" ? undefined : "right" } : old)))}
+                                >
+                                    {y.axis === "right" ? "R" : "L"}
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className="y-line-remove"
@@ -301,7 +322,7 @@ function ValueTable({ x, lines, rows, markers, stride, emptyMessage }: {
                 {names.map((line) => (
                     <th key={line.key} scope="col">
                         <span className="y-line-swatch" style={{ backgroundColor: line.color }} aria-hidden="true"/>
-                        {line.label}
+                        {withUnit(line.label, line.unit)}
                     </th>
                 ))}
             </tr>

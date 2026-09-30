@@ -58,6 +58,17 @@ export function pointSeries(item: SavedMedia) {
     ];
 }
 
+// Units of those variables: the calibration's length unit, or pixels
+export function pointUnits(item: SavedMedia): [string, string][] {
+    if (!hasTime(item)) return [];
+    const unit = item.calibration?.unit ?? "px";
+    return [
+        [`x_${item.varName}`, unit],
+        [`y_${item.varName}`, unit],
+        ...(item.calibration ? [[`x_${item.varName}_px`, "px"], [`y_${item.varName}_px`, "px"]] as [string, string][] : []),
+    ];
+}
+
 type VideoWithFrameCallback = HTMLVideoElement & {
     requestVideoFrameCallback?: (
         callback: (now: number, metadata: { presentedFrames?: number }) => void
@@ -438,6 +449,11 @@ export default function MediaTile({
         () => tableFromRows(realPoints(item).map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]]))),
         [item]
     );
+    // An animation's "time" is its frame number
+    const graphUnits = useMemo(() => {
+        const length = item.calibration?.unit ?? "px";
+        return new Map([...(item.category === "animation" ? [] : [["t", "s"]]), ["x", length], ["y", length]] as [string, string][]);
+    }, [item.calibration, item.category]);
 
     // Dots scale with the media, so size them relative to it
     const dotRadius = size ? Math.max(size.width, size.height) / 120 : 0;
@@ -602,6 +618,7 @@ export default function MediaTile({
                         onChange={(graphX, graphYs) => onChange({ ...item, graphX, graphYs })}
                         onFitChange={(graphFit) => onChange({ ...item, graphFit })}
                         runPrompt={t("modeling.pointsGraphEmpty")}
+                        units={graphUnits}
                     />
                 </div>
             ) : fileMissing ? (

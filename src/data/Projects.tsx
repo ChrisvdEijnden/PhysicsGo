@@ -162,6 +162,8 @@ export interface Calibration {
 export interface YLine {
     name: string;
     color: number;
+    // Read against a second Y axis on the right, e.g. for a quantity of another size or unit
+    axis?: "right";
 }
 
 // A curve fitted through one Y variable's values: the model's, or the points measured for it

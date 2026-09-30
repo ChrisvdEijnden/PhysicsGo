@@ -1,6 +1,7 @@
 // A chart saved as an image for a lab report: a copy of its SVG with the styles the stylesheets give it
 // written onto the elements, on a white background with the light theme's colours (also when the app
-// is dark), a legend of the Y lines above and the X variable below. PNG is drawn at twice the size.
+// is dark), and a legend of the Y lines above. The axis titles are part of the chart. PNG is drawn at
+// twice the size.
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const FONT = "Figtree, Arial, Helvetica, sans-serif";
@@ -8,12 +9,10 @@ const FONT = "Figtree, Arial, Helvetica, sans-serif";
 const COPIED = ["font-size", "font-weight", "text-anchor", "dominant-baseline", "stroke-width", "stroke-dasharray", "opacity", "visibility", "display"];
 const LIGHT = { background: "#FFFFFF", text: "#0F172A", secondary: "#475569", grid: "#E2E8F0", axis: "#64748B" };
 const LEGEND_HEIGHT = 28;
-const X_LABEL_HEIGHT = 24;
 const PADDING = 12;
 
 export interface ChartLegend {
     lines: { name: string; color: string }[];
-    x: string;
 }
 
 export interface ChartImage {
@@ -38,12 +37,13 @@ export function chartImage(chart: SVGSVGElement, legend: ChartLegend): ChartImag
     recolor(".recharts-cartesian-grid line", "stroke", LIGHT.grid);
     recolor(".recharts-cartesian-axis-line, .recharts-cartesian-axis-tick-line", "stroke", LIGHT.axis);
     recolor(".recharts-cartesian-axis-tick-value, .recharts-cartesian-axis-tick-value tspan", "fill", LIGHT.secondary);
+    recolor(".chart-axis-title, .chart-axis-title tspan", "fill", LIGHT.text);
     recolor(".recharts-dot", "stroke", LIGHT.background);
     // Hover highlights and tooltips aren't part of the chart
     copy.querySelectorAll(".recharts-tooltip-cursor, .recharts-active-dot").forEach((el) => el.remove());
 
     const width = Math.round(box.width) + 2 * PADDING;
-    const height = Math.round(box.height) + LEGEND_HEIGHT + X_LABEL_HEIGHT + 2 * PADDING;
+    const height = Math.round(box.height) + LEGEND_HEIGHT + 2 * PADDING;
     const image = document.createElementNS(SVG_NS, "svg");
     image.setAttribute("xmlns", SVG_NS);
     image.setAttribute("width", String(width));
@@ -76,11 +76,6 @@ export function chartImage(chart: SVGSVGElement, legend: ChartLegend): ChartImag
     // Tick labels at the very edge (the last X value) may reach into the padding
     copy.setAttribute("overflow", "visible");
     image.appendChild(copy);
-
-    add("text", {
-        x: PADDING + box.width / 2, y: height - PADDING - 4, fill: LIGHT.text, "font-size": 13,
-        "font-family": FONT, "text-anchor": "middle",
-    }, legend.x);
 
     return { svg: new XMLSerializer().serializeToString(image), width, height };
 }

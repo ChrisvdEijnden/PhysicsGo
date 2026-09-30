@@ -126,6 +126,8 @@ export const HELP: Record<Language, HelpText> = {
                     {
                         list: [
                             "Choose the quantity on the X axis and one or more for the Y axis. The model's values are lines, measured points are dots.",
+                            "Write a quantity's unit in a comment after it, like `h = 10 // m` or `v = 0 // m/s, upwards`: the axes, legend and table then say h (m). `t` gets the unit of `dt`.",
+                            "With two or more lines, the L next to a line moves it to a second axis on the right (R), for quantities of a different size or unit.",
                             "Show as table shows the same values as numbers.",
                             "Fit a curve through the model's values or the measured points: proportional, linear, quadratic, exponential, power or sine. The graph shows the formula found, and R²: the closer to 1, the better the curve fits.",
                             "Export saves the run as a spreadsheet (CSV) or the graph as an image.",
@@ -241,6 +243,8 @@ export const HELP: Record<Language, HelpText> = {
                     {
                         list: [
                             "Kies de grootheid op de X-as en één of meer voor de Y-as. De waarden van het model zijn lijnen, gemeten punten zijn stippen.",
+                            "Schrijf de eenheid van een grootheid in commentaar erachter, zoals `h = 10 // m` of `v = 0 // m/s, omhoog`: de assen, legenda en tabel tonen dan h (m). `t` krijgt de eenheid van `dt`.",
+                            "Met twee of meer lijnen zet de L naast een lijn die lijn op een tweede as rechts (R), voor grootheden van een andere grootte of eenheid.",
                             "Als tabel tonen laat dezelfde waarden als getallen zien.",
                             "Leg een functie door de waarden van het model of de gemeten punten: recht evenredig, lineair, kwadratisch, exponentieel, macht of sinus. De grafiek toont de gevonden formule, en R²: hoe dichter bij 1, hoe beter de functie past.",
                             "Exporteren slaat de uitvoer op als spreadsheet (CSV) of de grafiek als afbeelding.",

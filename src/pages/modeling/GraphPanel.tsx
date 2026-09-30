@@ -12,15 +12,17 @@ import type { GraphConfig } from "../../data/Projects.tsx";
 import { chartImage, chartPng } from "../../lib/chartImage";
 import { downloadFile, fileNameFor } from "../../lib/download";
 import type { SampleTable } from "../../lib/samples";
+import { withUnit } from "../../lib/units";
 import { useTranslation } from "../../lib/useTranslations";
 
 // One graph in the right-hand column: the chart (or its table), with export, table/chart and close
-export default function GraphPanel({ graph, index, style, history, variables, markersFor, fileBase, onChange, onRemove, onExportRun }: {
+export default function GraphPanel({ graph, index, style, history, variables, units, markersFor, fileBase, onChange, onRemove, onExportRun }: {
     graph: GraphConfig;
     index: number;
     style: CSSProperties;
     history: SampleTable | null;
     variables: string[];
+    units: Map<string, string>;
     markersFor: (x: string, y: string) => ChartPoint[];
     // Start of exported files' names, e.g. the assignment's title
     fileBase: string;
@@ -37,7 +39,7 @@ export default function GraphPanel({ graph, index, style, history, variables, ma
     async function exportImage(format: "png" | "svg") {
         const chart = ref.current?.querySelector("svg.recharts-surface");
         if (!(chart instanceof SVGSVGElement)) return;
-        const image = chartImage(chart, { lines: graph.ys.map((y) => ({ name: y.name, color: lineColor(y.color) })), x: graph.x });
+        const image = chartImage(chart, { lines: graph.ys.map((y) => ({ name: withUnit(y.name, units.get(y.name)), color: lineColor(y.color) })) });
         const name = fileNameFor(`${fileBase} graph ${index + 1}`, format);
         if (format === "svg") downloadFile(name, new Blob([image.svg], { type: "image/svg+xml" }));
         else downloadFile(name, await chartPng(image));
@@ -77,6 +79,7 @@ export default function GraphPanel({ graph, index, style, history, variables, ma
                     onFitChange={(fit) => onChange({ fit })}
                     markersFor={markersFor}
                     runPrompt={t("modeling.chartRunPrompt")}
+                    units={units}
                 />
             </ErrorBoundary>
         </div>

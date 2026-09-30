@@ -11,7 +11,7 @@ import ConfirmButton from "../../components/ConfirmButton";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { formatMark } from "../../components/Feedback";
 import HandInDialog from "../../components/HandInDialog";
-import MediaTile from "../../components/MediaTile.tsx";
+import MediaTile, { pointUnits } from "../../components/MediaTile.tsx";
 import PublishDialog from "../../components/PublishDialog";
 import type { StarterChoice } from "../../components/PublishDialog";
 import TopBar from "../../components/TopBar";
@@ -29,6 +29,7 @@ import { dueDate, usePublished } from "../../lib/usePublished";
 import { useTranslation } from "../../lib/useTranslations";
 import { useWorkSync } from "../../lib/workSync";
 import { translateCode } from "../../lib/modelLanguage";
+import { codeUnits } from "../../lib/units";
 import type { OpenedWork, Submission } from "../../lib/workSync";
 import CodePanel from "./CodePanel";
 import ExplanationPanel from "./ExplanationPanel";
@@ -42,7 +43,7 @@ import { useModelRun } from "./useModelRun";
 import { storedSplit, storeSplit, useResizableSplit } from "./useResizableSplit";
 
 // Start values run once; model rules run every step. The comments are in the interface's language.
-const defaultStart = (comment: string, seconds: string) => `// ${comment}\nt = 0\ndt = 0.01 // ${seconds}\n`;
+const defaultStart = (comment: string) => `// ${comment}\nt = 0        // s\ndt = 0.01    // s\n`;
 const DEFAULT_MODEL = "stop als t >= 10\n";
 
 const MIN_PANEL_WIDTH_PERCENT = 15;
@@ -132,7 +133,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     // New work starts from the project's starter code. Code is shown with the keywords of the
     // interface's language (both run), and follows it when the language changes.
     const [start, setStart] = useState(() => translateCode(
-        savedWork?.start ?? project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds")),
+        savedWork?.start ?? project?.start ?? defaultStart(t("modeling.defaultStartComment")),
         language,
     ));
     const [model, setModel] = useState(() => translateCode(savedWork?.model ?? project?.model ?? DEFAULT_MODEL, language));
@@ -154,7 +155,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
         onChange: (items) => saveWork({ media: items }),
     });
     // The code new work starts with, in the interface's language
-    const starterStart = translateCode(project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds")), language);
+    const starterStart = translateCode(project?.start ?? defaultStart(t("modeling.defaultStartComment")), language);
     const starterModel = translateCode(project?.model ?? DEFAULT_MODEL, language);
     const codeIsStarter = start.trim() === starterStart.trim() && model.trim() === starterModel.trim();
     function resetCode() {
@@ -266,6 +267,12 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
         }
         return names;
     }, [start, model, run.history, media.measuredData]);
+
+    // Units for axis titles, legends and tables: from comments in the code (h = 10 // m) and measured points
+    const units = useMemo(() => new Map([
+        ...media.mediaItems.flatMap(pointUnits),
+        ...codeUnits(`${start}\n${model}`),
+    ]), [start, model, media.mediaItems]);
 
     // ---------- analysis column: graphs, then media ----------
     const rows: AnalysisRow[] = useMemo(() => [
@@ -497,6 +504,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                                             style={style}
                                             history={run.history}
                                             variables={variables}
+                                            units={units}
                                             markersFor={media.markersFor}
                                             fileBase={project?.title ?? "model"}
                                             onChange={(changes) => setGraphList(graphs.map((g) => (g.id === row.graph.id ? { ...g, ...changes } : g)))}
