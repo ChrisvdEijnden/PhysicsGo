@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useState } from "react";
 
 import "../styles/global.css";
@@ -18,6 +18,8 @@ function Login() {
     const { t } = useTranslation();
     const { checkCode } = useAuth();
     const [error, setError] = useState<string | null>(null);
+    // A join link (#/join?code=…) fills in the code and checks it right away
+    const [params] = useSearchParams();
 
     const handleComplete = async (code: string) => {
         const res = await checkCode(code);
@@ -25,7 +27,8 @@ function Login() {
             setError(res.error);
             return false;
         }
-        navigate("/register", { state: { code, info: res.info }, replace: true });
+        // The code goes in the address too, so reloading the registration page keeps it
+        navigate(`/register?code=${code}`, { state: { code, info: res.info }, replace: true });
         return true;
     };
 
@@ -44,10 +47,11 @@ function Login() {
                         </div>
                         <h3>{t("login.invitationPrompt")}</h3>
                     </div>
-                    <CodeInput onComplete={handleComplete} onEdit={() => setError(null)} />
+                    <CodeInput key={params.get("code") ?? ""} onComplete={handleComplete} onEdit={() => setError(null)}
+                               initial={params.get("code") ?? ""} errorId="code-error"/>
                     <div className="auth-actions">
                         {error && (
-                            <p className="auth-error" role="alert">
+                            <p className="auth-error" role="alert" id="code-error">
                                 {t(authErrorKey(error))}
                             </p>
                         )}

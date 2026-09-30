@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./settings.css";
@@ -11,6 +11,7 @@ import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
+import { downloadFile } from "../lib/download";
 import type { TranslationKey } from "../lib/Translations";
 import { useCallback, useEffect, useState } from "react";
 
@@ -305,8 +306,41 @@ function Settings() {
                         )}
                     </div>
                 )}
+                {user && <YourData/>}
                 {user && <DeleteAccount isTeacher={user.role === "teacher"}/>}
             </div>
+        </div>
+    );
+}
+
+// Everything stored about the user as a file, and what's stored and why
+function YourData() {
+    const { t } = useTranslation();
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    async function download() {
+        setBusy(true);
+        setError(null);
+        const { ok, data } = await api<object>("/auth/me/export");
+        setBusy(false);
+        if (!ok) return setError(errorOf(data));
+        const file = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        downloadFile(`physicsgo-data-${new Date().toISOString().slice(0, 10)}.json`, file);
+    }
+
+    return (
+        <div className="password your-data">
+            <div className="setting-row">
+                <div className="setting-row-text">
+                    <h3>{t("settings.dataTitle")}</h3>
+                    <p>{t("settings.dataDescription")} <Link to="/privacy">{t("register.privacyLink")}</Link></p>
+                </div>
+                <button type="button" className="logout-button sign-in" disabled={busy} onClick={download}>
+                    {t("settings.downloadData")}
+                </button>
+            </div>
+            {error && <p className="session-error" role="alert">{t(authErrorKey(error))}</p>}
         </div>
     );
 }

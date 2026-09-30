@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./login.css";
@@ -23,6 +23,8 @@ function JoinClass() {
     const [error, setError] = useState<string | null>(null);
     const [joined, setJoined] = useState<ClassRef | null>(null);
     const [attempt, setAttempt] = useState(0);
+    // A join link opened while signed in (#/join?code=… comes here)
+    const [params] = useSearchParams();
 
     const handleComplete = async (code: string) => {
         const res = await joinClass(code);
@@ -56,14 +58,15 @@ function JoinClass() {
                     </div>
                     {joined
                         ? <p className="join-success" role="status">{t("joinClass.success", { name: joined.name })}</p>
-                        : <CodeInput key={attempt} onComplete={handleComplete} onEdit={() => setError(null)} />}
+                        : <CodeInput key={`${attempt}-${params.get("code") ?? ""}`} onComplete={handleComplete} onEdit={() => setError(null)}
+                                     initial={attempt === 0 ? params.get("code") ?? "" : ""} errorId="code-error"/>}
                     {user && user.classes.length > 0 && (
                         <div className="class-chip-list" aria-label={t("dashboard.yourClasses")}>
                             {user.classes.map((c) => <span key={c.id} className="class-chip">{c.name}</span>)}
                         </div>
                     )}
                     <div className="auth-actions">
-                        {error && <p className="auth-error" role="alert">{t(authErrorKey(error))}</p>}
+                        {error && <p className="auth-error" role="alert" id="code-error">{t(authErrorKey(error))}</p>}
                         {joined && (
                             <button className="auth-button" type="button" onClick={() => navigate("/dashboard")}>
                                 {t("joinClass.backToDashboard")}

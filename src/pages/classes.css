@@ -688,3 +688,103 @@
         width: 100%;
     }
 }
+
+/* Join link and QR code under the class code */
+.join-share {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.join-share .qr-code {
+    flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+}
+
+.join-share-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.join-share-text .code-row {
+    width: 100%;
+}
+
+.join-link {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+/* "Show on screen": for the projector */
+.join-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 24px;
+    overflow: auto;
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    color: var(--color-text-primary);
+}
+
+.join-screen h2 {
+    margin: 0;
+    font-size: clamp(24px, 4vw, 44px);
+    text-align: center;
+}
+
+.join-screen-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+}
+
+.join-screen .qr-code {
+    width: min(50vh, 80vw);
+    height: min(50vh, 80vw);
+}
+
+.join-screen-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-size: clamp(16px, 2vw, 24px);
+    color: var(--color-text-secondary);
+}
+
+.join-screen-steps p {
+    margin: 0;
+}
+
+.join-screen-link {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.join-screen-code {
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+    font-size: clamp(32px, 6vw, 72px);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-text-primary);
+}
+
+@media (max-width: 560px) {
+    .join-share {
+        flex-direction: column;
+    }
+}

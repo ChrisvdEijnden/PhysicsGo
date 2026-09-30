@@ -10,5 +10,5 @@ if (!Number.isInteger(uses) || uses < 1) {
 }
 
 const code = generateCode();
-db.prepare("INSERT INTO teacher_invites (code, uses_left) VALUES (?, ?)").run(code, uses);
+db.prepare("INSERT INTO teacher_invites (code, uses_left, created_at) VALUES (?, ?, ?)").run(code, uses, Date.now());
 console.log(`${formatCode(code)}  (teacher invitation, ${uses} use${uses === 1 ? "" : "s"})`);

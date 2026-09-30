@@ -36,6 +36,8 @@ const MAP: Record<string, TranslationKey> = {
     student_not_found: "classes.errNotFound",
     not_found: "classes.errNotFound",
     forbidden: "classes.errForbidden",
+    account_disabled: "auth.errAccountDisabled",
+    cannot_change_self: "admin.errSelf",
 };
 
 export const authErrorKey = (error: string): TranslationKey => MAP[error] ?? "auth.errGeneric";

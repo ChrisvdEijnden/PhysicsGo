@@ -1,0 +1,111 @@
+/* Administration: invitations on the left, accounts on the right */
+.admin-left {
+    width: 360px;
+    flex-shrink: 0;
+}
+
+.admin-card {
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+.admin-invite-form {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.admin-invite-form .publish-field {
+    flex: 1;
+}
+
+.admin-new-code {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px;
+    border-radius: 10px;
+    background-color: var(--color-brand-subtle-bg);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+}
+
+.admin-new-code p {
+    margin: 0;
+}
+
+.admin-code {
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+    letter-spacing: 0.04em;
+}
+
+.admin-accounts {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}
+
+.admin-search {
+    width: 100%;
+    max-width: 420px;
+    flex: none;
+}
+
+.admin-account {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px 0 12px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.admin-account.disabled .member-name {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+}
+
+.admin-role {
+    flex: none;
+    width: auto;
+}
+
+.admin-flag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+
+.admin-flag input {
+    accent-color: var(--color-brand);
+}
+
+.admin-account .class-error, .admin-card .class-error {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    text-align: left;
+}
+
+.admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+@media (max-width: 900px) {
+    .admin-left {
+        width: 100%;
+    }
+}
+
+@media (max-width: 560px) {
+    .admin-account .member-row {
+        flex-wrap: wrap;
+    }
+}

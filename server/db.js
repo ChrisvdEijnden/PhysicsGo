@@ -213,6 +213,19 @@ const MIGRATIONS = [
     ALTER TABLE project_classes ADD COLUMN opens_at INTEGER;
     ALTER TABLE project_classes ADD COLUMN due_at INTEGER;
     `,
+    // 11: administrators (who manage teacher invitations and accounts in the app), deactivated
+    // accounts, when each account was last used (inactive ones are deleted after a while, see
+    // index.js), and who made each teacher invitation and until when it works
+    `
+    ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN disabled_at INTEGER;
+    ALTER TABLE users ADD COLUMN last_active_at INTEGER;
+    -- Counted from this upgrade, so no existing account is deleted as inactive right away
+    UPDATE users SET last_active_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000;
+    ALTER TABLE teacher_invites ADD COLUMN created_at INTEGER;
+    ALTER TABLE teacher_invites ADD COLUMN created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    ALTER TABLE teacher_invites ADD COLUMN expires_at INTEGER;
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

@@ -1,107 +1,104 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+
+import { useTranslation } from "../lib/useTranslations";
 
 export const CODE_LENGTH = 12;
-const DASH_AFTER = [3, 7];
-const VALID_CHAR = /[A-Z0-9]/;
+// Codes never contain these (they're easily confused when read from a projector)
+const AMBIGUOUS = /[01OI]/g;
+
+// Letters and digits only, upper case
+const clean = (text: string) => text.toUpperCase().replace(/[^A-Z0-9]/g, "");
+// "ABCDEFGHJKLM" → "ABCD-EFGH-JKLM"
+export const formatCode = (raw: string) => raw.match(/.{1,4}/g)?.join("-") ?? "";
+// Where the caret goes in the formatted text after `count` characters
+const caretAt = (count: number) => count + (count > 4 ? 1 : 0) + (count > 8 ? 1 : 0);
 
 interface CodeInputProps {
-    // Called once all slots are filled; resolve false to clear the slots for another try
+    // Called once the code is complete; resolve false when it isn't accepted (it stays, marked wrong)
     onComplete: (code: string) => Promise<boolean>;
     onEdit?: () => void;
     disabled?: boolean;
+    // A code from a join link, checked right away
+    initial?: string;
+    // Id of the error message, read out with the field
+    errorId?: string;
 }
 
-function CodeInput({ onComplete, onEdit, disabled }: CodeInputProps) {
-    const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+// One field for a 12-character class code or teacher invitation, grouped as XXXX-XXXX-XXXX while
+// typing. Pasting or typing with or without dashes works; O, 0, I and 1 are refused with a hint.
+function CodeInput({ onComplete, onEdit, disabled, initial = "", errorId }: CodeInputProps) {
+    const { t } = useTranslation();
+    const [raw, setRaw] = useState(() => clean(initial).replace(AMBIGUOUS, "").slice(0, CODE_LENGTH));
+    const [invalid, setInvalid] = useState(false);
+    const [ambiguous, setAmbiguous] = useState(false);
+    const [checking, setChecking] = useState(false);
+    const inputRef = useRef<HTMLInputElement | null>(null);
+    const caret = useRef<number | null>(null);
     const onCompleteRef = useRef(onComplete);
     onCompleteRef.current = onComplete;
 
-    const isComplete = code.every((c) => c !== "");
+    // Keep the caret where the user was typing, even though dashes come and go
+    useLayoutEffect(() => {
+        if (caret.current === null || !inputRef.current) return;
+        inputRef.current.setSelectionRange(caret.current, caret.current);
+        caret.current = null;
+    });
 
     useEffect(() => {
-        if (!isComplete) return;
-
-        // Ignore the response if the code changed or the page was left while waiting
+        if (raw.length !== CODE_LENGTH) return;
+        // Ignore the answer if the code changed or the page was left while waiting
         let cancelled = false;
-        onCompleteRef.current(code.join("")).then((accepted) => {
-            if (cancelled || accepted) return;
-            setCode(Array(CODE_LENGTH).fill(""));
-            inputRefs.current[0]?.focus();
+        setChecking(true);
+        onCompleteRef.current(raw).then((accepted) => {
+            if (cancelled) return;
+            setChecking(false);
+            if (accepted) return;
+            // Keep the code so one wrong character can be fixed; selected, so typing replaces it all
+            setInvalid(true);
+            inputRef.current?.focus();
+            inputRef.current?.select();
         });
-
         return () => {
             cancelled = true;
         };
-    }, [code, isComplete]);
+    }, [raw]);
 
-    const fillFrom = (index: number, text: string) => {
-        const chars = text.toUpperCase().split("").filter((c) => VALID_CHAR.test(c));
-        if (chars.length === 0) return;
+    function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+        const typed = e.target.value;
+        const before = clean(typed.slice(0, e.target.selectionStart ?? typed.length));
+        const next = clean(typed).replace(AMBIGUOUS, "").slice(0, CODE_LENGTH);
+        setAmbiguous(/[01OI]/.test(clean(typed)));
+        caret.current = caretAt(Math.min(before.replace(AMBIGUOUS, "").length, next.length));
+        if (next === raw) return;
+        setInvalid(false);
         onEdit?.();
-        setCode((prev) => {
-            const next = [...prev];
-            chars.slice(0, CODE_LENGTH - index).forEach((c, i) => (next[index + i] = c));
-            return next;
-        });
-        inputRefs.current[Math.min(index + chars.length, CODE_LENGTH - 1)]?.focus();
-    };
-
-    const handleChange = (index: number, value: string) => {
-        // Typing into a filled slot appends to its character; keep only what was added
-        const prev = code[index];
-        const added = value.startsWith(prev) ? value.slice(prev.length) : value;
-        // More than one new character comes from autofill or dictation: spread it like a paste
-        if (added.length > 1) return fillFrom(index, added);
-
-        const char = added.toUpperCase();
-        if (char && !VALID_CHAR.test(char)) return;
-        onEdit?.();
-        setCode((prev) => {
-            const next = [...prev];
-            next[index] = char;
-            return next;
-        });
-        if (char && index < CODE_LENGTH - 1) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === "Backspace" && !code[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
-        }
-    };
-
-    // Codes are usually shared as text ("ABCD-EFGH-JKLM"), so pasting fills every slot
-    const handlePaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        fillFrom(index, e.clipboardData.getData("text"));
-    };
+        setRaw(next);
+    }
 
     return (
-        <div className="access-code">
-            {code.map((char, index) => (
-                <div key={index} style={{ display: "contents" }}>
-                    <div className="char-slot">
-                        <input
-                            type="text"
-                            id={`char-${index}`}
-                            value={char}
-                            disabled={disabled}
-                            autoComplete="off"
-                            autoCapitalize="characters"
-                            spellCheck={false}
-                            aria-label={`${index + 1} / ${CODE_LENGTH}`}
-                            ref={(el) => { inputRefs.current[index] = el; }}
-                            onChange={(e) => handleChange(index, e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(index, e)}
-                            onPaste={(e) => handlePaste(index, e)}
-                        />
-                    </div>
-                    {DASH_AFTER.includes(index) && <div className="dash"></div>}
-                </div>
-            ))}
+        <div className="code-input">
+            <input
+                ref={inputRef}
+                type="text"
+                className={`code-field${invalid ? " invalid" : ""}`}
+                value={formatCode(raw)}
+                disabled={disabled}
+                autoFocus={!initial}
+                autoComplete="off"
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="text"
+                placeholder="XXXX-XXXX-XXXX"
+                aria-label={t("code.label")}
+                aria-invalid={invalid}
+                aria-describedby={[invalid && errorId, "code-hint"].filter(Boolean).join(" ")}
+                aria-busy={checking}
+                onChange={handleChange}
+            />
+            <p id="code-hint" className={`code-hint${ambiguous ? " warn" : ""}`} aria-live="polite">
+                {ambiguous ? t("code.ambiguous") : t("code.hint")}
+            </p>
         </div>
     );
 }

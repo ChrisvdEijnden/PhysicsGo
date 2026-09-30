@@ -9,7 +9,8 @@ import { classesOf, classesRouter, lookupCode, purgeArchivedClasses } from "./cl
 import { projectsRouter } from "./projects.js";
 import { findReset, purgeExpiredResets } from "./resets.js";
 import { mediaRouter, workRouter } from "./work.js";
-import { classesOnlyTaughtBy, deleteAccount } from "./accounts.js";
+import { classesOnlyTaughtBy, deleteAccount, deleteInactiveAccounts, exportAccount } from "./accounts.js";
+import { adminRouter } from "./admin.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -19,6 +20,8 @@ const IDLE_HOURS = Number(process.env.SESSION_IDLE_HOURS);
 const SESSION_IDLE_MS = (IDLE_HOURS > 0 ? IDLE_HOURS : 8) * 60 * 60 * 1000;
 // A session's last use is only rewritten when it's this old, so requests don't each cause a write
 const TOUCH_MS = 5 * 60 * 1000;
+// Accounts nobody has signed in to for this long are deleted (ACCOUNT_RETENTION_DAYS; 0 keeps them)
+const RETENTION_DAYS = Number(process.env.ACCOUNT_RETENTION_DAYS ?? 730);
 const COOKIE = "physicsgo_session";
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
@@ -41,7 +44,9 @@ const DUMMY_HASH = await argon.hash("dummy-password-for-timing");
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const str = (v) => (typeof v === "string" ? v : "");
-const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, role: u.role, classes: classesOf(u) });
+const publicUser = (u) => ({
+    id: u.id, name: u.name, email: u.email, role: u.role, isAdmin: Boolean(u.is_admin), classes: classesOf(u),
+});
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // Only failed attempts count: a school's devices usually share one IP, and a class signing in
@@ -79,6 +84,7 @@ function startSession(req, res, userId) {
         INSERT INTO sessions (token_hash, user_id, created_at, last_seen_at, expires_at, user_agent)
         VALUES (?, ?, ?, ?, ?, ?)
     `).run(sha256(token), userId, now, now, now + SESSION_MS, str(req.get("user-agent")).slice(0, 300));
+    db.prepare("UPDATE users SET last_active_at = ? WHERE id = ?").run(now, userId);
     res.cookie(COOKIE, token, { ...cookieOptions, maxAge: SESSION_MS });
 }
 
@@ -90,12 +96,15 @@ function currentSession(req) {
     const row = db.prepare(`
         SELECT u.*, s.token_hash AS session_hash, s.last_seen_at AS session_seen
         FROM sessions s JOIN users u ON u.id = s.user_id
-        WHERE s.token_hash = ? AND s.expires_at > ? AND s.last_seen_at > ?
+        WHERE s.token_hash = ? AND s.expires_at > ? AND s.last_seen_at > ? AND u.disabled_at IS NULL
     `).get(sha256(token), now, now - SESSION_IDLE_MS);
     if (!row) return null;
 
     const { session_hash: tokenHash, session_seen: seen, ...user } = row;
-    if (now - seen > TOUCH_MS) db.prepare("UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?").run(now, tokenHash);
+    if (now - seen > TOUCH_MS) {
+        db.prepare("UPDATE sessions SET last_seen_at = ? WHERE token_hash = ?").run(now, tokenHash);
+        db.prepare("UPDATE users SET last_active_at = ? WHERE id = ?").run(now, user.id);
+    }
     return { user, tokenHash };
 }
 
@@ -134,6 +143,7 @@ function cleanUp() {
     db.prepare("DELETE FROM sessions WHERE expires_at <= ? OR last_seen_at <= ?").run(now, now - SESSION_IDLE_MS);
     purgeArchivedClasses(now);
     purgeExpiredResets(now);
+    if (RETENTION_DAYS > 0) deleteInactiveAccounts(now - RETENTION_DAYS * 24 * 60 * 60 * 1000).catch((e) => console.error(e));
 }
 cleanUp();
 setInterval(cleanUp, 60 * 60 * 1000).unref();
@@ -176,8 +186,8 @@ api.post("/auth/register", authLimiter, wrap(async (req, res) => {
         const now = Date.now();
         const role = found.kind === "teacher" ? "teacher" : "student";
         const info = db.prepare(
-            "INSERT INTO users (name, email, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?)"
-        ).run(name, email, role, hash, now);
+            "INSERT INTO users (name, email, role, password_hash, created_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?)"
+        ).run(name, email, role, hash, now, now);
 
         if (found.kind === "teacher") {
             db.prepare("UPDATE teacher_invites SET uses_left = uses_left - 1 WHERE code = ?").run(found.code);
@@ -205,6 +215,8 @@ api.post("/auth/login", authLimiter, loginLimiter, wrap(async (req, res) => {
 
     // Same response whether the email or the password was wrong
     if (!user || !valid) return res.status(401).json({ error: "invalid_credentials" });
+    // Only said to someone who knows the password
+    if (user.disabled_at !== null) return res.status(403).json({ error: "account_disabled" });
 
     startSession(req, res, user.id);
     res.json({ user: publicUser(user) });
@@ -224,7 +236,7 @@ api.post("/auth/reset", authLimiter, wrap(async (req, res) => {
 
     const user = db.transaction(() => {
         const found = findReset(req.body?.code);
-        if (!found) return null;
+        if (!found || found.disabled_at !== null) return null;
         db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, found.id);
         db.prepare("DELETE FROM password_resets WHERE user_id = ?").run(found.id);
         // Anyone still signed in with the old password is signed out
@@ -304,6 +316,15 @@ api.delete("/auth/me", requireAuth, passwordLimiter, wrap(async (req, res) => {
     res.json({ ok: true });
 }));
 
+// Everything stored about the signed-in user, as a JSON file (uploaded photos and videos are listed;
+// they can be downloaded from the assignments themselves)
+api.get("/auth/me/export", requireAuth, (req, res) => {
+    const data = exportAccount(req.user.id);
+    data.sessions = sessionsOf(req.user.id, req.sessionHash).map(({ id: _id, ...s }) => s);
+    res.set("Content-Disposition", `attachment; filename="physicsgo-data-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.json(data);
+});
+
 api.get("/auth/sessions", requireAuth, (req, res) => {
     res.json({ sessions: sessionsOf(req.user.id, req.sessionHash) });
 });
@@ -327,6 +348,7 @@ api.use("/classes", classesRouter({ requireAuth, joinLimiter, publicUser }));
 api.use("/projects", projectsRouter({ requireAuth }));
 api.use("/work", workRouter({ requireAuth }));
 api.use("/media", mediaRouter({ requireAuth }));
+api.use("/admin", adminRouter({ requireAuth }));
 
 app.use("/api", api);
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));

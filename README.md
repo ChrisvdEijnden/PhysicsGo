@@ -31,20 +31,18 @@ The app sends `/api` requests to the API through Vite's proxy, so both have to r
 
 Use pnpm rather than npm: `pnpm-lock.yaml` is the only lockfile.
 
-### The first teacher account
+### The first teacher and administrator
 
-Students join with a class code from their teacher, and teachers sign up with an invitation code. Create the first invitation from the command line:
+Students join with a class code (or the join link and QR code on the Classes page), and teachers sign up with an invitation code. Create the first invitation from the command line, sign up with it, and make that account an administrator:
 
 ```sh
 node server/create-teacher-code.js      # one use; pass a number for more
+node server/make-admin.js <email>       # --remove takes it away again
 ```
 
-Then open the app, choose "No account yet? Use a class code" and enter the invitation code.
+Open the app, choose "No account yet? Use a class code" and enter the invitation code. From then on, administrators do the rest on the Administration page (in the account menu): invite teachers, find accounts, change roles, make password reset codes, and deactivate or delete accounts.
 
-Other server scripts:
-
-- `node server/reset-password.js <email>` prints a one-time code for setting a new password (students get theirs from a teacher on the Classes page)
-- `node server/make-teacher.js <email>` turns an existing account into a teacher account
+`node server/reset-password.js <email>` still prints a reset code, for when no administrator can sign in.
 
 ## Checks
 
@@ -71,8 +69,9 @@ Set these environment variables for the API (all optional):
 | `PHYSICSGO_MEDIA_DIR` | `server/media` | Where uploaded videos and photos are stored |
 | `PHYSICSGO_MEDIA_MAX_MB` | `200` | Largest upload |
 | `PHYSICSGO_MEDIA_QUOTA_MB` | `2048` | Storage per account |
+| `ACCOUNT_RETENTION_DAYS` | `730` | Accounts not used for this many days are deleted (administrators, and teachers who are a class's only teacher, are kept); `0` keeps them |
 
-The database and media folder hold student data; neither is committed.
+The database and media folder hold student data; neither is committed. What is stored and for how long is described for schools in [docs/privacy.md](docs/privacy.md), and for students and teachers in the app's privacy statement (`#/privacy`).
 
 ## Desktop app
 

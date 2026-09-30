@@ -235,3 +235,77 @@ describe("classes, assignments and work", () => {
         assert.deepEqual(blocked.data.classes, ["5V natuurkunde"]);
     });
 });
+
+describe("administration and your own data", () => {
+    const admin = client();
+    const teacher = client();
+    const student = client();
+    let classCode;
+
+    before(async () => {
+        await signUp(admin, teacherInvite(), "Admin", "admin@school.test");
+        execFileSync("node", ["make-admin.js", "admin@school.test"], { cwd: serverDir, env });
+        await signUp(teacher, teacherInvite(), "Teacher Four", "four@school.test");
+        classCode = (await teacher("POST", "/classes", { name: "4H" })).data.class.code;
+        await signUp(student, classCode, "Student C", "c@school.test");
+    });
+
+    test("only administrators reach the administration API", async () => {
+        assert.equal((await teacher("GET", "/admin/users")).status, 403);
+        assert.equal((await admin("GET", "/auth/me")).data.user.isAdmin, true);
+        const found = await admin("GET", "/admin/users?q=school.test");
+        assert.ok(found.data.users.some((u) => u.email === "c@school.test" && u.role === "student"));
+        assert.deepEqual((await admin("GET", "/admin/users?q=Four")).data.users.map((u) => u.email), ["four@school.test"]);
+    });
+
+    test("teacher invitations are made and revoked in the app", async () => {
+        const made = await admin("POST", "/admin/invites", { uses: 2, days: 7 });
+        assert.equal(made.status, 201);
+        assert.equal((await client()("POST", "/auth/code", { code: made.data.code })).data.kind, "teacher");
+        assert.ok(made.data.invites.some((i) => i.code === made.data.code && i.usesLeft === 2));
+        await admin("DELETE", `/admin/invites/${made.data.code}`);
+        assert.equal((await client()("POST", "/auth/code", { code: made.data.code })).data.error, "invalid_code");
+    });
+
+    test("a deactivated account is signed out and can't sign in until it's reactivated", async () => {
+        const id = (await admin("GET", "/admin/users?q=c@school.test")).data.users[0].id;
+        assert.equal((await admin("PATCH", `/admin/users/${id}`, { disabled: true })).data.user.disabled, true);
+        assert.equal((await student("GET", "/auth/me")).data.user, null);
+        const login = await student("POST", "/auth/login", { email: "c@school.test", password: PASSWORD });
+        assert.deepEqual([login.status, login.data.error], [403, "account_disabled"]);
+        await admin("PATCH", `/admin/users/${id}`, { disabled: false });
+        assert.equal((await student("POST", "/auth/login", { email: "c@school.test", password: PASSWORD })).status, 200);
+
+        // A reset code from an administrator works like a teacher's
+        const reset = await admin("POST", `/admin/users/${id}/reset`);
+        assert.equal((await client()("POST", "/auth/reset/check", { code: reset.data.code })).data.email, "c@school.test");
+    });
+
+    test("roles change with their classes; administrators can't change themselves", async () => {
+        const me = (await admin("GET", "/auth/me")).data.user.id;
+        assert.equal((await admin("PATCH", `/admin/users/${me}`, { isAdmin: false })).data.error, "cannot_change_self");
+        const teacherId = (await teacher("GET", "/auth/me")).data.user.id;
+        const demoted = await admin("PATCH", `/admin/users/${teacherId}`, { role: "student" });
+        assert.deepEqual([demoted.status, demoted.data.classes], [409, ["4H"]]);
+
+        const studentId = (await student("GET", "/auth/me")).data.user.id;
+        const promoted = await admin("PATCH", `/admin/users/${studentId}`, { role: "teacher" });
+        assert.equal(promoted.data.user.role, "teacher");
+        assert.deepEqual((await student("GET", "/auth/me")).data.user.classes, []);
+    });
+
+    test("everyone can download what's stored about them", async () => {
+        await student("PUT", "/work/standard-freefall", { work: { start: "t = 0\n", model: "", steps: "", graphs: [], media: [] }, version: 0 });
+        const res = await student("GET", "/auth/me/export");
+        assert.equal(res.data.account.email, "c@school.test");
+        assert.ok(res.data.sessions.length >= 1);
+        assert.ok(Array.isArray(res.data.classes));
+        assert.ok(Array.isArray(res.data.uploadedFiles));
+    });
+
+    test("administrators can delete accounts", async () => {
+        const id = (await admin("GET", "/admin/users?q=c@school.test")).data.users[0].id;
+        assert.equal((await admin("DELETE", `/admin/users/${id}`)).status, 200);
+        assert.deepEqual((await admin("GET", "/admin/users?q=c@school.test")).data.users, []);
+    });
+});

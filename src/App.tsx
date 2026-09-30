@@ -21,6 +21,8 @@ const Classes = lazy(() => import("./pages/Classes"));
 const JoinClass = lazy(() => import("./pages/JoinClass"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ProjectEditor = lazy(() => import("./pages/ProjectEditor"));
+const Admin = lazy(() => import("./pages/Admin"));
+const Privacy = lazy(() => import("./pages/Privacy"));
 
 // Who may open which page is decided here, once, instead of by each page
 function AppRoutes() {
@@ -40,6 +42,7 @@ function AppRoutes() {
                 {/* Language and theme can be changed before signing in too */}
                 <Route element={<WaitForSession/>}>
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/privacy" element={<Privacy />} />
                 </Route>
                 <Route element={<RequireAuth/>}>
                     <Route path="/user" element={<User />} />
@@ -57,6 +60,9 @@ function AppRoutes() {
                     <Route path="/projects/:projectId/edit" element={<ProjectEditor />} />
                     <Route path="/projects/:projectId/preview" element={<PreviewProject />} />
                     <Route path="/classes" element={<Classes />} />
+                </Route>
+                <Route element={<RequireAuth admin/>}>
+                    <Route path="/admin" element={<Admin />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
             </Routes>

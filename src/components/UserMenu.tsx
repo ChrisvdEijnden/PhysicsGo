@@ -74,6 +74,9 @@ export default function UserMenu() {
                     </div>
                     <button type="button" role="menuitem" autoFocus onClick={() => go("/user")}>{t("nav.user")}</button>
                     <button type="button" role="menuitem" onClick={() => go("/settings")}>{t("nav.settings")}</button>
+                    {user.isAdmin && (
+                        <button type="button" role="menuitem" onClick={() => go("/admin")}>{t("nav.admin")}</button>
+                    )}
                     <button type="button" role="menuitem" className="sign-out" onClick={signOut}>{t("settings.logout")}</button>
                 </div>
             )}

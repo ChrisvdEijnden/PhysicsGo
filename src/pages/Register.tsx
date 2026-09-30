@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./login.css";
@@ -17,17 +17,33 @@ function Register() {
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useTranslation();
-    const { register } = useAuth();
-    const code: string | undefined = location.state?.code;
-    const info: CodeInfo | undefined = location.state?.info;
+    const { register, checkCode } = useAuth();
+    const [params] = useSearchParams();
+    // From the join page, or from the address after a reload
+    const code: string | undefined = location.state?.code ?? params.get("code") ?? undefined;
+    const [info, setInfo] = useState<CodeInfo | undefined>(location.state?.info);
 
     const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        if (!code) navigate("/join", { replace: true });
-    }, [code, navigate]);
+        if (!code) {
+            navigate("/join", { replace: true });
+            return;
+        }
+        if (info) return;
+        // After a reload: check the code again for what it's for; the join page explains a bad one
+        let cancelled = false;
+        checkCode(code).then((res) => {
+            if (cancelled) return;
+            if (res.ok) setInfo(res.info);
+            else navigate(`/join?code=${encodeURIComponent(code)}`, { replace: true });
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [code, info, checkCode, navigate]);
 
     const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
         setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -97,6 +113,10 @@ function Register() {
                         <button className="auth-button" type="submit" disabled={busy}>
                             {t("register.submit")}
                         </button>
+                        {/* Before an account is made: what's stored about you, and why */}
+                        <p className="privacy-notice">
+                            {t("register.privacyNotice")} <Link to="/privacy" target="_blank">{t("register.privacyLink")}</Link>
+                        </p>
                     </div>
                     <Credits/>
                 </form>

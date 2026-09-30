@@ -32,8 +32,11 @@ export function lookupCode(raw) {
 
     if (db.prepare("SELECT 1 FROM retired_class_codes WHERE code = ?").get(code)) return { error: "code_expired" };
 
-    const invite = db.prepare("SELECT uses_left FROM teacher_invites WHERE code = ?").get(code);
-    if (invite) return invite.uses_left > 0 ? { kind: "teacher", code } : { error: "code_expired" };
+    const invite = db.prepare("SELECT uses_left, expires_at FROM teacher_invites WHERE code = ?").get(code);
+    if (invite) {
+        const valid = invite.uses_left > 0 && (invite.expires_at === null || invite.expires_at > Date.now());
+        return valid ? { kind: "teacher", code } : { error: "code_expired" };
+    }
 
     return { error: "invalid_code" };
 }

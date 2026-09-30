@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 
 import { useAuth } from "../lib/useAuth";
 import type { Role } from "../lib/useAuth";
@@ -15,20 +15,27 @@ export function LoadingScreen() {
     );
 }
 
-// Pages for signed-in users; with a role, only for that role (others go to their dashboard)
-export function RequireAuth({ role }: { role?: Role }) {
+// Pages for signed-in users; with a role, only for that role, and `admin` only for administrators
+// (others go to their dashboard)
+export function RequireAuth({ role, admin = false }: { role?: Role; admin?: boolean }) {
     const { user, loading } = useAuth();
     if (loading) return <LoadingScreen/>;
     if (!user) return <Navigate to="/login" replace/>;
-    if (role && user.role !== role) return <Navigate to="/dashboard" replace/>;
+    if ((role && user.role !== role) || (admin && !user.isAdmin)) return <Navigate to="/dashboard" replace/>;
     return <Outlet/>;
 }
 
 // Signing in, registering and resetting a password: someone already signed in goes to the dashboard
 export function PublicOnly() {
     const { user, loading } = useAuth();
+    const location = useLocation();
     if (loading) return <LoadingScreen/>;
-    if (user) return <Navigate to="/dashboard" replace/>;
+    if (user) {
+        // A student who's already signed in and opens a class's join link joins that class
+        const code = location.pathname === "/join" && new URLSearchParams(location.search).get("code");
+        if (code && user.role === "student") return <Navigate to={`/join-class?code=${encodeURIComponent(code)}`} replace/>;
+        return <Navigate to="/dashboard" replace/>;
+    }
     return <Outlet/>;
 }
 

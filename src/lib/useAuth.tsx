@@ -19,6 +19,8 @@ export interface AuthUser {
     name: string;
     email: string;
     role: Role;
+    // Manages teacher invitations and accounts (Administration page)
+    isAdmin: boolean;
     classes: ClassRef[];
 }
 

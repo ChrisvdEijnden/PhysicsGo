@@ -70,60 +70,56 @@
     color: #fff;
 }
 
-.access-code {
+/* The class code or teacher invitation: one field, grouped as XXXX-XXXX-XXXX */
+.code-input {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    height: 36px;
-    width: fit-content;
-    gap: 8px;
-}
-
-.dash {
-    width: 12px;
-    height: 36px;
-    justify-content: center;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: "Figtree", sans-serif;
-    margin: 0;
-    color: var(--color-text-secondary);
-}
-
-.char-slot {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 26px;
-    height: 36px;
-    background-color: var(--color-bg-app);
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 600;
-    font-family: "Figtree", sans-serif;
-    color: var(--color-text-primary);
-    margin: 0;
-    transition: background-color 0.2s ease;
-}
-
-/* The box being typed in; its input hides its own outline */
-.char-slot:focus-within {
-    outline: 2px solid var(--color-brand-accent);
-    outline-offset: 1px;
-}
-
-.char-slot input {
+    gap: 6px;
     width: 100%;
-    height: 100%;
-    background-color: transparent;
-    border: none;
-    outline: none;
+}
+
+.code-field {
+    width: 100%;
+    max-width: 320px;
+    padding: 10px 12px;
+    border: 2px solid var(--color-border);
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
     text-align: center;
-    font: inherit;
-    color: inherit;
-    padding: 0;
+    text-transform: uppercase;
+    color: var(--color-text-primary);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.code-field::placeholder {
+    color: var(--color-text-tertiary);
+    opacity: 0.6;
+}
+
+.code-field:focus {
+    border-color: var(--color-brand-accent);
+}
+
+.code-field.invalid {
+    border-color: var(--color-danger-text);
+}
+
+.code-hint {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+}
+
+.code-hint.warn {
+    color: var(--color-warning-text);
+    font-weight: 600;
 }
 
 .footer-context {
@@ -307,4 +303,17 @@
     .background-logo {
         display: none;
     }
+}
+
+/* Under the registration form: what's stored, with a link to the privacy statement */
+.privacy-notice {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    text-align: center;
+    color: var(--color-text-secondary);
+}
+
+.privacy-notice a, .footer-context a {
+    color: inherit;
 }
