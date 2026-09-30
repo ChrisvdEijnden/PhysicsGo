@@ -276,6 +276,17 @@ api.patch("/auth/me", requireAuth, passwordLimiter, wrap(async (req, res) => {
     res.json({ user: publicUser({ ...req.user, ...next }) });
 }));
 
+// A new password needs the current one; every other browser signed in to the account is signed out
+api.post("/auth/password", requireAuth, passwordLimiter, wrap(async (req, res) => {
+    const password = str(req.body?.newPassword);
+    const valid = await argon.verify(req.user.password_hash, str(req.body?.currentPassword)).catch(() => false);
+    if (!valid) return res.status(403).json({ error: "wrong_password" });
+    if (password.length < 10 || password.length > 128) return res.status(400).json({ error: "weak_password" });
+    db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(await argon.hash(password), req.user.id);
+    endOtherSessions(req.user.id, req.sessionHash);
+    res.json({ ok: true });
+}));
+
 api.get("/auth/sessions", requireAuth, (req, res) => {
     res.json({ sessions: sessionsOf(req.user.id, req.sessionHash) });
 });

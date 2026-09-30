@@ -5,9 +5,7 @@ import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
@@ -110,12 +108,6 @@ function Classes() {
     const [busy, setBusy] = useState(false);
     const selectedRef = useRef<number | null>(null);
     selectedRef.current = selectedId;
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (!isTeacher) navigate("/dashboard", { replace: true });
-    }, [loading, user, isTeacher, navigate]);
 
     const loadList = useCallback(async () => {
         const { ok, data } = await api<{ classes: ClassSummary[] }>("/classes");
@@ -306,23 +298,7 @@ function Classes() {
 
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
-                    <div className="spacer"></div>
-                    <h2>{t("nav.classes")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.dashboard"), to: "/dashboard" }, { label: t("nav.classes") }]}/>
 
             <div className="content-dashboard">
                 <div className="left-panel classes-left">

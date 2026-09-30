@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./login.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
@@ -16,15 +14,11 @@ import { authErrorKey } from "../lib/authErrors";
 function SignIn() {
     const navigate = useNavigate();
     const { t } = useTranslation();
-    const { user, login } = useAuth();
+    const { login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
-
-    useEffect(() => {
-        if (user) navigate("/dashboard", { replace: true });
-    }, [user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,29 +32,15 @@ function SignIn() {
 
     return (
         <div>
-            <img className="background-logo" src={LogoIcon750px} alt="LogoIcon750px" />
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.login")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <img className="background-logo" src={LogoIcon750px} alt="" />
+            <TopBar crumbs={[{ label: t("nav.login") }]}/>
 
             <div className="content">
                 <form className="auth-card" onSubmit={handleSubmit}>
                     <div className="header-group">
                         <div className="full-brand">
                             <div className="brand">
-                                <img src={LogoIcon35px} alt="LogoIcon35px"/>
+                                <img src={LogoIcon35px} alt=""/>
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>

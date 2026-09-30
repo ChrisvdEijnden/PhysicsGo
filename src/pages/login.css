@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
-
 .auth-card, .user-card {
     position: fixed;
     top: 50%;
@@ -244,7 +242,7 @@
     font-family: "Figtree", sans-serif;
     font-size: 13px;
     text-align: center;
-    color: #d64545;
+    color: #C53030;
 }
 
 .auth-link {
@@ -285,4 +283,9 @@
     width: 80%;
     margin: 0;
     text-align: center;
+}
+
+.char-slot:focus-within {
+    border-color: var(--color-brand);
+    box-shadow: 0 0 0 2px var(--color-brand-subtle-bg);
 }

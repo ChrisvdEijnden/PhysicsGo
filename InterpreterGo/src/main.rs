@@ -21,24 +21,21 @@ als x <= 0:
 stop als t >= 10
 ";
 
-    let result = run_source(startwaarden_src, modelregels_src, 10_000);
-
-    if !result.ok {
-        for err in &result.errors {
+    let sim = match run_source(startwaarden_src, modelregels_src, 10_000) {
+        Ok(sim) => sim,
+        Err(err) => {
             eprintln!("[{}] {}:{}: {}", err.block, err.line, err.column, err.message);
+            return;
         }
-        return;
-    }
+    };
 
+    let names = sim.recorded_names();
+    let column = |name: &str| &sim.columns[names.iter().position(|n| n == name).unwrap()];
+    let (t, x, v) = (column("t"), column("x"), column("v"));
     println!("{:>8} {:>10} {:>10}", "t", "x", "v");
-    for stap in &result.history {
-        println!(
-            "{:>8.3} {:>10.4} {:>10.4}",
-            stap.get("t").unwrap_or(&0.0),
-            stap.get("x").unwrap_or(&0.0),
-            stap.get("v").unwrap_or(&0.0)
-        );
+    for i in 0..t.len() {
+        println!("{:>8.3} {:>10.4} {:>10.4}", t[i], x[i], v[i]);
     }
 
-    println!("\nnumber of timesteps: {}", result.history.len());
+    println!("\nnumber of timesteps: {} ({:?})", sim.steps, sim.finished);
 }

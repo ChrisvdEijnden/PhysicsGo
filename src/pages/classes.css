@@ -80,7 +80,7 @@
 }
 
 .class-button.danger {
-    color: #d64545;
+    color: #C53030;
     border-color: currentColor;
     background: transparent;
 }
@@ -90,7 +90,7 @@
 }
 
 .class-button.armed {
-    color: #d64545;
+    color: #C53030;
     border-color: currentColor;
     font-weight: 600;
 }

@@ -641,7 +641,7 @@
 
 /* Clear, armed: asks for a second click */
 .points-icon-btn.armed {
-    color: #d64545;
+    color: #C53030;
     background-color: rgba(214, 69, 69, 0.1);
 }
 
@@ -755,7 +755,7 @@
 }
 
 .y-line-remove:hover {
-    color: #d64545;
+    color: #C53030;
     background-color: rgba(214, 69, 69, 0.1);
 }
 
@@ -990,7 +990,7 @@
 .review-error {
     padding: 24px;
     font-family: "Figtree", sans-serif;
-    color: #d64545;
+    color: #C53030;
 }
 
 /* Project explanations, written in Markdown */
@@ -1036,4 +1036,71 @@
 
 .markdown a {
     color: var(--color-brand);
+}
+
+/* Chart colours follow the theme (Recharts draws them as SVG attributes, which CSS overrides) */
+.chart-area .recharts-cartesian-grid line {
+    stroke: var(--color-border);
+}
+
+.chart-area .recharts-cartesian-axis-tick-value {
+    fill: var(--color-text-secondary);
+}
+
+.chart-area .recharts-cartesian-axis-line, .chart-area .recharts-cartesian-axis-tick-line {
+    stroke: var(--color-text-tertiary);
+}
+
+.chart-area .recharts-dot {
+    stroke: var(--color-bg-surface);
+}
+
+/* Focus on fields that draw no outline of their own */
+.steps-input:focus {
+    border-color: var(--color-brand);
+}
+
+.y-line:focus-within {
+    outline: 2px solid var(--color-brand-accent);
+    outline-offset: 1px;
+}
+
+/* What the last run did */
+.code-footer {
+    flex-wrap: wrap;
+    row-gap: 4px;
+}
+
+.run-status {
+    flex-basis: 100%;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.run-status.warning {
+    color: #B45309;
+}
+
+.run-status.error {
+    color: #C53030;
+}
+
+[data-theme="dark"] .run-status.warning {
+    color: #F6B659;
+}
+
+[data-theme="dark"] .run-status.error {
+    color: #FF8A7E;
+}
+
+.stop-btn {
+    padding: 4px 12px;
+    border: 1px solid #C53030;
+    border-radius: 8px;
+    background: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #C53030;
+    cursor: pointer;
 }

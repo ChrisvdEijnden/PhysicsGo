@@ -15,6 +15,7 @@ pub struct IndentResult {
 
 pub struct IndentError {
     pub line: usize,
+    pub code: &'static str,
     pub message: String,
 }
 
@@ -60,6 +61,7 @@ pub fn indent_to_braces(source: &str) -> Result<IndentResult, IndentError> {
             if indent <= current {
                 return Err(IndentError {
                     line: line_no,
+                    code: "indent_expected",
                     message: "expected an indented line after the line ending in ':'".into(),
                 });
             }
@@ -67,6 +69,7 @@ pub fn indent_to_braces(source: &str) -> Result<IndentResult, IndentError> {
         } else if indent > current {
             return Err(IndentError {
                 line: line_no,
+                code: "indent_unexpected",
                 message: "unexpected indentation; only lines after `als ...:` are indented".into(),
             });
         } else {
@@ -78,6 +81,7 @@ pub fn indent_to_braces(source: &str) -> Result<IndentResult, IndentError> {
             if indent != *indent_stack.last().unwrap() {
                 return Err(IndentError {
                     line: line_no,
+                    code: "indent_mismatch",
                     message: "this indentation doesn't match any line above it".into(),
                 });
             }
@@ -97,6 +101,7 @@ pub fn indent_to_braces(source: &str) -> Result<IndentResult, IndentError> {
     if let Some(line) = open_block {
         return Err(IndentError {
             line,
+            code: "indent_expected",
             message: "expected an indented line after the line ending in ':'".into(),
         });
     }

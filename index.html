@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PhysicsGo</title>
+    <script>
+      // The saved theme (or the system's) applies before anything is drawn, so there's no flash of the other one
+      try {
+        var theme = localStorage.getItem("physicsgo_theme");
+        if (theme !== "light" && theme !== "dark") theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", theme);
+        var lang = localStorage.getItem("physicsgo_language");
+        if (lang === "nl" || lang === "en") document.documentElement.lang = lang;
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

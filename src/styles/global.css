@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
-
 :root {
     color-scheme: light;
 
@@ -9,10 +7,11 @@
 
     --color-text-primary: #0F172A;
     --color-text-secondary: #475569;
-    --color-text-tertiary: #94A3B8;
+    /* Every text colour meets WCAG AA (4.5:1) on the backgrounds it's used on */
+    --color-text-tertiary: #64748B;
 
-    --color-brand: #0D9488;
-    --color-brand-accent: #0D9488;
+    --color-brand: #0F766E;
+    --color-brand-accent: #0F766E;
     --color-brand-subtle-bg: #CCFBF1;
     --color-on-brand: #FFFFFF;
     --color-on-brand-muted: #CCFBF1;
@@ -30,9 +29,9 @@
 
     --color-text-primary: #F1F5F9;
     --color-text-secondary: #94A3B8;
-    --color-text-tertiary: #64748B;
+    --color-text-tertiary: #94A3B8;
 
-    --color-brand: #0D9488;
+    --color-brand: #0F766E;
     --color-brand-accent: #2DD4BF;
     --color-brand-subtle-bg: rgba(45, 212, 191, 0.16);
     --color-on-brand: #FFFFFF;
@@ -180,7 +179,7 @@ body {
     transition: background-color 0.2s ease;
 }
 
-.content-settings > div {
+.content-settings > div, .content-settings > form {
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border);
     border-radius: 16px;
@@ -199,4 +198,177 @@ body {
     background: none;
     border: none;
     cursor: pointer;
+}
+
+/* Breadcrumbs in the top bar: earlier pages are buttons, the current one a heading */
+.crumb {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+}
+
+.crumb h2 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+button.breadcrumb-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+button.breadcrumb-link:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+}
+
+/* Who is signed in, with profile, settings and sign out */
+.user-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.user-menu-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px 4px 4px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.user-menu-button:hover, .user-menu-button[aria-expanded="true"] {
+    border-color: var(--color-border);
+    background-color: var(--color-bg-app);
+}
+
+.user-avatar {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: var(--color-brand);
+    color: var(--color-on-brand);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.user-menu-name {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-menu-popup {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    padding: 6px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 12px 24px var(--color-shadow);
+}
+
+.user-menu-who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--color-border);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+}
+
+.user-menu-who span {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.user-menu-popup button {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    text-align: left;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.user-menu-popup button:hover, .user-menu-popup button:focus-visible {
+    background-color: var(--color-bg-app);
+}
+
+/* Checking who is signed in, crashes and unknown addresses */
+.page-loading {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+
+.crashed {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 64px 24px;
+    font-family: "Figtree", sans-serif;
+    color: var(--color-text-primary);
+    text-align: center;
+}
+
+.crashed h1 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.crashed p {
+    margin: 0;
+    max-width: 480px;
+    color: var(--color-text-secondary);
+}
+
+.crashed-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.crashed.compact {
+    height: 100%;
+    justify-content: center;
+    padding: 16px;
+}
+
+/* Keyboard focus is always visible (inputs show it with their border instead) */
+button:focus-visible, a:focus-visible, select:focus-visible, [tabindex]:focus-visible, [role="button"]:focus-visible {
+    outline: 2px solid var(--color-brand-accent);
+    outline-offset: 2px;
 }

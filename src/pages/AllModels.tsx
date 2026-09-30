@@ -4,9 +4,7 @@ import "./allmodels.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import { useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { useAuth } from "../lib/useAuth";
@@ -27,21 +25,7 @@ function AllModels() {
     const { projects } = useProjects();
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.allModels")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.dashboard"), to: "/dashboard" }, { label: t("nav.allModels") }]}/>
 
             <div className="content-allmodels">
                 <div className="panel">

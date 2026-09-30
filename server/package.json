@@ -6,8 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "node --watch index.js",
-    "start": "node index.js",
-    "dev:all": "concurrently -n api,web \"npm --prefix server run dev\" \"npm run dev\""
+    "start": "node index.js"
   },
   "keywords": [],
   "author": "",

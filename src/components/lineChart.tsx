@@ -208,6 +208,9 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                             contentStyle={{
                                 fontSize: "13px",
                                 fontFamily: "Figtree, sans-serif",
+                                backgroundColor: "var(--color-bg-surface)",
+                                borderColor: "var(--color-border)",
+                                color: "var(--color-text-primary)",
                             }}
                             labelStyle={{
                                 fontSize: "13px",

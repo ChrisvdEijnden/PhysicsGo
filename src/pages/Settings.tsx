@@ -2,8 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./settings.css";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
@@ -75,32 +74,17 @@ function Settings() {
     const others = sessions?.filter((s) => !s.current).length ?? 0;
     const formatTime = (ms: number) => new Date(ms).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
 
-    useEffect(() => {
-        if (!user) navigate("/login", { replace: true });
-    }, [user, navigate]);
-
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.settings")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <TopBar crumbs={user ? [{ label: t("nav.dashboard"), to: "/dashboard" }, { label: t("nav.settings") }] : [{ label: t("nav.settings") }]}/>
 
             <div className="content-settings">
-                <div className="user">
+                {user && <div className="user">
                     <div className="user-top-row">
                         <div className="user-name">
-                            <h3>{user?.name ?? "—"}</h3>
+                            <h3>{user.name}</h3>
                         </div>
-                        {user && (
+                        {(
                             <div className="user-class">
                                 <h3>
                                     ({user.role === "teacher" ? t("user.roleTeacher") : t("user.roleStudent")}
@@ -110,9 +94,9 @@ function Settings() {
                         )}
                     </div>
                     <div className="user-email">
-                        <p>{user?.email ?? "—"}</p>
+                        <p>{user.email}</p>
                     </div>
-                </div>
+                </div>}
                 <div className="language">
                     <div className="setting-row">
                         <div className="setting-row-text">
@@ -171,7 +155,7 @@ function Settings() {
                         </button>
                     </div>
                 </div>
-                <div className="logout">
+                {user && <div className="logout">
                     <div className="setting-row">
                         <div className="setting-row-text">
                             <h3>{t("settings.logoutTitle")}</h3>
@@ -181,7 +165,8 @@ function Settings() {
                             {t("settings.logout")}
                         </button>
                     </div>
-                </div>
+                </div>}
+                {user && <PasswordChange onChanged={() => loadSessions(api<{ sessions: Session[] }>("/auth/sessions"))}/>}
                 {user && (
                     <div className="sessions">
                         <div className="setting-row">
@@ -224,6 +209,54 @@ function Settings() {
                 )}
             </div>
         </div>
+    );
+}
+
+// Choosing a new password, which signs out every other device
+function PasswordChange({ onChanged }: { onChanged: () => void }) {
+    const { t } = useTranslation();
+    const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+    const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+    const [busy, setBusy] = useState(false);
+    const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+        setForm((f) => ({ ...f, [field]: e.target.value }));
+
+    const submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (form.next.length < 10) return setMessage({ ok: false, text: t(authErrorKey("weak_password")) });
+        if (form.next !== form.confirm) return setMessage({ ok: false, text: t(authErrorKey("password_mismatch")) });
+        setBusy(true);
+        const { ok, data } = await api("/auth/password", "POST", { currentPassword: form.current, newPassword: form.next });
+        setBusy(false);
+        if (!ok) return setMessage({ ok: false, text: t(authErrorKey(errorOf(data))) });
+        setForm({ current: "", next: "", confirm: "" });
+        setMessage({ ok: true, text: t("settings.passwordChanged") });
+        onChanged();
+    };
+
+    return (
+        <form className="password-change" onSubmit={submit}>
+            <div className="setting-row-text">
+                <h3>{t("settings.passwordTitle")}</h3>
+                <p>{t("settings.passwordDescription")}</p>
+            </div>
+            <div className="password-fields">
+                <label>
+                    <span>{t("settings.currentPassword")}</span>
+                    <input type="password" autoComplete="current-password" required value={form.current} onChange={set("current")}/>
+                </label>
+                <label>
+                    <span>{t("settings.newPassword")}</span>
+                    <input type="password" autoComplete="new-password" required minLength={10} value={form.next} onChange={set("next")}/>
+                </label>
+                <label>
+                    <span>{t("auth.confirmPassword")}</span>
+                    <input type="password" autoComplete="new-password" required value={form.confirm} onChange={set("confirm")}/>
+                </label>
+                <button type="submit" className="logout-button neutral" disabled={busy}>{t("settings.passwordSave")}</button>
+            </div>
+            {message && <p className={message.ok ? "password-ok" : "session-error"} role="status">{message.text}</p>}
+        </form>
     );
 }
 

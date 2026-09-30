@@ -4,9 +4,7 @@ import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
 import NewFile24px from "../assets/icons/newfile-24px.svg";
 import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
@@ -33,21 +31,7 @@ function Dashboard() {
     const visibleProjects = (projects ?? []).filter((project) => canSeeProject(user, published, project.id));
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.dashboard")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.dashboard") }]}/>
 
             <div className="content-dashboard">
                 <div className="left-panel">
@@ -56,14 +40,14 @@ function Dashboard() {
                         <div className="dual-action-buttons">
                             {/* Teachers start a new project for their classes; students an empty model */}
                             <div className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
-                                <img src={NewFile24px} alt="NewFile24px"/>
+                                <img src={NewFile24px} alt=""/>
                                 <div className="action-text">
                                     <h3>{t("dashboard.emptyProjectTitle")}</h3>
                                     <p>{t("dashboard.emptyProjectDesc")}</p>
                                 </div>
                             </div>
                             <div className="action-open" onClick={() => navigate("/modeling")}>
-                                <img src={FolderOpen24px} alt="FolderOpen24px"/>
+                                <img src={FolderOpen24px} alt=""/>
                                 <div className="action-text">
                                     <h3>{t("dashboard.openProjectTitle")}</h3>
                                     <p>{t("dashboard.openProjectDesc")}</p>
@@ -122,7 +106,7 @@ function Dashboard() {
                                                 onSave={(classIds) => setProjectClasses(project.id, classIds)}
                                             />
                                         )}
-                                        <img src={AscewArrow67px} alt="AscewArrow67px"/>
+                                        <img src={AscewArrow67px} alt=""/>
                                     </div>
                                 ))}
                         </div>

@@ -1,6 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as monaco from "monaco-editor";
 
+import { useTheme } from "../lib/useTheme";
+import type { Builtins } from "../lib/simulation";
+
 interface CodeEditorProps {
     value: string;
     onChange: (value: string) => void;
@@ -14,6 +17,8 @@ export interface InterpreterError {
     line: number;
     column: number;
     message: string;
+    // A warning (e.g. a value became NaN) rather than an error
+    warning?: boolean;
 }
 
 export interface CodeEditorHandle {
@@ -23,6 +28,7 @@ export interface CodeEditorHandle {
 
 const MARKER_OWNER = "physicsgo-interpreter";
 const THEME_NAME = "physicsgo-light";
+const DARK_THEME_NAME = "physicsgo-dark";
 const LANGUAGE_ID = "physicsgo";
 
 function definePhysicsGoTheme() {
@@ -64,24 +70,37 @@ function definePhysicsGoTheme() {
 }
 definePhysicsGoTheme();
 
+// The same colours on the app's dark background
+monaco.editor.defineTheme(DARK_THEME_NAME, {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+        { token: "comment", foreground: "94A3B8", fontStyle: "italic" },
+        { token: "keyword", foreground: "2DD4BF" },
+        { token: "number", foreground: "5EEAD4" },
+        { token: "string", foreground: "5EEAD4" },
+        { token: "identifier", foreground: "F1F5F9" },
+        { token: "delimiter", foreground: "94A3B8" },
+        { token: "operator", foreground: "94A3B8" },
+        { token: "predefined", foreground: "2DD4BF", fontStyle: "bold" },
+    ],
+    colors: {
+        "editor.background": "#0B1220",
+        "editor.foreground": "#F1F5F9",
+        "editorLineNumber.foreground": "#64748B",
+        "editorLineNumber.activeForeground": "#CBD5E1",
+        "editorCursor.foreground": "#2DD4BF",
+        "editor.selectionBackground": "#134E4A",
+        "editor.lineHighlightBackground": "#1E293B",
+        "editor.lineHighlightBorder": "#00000000",
+        "editorWidget.background": "#1E293B",
+        "editorWidget.border": "#334155",
+    },
+});
+
 function definePhysicsGoLanguage() {
     monaco.languages.register({ id: LANGUAGE_ID });
-
-    monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, {
-        keywords: ["als", "stop"],
-        builtins: ["sin", "cos", "sqrt"],
-        tokenizer: {
-            root: [
-                [/\/\/.*$/, "comment"],
-                [/[a-zA-Z_]\w*(?=\s*\()/, { cases: { "@builtins": "predefined", "@default": "identifier" } }],
-                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
-                [/\d+(\.\d+)?/, "number"],
-                [/<=|>=|==|!=/, "operator"],
-                [/[+\-*/^=<>]/, "operator"],
-                [/[():]/, "delimiter"],
-            ],
-        },
-    });
+    setTokens(["als", "if", "anders", "else", "stop", "en", "and", "of", "or", "niet", "not"], []);
 
     monaco.languages.setLanguageConfiguration(LANGUAGE_ID, {
         comments: { lineComment: "//" },
@@ -91,9 +110,34 @@ function definePhysicsGoLanguage() {
 }
 definePhysicsGoLanguage();
 
+// Highlights the interpreter's own keywords, functions and constants (it reports them once loaded)
+export function configureLanguage(builtins: Builtins) {
+    setTokens(builtins.keywords, [...builtins.functions.map((f) => f.name), ...builtins.constants]);
+}
+
+function setTokens(keywords: string[], builtins: string[]) {
+    monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, {
+        keywords,
+        builtins,
+        tokenizer: {
+            root: [
+                [/\/\/.*$/, "comment"],
+                [/[a-zA-Z_]\w*(?=\s*\()/, { cases: { "@builtins": "predefined", "@default": "identifier" } }],
+                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@builtins": "predefined", "@default": "identifier" } }],
+                [/\d*\.?\d+([eE][-+]?\d+)?/, "number"],
+                [/<=|>=|==|!=|\+=|-=|\*=|\/=/, "operator"],
+                [/[+\-*/^=<>]/, "operator"],
+                [/[():,]/, "delimiter"],
+            ],
+        },
+    });
+}
+
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     ({ value, onChange, language = LANGUAGE_ID, onRun, readOnly = false }, ref) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
+        const { theme } = useTheme();
+        const editorTheme = theme === "dark" ? DARK_THEME_NAME : THEME_NAME;
         const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
         const onChangeRef = useRef(onChange);
@@ -115,7 +159,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
                         startColumn: e.column,
                         endColumn: e.column + 1,
                         message: e.message,
-                        severity: monaco.MarkerSeverity.Error,
+                        severity: e.warning ? monaco.MarkerSeverity.Warning : monaco.MarkerSeverity.Error,
                     }))
                 );
             },
@@ -131,7 +175,7 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             const editor = monaco.editor.create(containerRef.current, {
                 value,
                 language,
-                theme: THEME_NAME,
+                theme: editorTheme,
                 automaticLayout: true,
                 minimap: { enabled: false },
                 fontSize: 13,
@@ -169,6 +213,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             if (!editor) return;
             if (editor.getValue() !== value) editor.setValue(value);
         }, [value]);
+
+        // Monaco has one theme for all editors on the page; it follows the app's
+        useEffect(() => {
+            monaco.editor.setTheme(editorTheme);
+        }, [editorTheme]);
 
         return <div ref={containerRef} className="monaco-container"/>;
     }

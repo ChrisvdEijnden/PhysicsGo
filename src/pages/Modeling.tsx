@@ -1,12 +1,9 @@
-import init, { run_with_data as runInterpreter } from "../wasm/interpreterGo";
 import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import "./modeling.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
@@ -27,22 +24,25 @@ import { api, errorOf } from "../lib/api";
 import type { Result } from "../lib/api";
 import HandInDialog from "../components/HandInDialog";
 import Markdown from "../components/Markdown";
+import ErrorBoundary from "../components/ErrorBoundary";
 import { deleteServerMedia, mediaOnServer, mediaUrl, projectMediaUrl, uploadMedia, urlExists } from "../lib/mediaServer";
 import { authErrorKey } from "../lib/authErrors";
-import CodeEditor from "../components/codeEditor.tsx";
+import CodeEditor, { configureLanguage } from "../components/codeEditor.tsx";
+import { useSimulation } from "../lib/simulation";
+import type { RunResult } from "../lib/simulation";
+import { interpreterMessage } from "../lib/interpreterErrors";
+import { columnSamples } from "../lib/samples";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { usePublished } from "../lib/usePublished";
 import PublishDialog from "../components/PublishDialog";
 
-// Start values run once; model rules run every step
-const DEFAULT_START = [
-    "// Initialiseer Parameters",
-    "t = 0",
-    "dt = 0.01 // in seconds",
-    "",
-].join("\n");
-const DEFAULT_MODEL = "stop als t >= 10\n";
+// Start values run once; model rules run every step. New work without a project's starter code
+// starts with these, in the language of the app.
+const DEFAULT_CODE = {
+    nl: { start: "// Beginwaarden\nt = 0\ndt = 0.01 // in seconden\n", model: "stop als t >= 10\n" },
+    en: { start: "// Start values\nt = 0\ndt = 0.01 // in seconds\n", model: "stop if t >= 10\n" },
+};
 
 const DEFAULT_STEPS = 100_000;
 const MAX_STEPS = 1_000_000;
@@ -128,7 +128,6 @@ const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced
 // Work is saved per account, so the workspace only opens once it's known who is signed in and
 // their work has loaded; a different account gets a fresh workspace, not the previous one's state
 function Modeling() {
-    const navigate = useNavigate();
     const location = useLocation();
     const { user, loading } = useAuth();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
@@ -137,10 +136,6 @@ function Modeling() {
     const [opened, setOpened] = useState<OpenedWork | null>(null);
     // Bumped to load the work again, e.g. after choosing another device's version
     const [reloads, setReloads] = useState(0);
-
-    useEffect(() => {
-        if (!loading && !user) navigate("/login", { replace: true });
-    }, [loading, user, navigate]);
 
     useEffect(() => {
         if (!user || projects === null) return;
@@ -179,7 +174,6 @@ interface Review {
 
 // A teacher's read-only view of a student's work on a project published to their class
 export function ReviewWork() {
-    const navigate = useNavigate();
     const { t } = useTranslation();
     const { user, loading } = useAuth();
     const params = useParams();
@@ -190,12 +184,6 @@ export function ReviewWork() {
     const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showing, setShowing] = useState<"submission" | "work">("submission");
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
 
     useEffect(() => {
         if (user?.role !== "teacher" || !project) return;
@@ -236,17 +224,10 @@ export function ReviewWork() {
 
 // A teacher trying a project the way a student first sees it: nothing is saved
 export function PreviewProject() {
-    const navigate = useNavigate();
     const { projectId } = useParams();
     const { user, loading } = useAuth();
     const { projects, byId } = useProjects();
     const project = byId(projectId);
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
 
     if (loading || user?.role !== "teacher" || projects === null || !project) return null;
     return <ModelingWorkspace key={project.id} project={project} opened={NO_WORK} onReload={() => undefined} preview/>;
@@ -341,8 +322,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     // Media that couldn't be stored on the server, and why; it's still kept in this browser
     const [mediaError, setMediaError] = useState<{ name: string; error: string } | null>(null);
     // New work starts from the project's starter code
-    const [start, setStart] = useState(savedWork?.start ?? project?.start ?? DEFAULT_START);
-    const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_MODEL);
+    const [start, setStart] = useState(savedWork?.start ?? project?.start ?? DEFAULT_CODE[language].start);
+    const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_CODE[language].model);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
     // A new project starts with one empty graph
     const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs ?? [newGraph()]);
@@ -351,7 +332,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     const mediaLoaded = useRef(!project);
     const startEditorRef = useRef<CodeEditorHandle>(null);
     const modelEditorRef = useRef<CodeEditorHandle>(null);
-    const [wasmReady, setWasmReady] = useState(false);
+    const simulation = useSimulation();
 
     // Every change to a project is saved with it and counts as an edit
     function saveWork(changes: Partial<ProjectWork>) {
@@ -421,19 +402,14 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return Math.min(MAX_STEPS, Math.max(1, n));
     }
 
+    // The editors highlight exactly the keywords and functions this interpreter knows
     useEffect(() => {
-        init().then(() => setWasmReady(true));
-    }, []);
-
-    interface RunResult {
-        ok: boolean;
-        // One entry per step: every variable's value after that step
-        history: Map<string, number>[];
-        errors: { line: number; column: number; message: string; block: string }[];
-    }
+        if (simulation.builtins) configureLanguage(simulation.builtins);
+    }, [simulation.builtins]);
 
     // Results of the last run; the chart stays empty until the model has run
-    const [history, setHistory] = useState<Map<string, number>[] | null>(null);
+    const [run, setRun] = useState<RunResult | null>(null);
+    const samples = useMemo(() => (run && run.error === null ? columnSamples(run.names, run.columns) : null), [run]);
 
     // Points plotted on videos, as variables the code can read at the current t
     const measuredData = useMemo(() => mediaItems.flatMap(pointSeries), [mediaItems]);
@@ -441,11 +417,11 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     // Variables from the code and the measured data, plus any the last run produced that neither shows anymore
     const variables = useMemo(() => {
         const names = codeVariables(`${start}\n${model}`);
-        for (const name of [...measuredData.map((s) => s.name), ...(history?.[0]?.keys() ?? [])]) {
+        for (const name of [...measuredData.map((s) => s.name), ...(samples?.names ?? [])]) {
             if (!names.includes(name)) names.push(name);
         }
         return names;
-    }, [start, model, history, measuredData]);
+    }, [start, model, samples, measuredData]);
 
     // The measured points themselves (in calibrated units), drawn as dots with the line of their variable when
     // the graph's X is t or the same video's other coordinate
@@ -462,25 +438,39 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return [];
     }, [mediaItems]);
 
-    function runSimulation() {
-        if (!wasmReady) return;
+    // Runs in a worker: the page stays usable, and a long run shows progress and can be stopped
+    async function runSimulation() {
+        if (simulation.status !== "ready") return;
         startEditorRef.current?.clearErrors();
         modelEditorRef.current?.clearErrors();
 
-        const result = runInterpreter(start, model, stepCount(), measuredData) as RunResult;
-
-        if (!result.ok) {
-            // Each error's line is counted in its own block, which is its own editor
-            const inBlock = (block: string): InterpreterError[] => result.errors
-                .filter((e) => e.block === block)
-                .map((e) => ({ line: e.line, column: e.column, message: e.message }));
-            startEditorRef.current?.setErrors(inBlock("start"));
-            modelEditorRef.current?.setErrors(inBlock("model"));
-            return;
-        }
-
-        setHistory(result.history);
+        const result = await simulation.run({ start, model }, stepCount(), measuredData);
+        if (!result) return; // stopped
+        setRun(result);
+        // Each message's line is counted in its own block, which is its own editor
+        const marks = (block: string): InterpreterError[] => [result.error, result.warning]
+            .filter((m) => m !== null && m.block === block)
+            .map((m) => ({ line: m!.line, column: m!.column, message: interpreterMessage(t, m!), warning: m === result.warning }));
+        startEditorRef.current?.setErrors(marks("start"));
+        modelEditorRef.current?.setErrors(marks("model"));
     }
+
+    // What the last run did, in a sentence below the editors
+    function runStatus(): { text: string; kind: "ok" | "warning" | "error" } | null {
+        if (simulation.status === "failed") return { text: t("run.loadFailed"), kind: "error" };
+        if (simulation.status === "running") return { text: t("run.running", { steps: simulation.progress.toLocaleString(language) }), kind: "ok" };
+        if (!run) return null;
+        if (run.error) return { text: t("run.error", { message: interpreterMessage(t, run.error) }), kind: "error" };
+        const tColumn = run.columns[run.names.indexOf("t")];
+        const finalT = tColumn ? Number(tColumn[tColumn.length - 1].toPrecision(6)) : null;
+        const steps = run.steps.toLocaleString(language);
+        const base = run.stopReason === "condition"
+            ? (finalT === null ? t("run.stoppedNoT", { steps }) : t("run.stopped", { steps, t: finalT }))
+            : t("run.limit", { steps });
+        if (run.warning) return { text: `${base} ${interpreterMessage(t, run.warning)}`, kind: "warning" };
+        return { text: base, kind: run.stopReason === "limit" ? "warning" : "ok" };
+    }
+    const status = runStatus();
 
     // ---------- Insert Media & Embeds ----------
     // Media, its points and settings are saved with the project; the files themselves in IndexedDB
@@ -713,15 +703,13 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
 
     return (
         <div className="modeling-page">
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{ project?.title }</h2>
-                    {project && !noSaving && <SaveIndicator status={sync.status}/>}
-                </div>
-
-                <div className="system-actions">
+            <TopBar
+                crumbs={[
+                    { label: t("nav.dashboard"), to: "/dashboard" },
+                    { label: project?.title ?? t("modeling.untitled") },
+                ]}
+                after={project && !noSaving && <SaveIndicator status={sync.status}/>}
+            >
                     {review ? (
                         <ReviewBar review={review}/>
                     ) : preview ? (
@@ -741,7 +729,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                 aria-haspopup="menu"
                                 aria-expanded={insertMenuOpen}
                             >
-                                <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                                <img src={PlusIcon14px} alt=""/>
                                 <p>{t("modeling.insertMediaEmbeds")}</p>
                             </button>
                             {insertMenuOpen && (
@@ -786,7 +774,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         {isTeacher ? (
                             project && (
                                 <button className="hand-in-btn" onClick={() => setPublishOpen(true)}>
-                                    <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                                    <img src={arrowIcon14px} alt=""/>
                                     <p>{t("publish.button")}</p>
                                 </button>
                             )
@@ -828,16 +816,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         )}
                         </>
                     )}
-                    <div className="right-system-actions">
-                        <button onClick={() => navigate("/settings")}>
-                            <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                        </button>
-                        <button onClick={() => navigate("/")}>
-                            <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </TopBar>
 
             {sync.conflict && (
                 <div className="modeling-banner" role="alert">
@@ -892,21 +871,27 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button className="play-btn" aria-label={t("modeling.runSimulation")} onClick={runSimulation} disabled={!wasmReady}>
-                                <img src={PlayIcon20px} alt="PlayIcon20px"/>
-                            </button>
+                            {simulation.status === "running" ? (
+                                <button type="button" className="stop-btn" onClick={simulation.stop}>{t("run.stop")}</button>
+                            ) : (
+                                <button className="play-btn" aria-label={t("modeling.runSimulation")}
+                                        title={`${t("modeling.runSimulation")} (${navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl"}+Enter)`}
+                                        onClick={runSimulation} disabled={simulation.status !== "ready"}>
+                                    <img src={PlayIcon20px} alt=""/>
+                                </button>
+                            )}
                         </div>
                         {/* Start values run once before the first step; model rules run every step */}
                         <div className="code-block code-block-start">
                             <p className="code-block-label">{t("modeling.startValues")}</p>
                             <div className="code-editor">
-                                <CodeEditor ref={startEditorRef} value={start} onChange={handleStartChange} onRun={runSimulation} readOnly={!!review}/>
+                                <ErrorBoundary compact><CodeEditor ref={startEditorRef} value={start} onChange={handleStartChange} onRun={runSimulation} readOnly={!!review}/></ErrorBoundary>
                             </div>
                         </div>
                         <div className="code-block code-block-model">
                             <p className="code-block-label">{t("modeling.modelRules")}</p>
                             <div className="code-editor">
-                                <CodeEditor ref={modelEditorRef} value={model} onChange={handleModelChange} onRun={runSimulation} readOnly={!!review}/>
+                                <ErrorBoundary compact><CodeEditor ref={modelEditorRef} value={model} onChange={handleModelChange} onRun={runSimulation} readOnly={!!review}/></ErrorBoundary>
                             </div>
                         </div>
                     </div>
@@ -926,6 +911,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                 onKeyDown={(e) => e.key === "Enter" && runSimulation()}
                             />
                         </span>
+                        {status && <span className={`run-status ${status.kind}`} role="status">{status.text}</span>}
                     </div>
                 </div>
                 <div
@@ -954,6 +940,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                             aria-label={t("modeling.resizeAnalysisPanels")}
                                         />
                                     )}
+                                    <ErrorBoundary compact>
                                     {row.kind === "graph" ? (
                                         <div className="analysis" style={rowStyle}>
                                             <div className="analysis-panel-actions">
@@ -963,11 +950,11 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                                     onClick={() => setGraphList(graphs.filter((g) => g.id !== row.graph.id))}
                                                     aria-label={t("modeling.closeGraph")}
                                                 >
-                                                    <img src={CloseIcon20px} alt="CloseIcon20px"/>
+                                                    <img src={CloseIcon20px} alt=""/>
                                                 </button>
                                             </div>
                                             <Graph
-                                                samples={history}
+                                                samples={samples}
                                                 variables={variables}
                                                 x={row.graph.x}
                                                 ys={row.graph.ys}
@@ -985,6 +972,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                             readOnly={!!review}
                                         />
                                     )}
+                                    </ErrorBoundary>
                                 </Fragment>
                             );
                         })}

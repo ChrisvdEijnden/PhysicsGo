@@ -6,9 +6,7 @@ import "./classes.css";
 import "./modeling.css";
 import "./projecteditor.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
 import Markdown from "../components/Markdown";
@@ -45,12 +43,6 @@ function ProjectEditor() {
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
 
     // Filled in once the projects have loaded: the project being edited, the one being copied, or empty
     useEffect(() => {
@@ -129,23 +121,7 @@ function ProjectEditor() {
 
     return (
         <div className="project-editor-page">
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
-                    <div className="spacer"></div>
-                    <h2>{editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}</h2>
-                </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.dashboard"), to: "/dashboard" }, { label: editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle") }]}/>
 
             <form className="project-editor" onSubmit={save}>
                 <label className="project-field">
