@@ -23,6 +23,7 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const ProjectEditor = lazy(() => import("./pages/ProjectEditor"));
 const Admin = lazy(() => import("./pages/Admin"));
 const Privacy = lazy(() => import("./pages/Privacy"));
+const Help = lazy(() => import("./pages/Help"));
 
 // Who may open which page is decided here, once, instead of by each page
 function AppRoutes() {
@@ -43,6 +44,7 @@ function AppRoutes() {
                 <Route element={<WaitForSession/>}>
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/privacy" element={<Privacy />} />
+                    <Route path="/help" element={<Help />} />
                 </Route>
                 <Route element={<RequireAuth/>}>
                     <Route path="/user" element={<User />} />

@@ -298,7 +298,7 @@ body {
     height: 20px;
 }
 
-.right-system-actions > button, .nav-icon-btn {
+.right-system-actions > button, .right-system-actions > a, .nav-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;

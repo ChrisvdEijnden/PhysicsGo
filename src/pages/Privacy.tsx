@@ -13,7 +13,7 @@ export default function Privacy() {
         <div className="page-settings">
             <TopBar title={t("nav.privacy")}/>
             <div className="content-settings">
-                <article className="privacy">
+                <article className="document">
                     <h1>{text.title}</h1>
                     <p className="privacy-updated">
                         {t("privacy.updated", { date: new Date(PRIVACY_UPDATED).toLocaleDateString(language, { dateStyle: "long" }) })}

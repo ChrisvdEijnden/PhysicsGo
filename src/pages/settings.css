@@ -243,8 +243,8 @@
     gap: 8px;
 }
 
-/* Privacy statement */
-:where(.page-settings) .privacy {
+/* Documents: the privacy statement and help */
+:where(.page-settings) .document {
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
@@ -259,22 +259,102 @@
     text-align: left;
 }
 
-:where(.page-settings) .privacy h1 {
+:where(.page-settings) .document h1 {
     margin: 0;
     font-size: 24px;
 }
 
-:where(.page-settings) .privacy h2 {
+:where(.page-settings) .document h2 {
     margin: 24px 0 8px;
     font-size: 16px;
+    scroll-margin-top: 16px;
 }
 
-:where(.page-settings) .privacy p, :where(.page-settings) .privacy ul {
+:where(.page-settings) .document p, :where(.page-settings) .document ul, :where(.page-settings) .document ol {
     margin: 8px 0;
 }
 
-:where(.page-settings) .privacy li {
+:where(.page-settings) .document li {
     margin: 4px 0;
+}
+
+:where(.page-settings) .document code {
+    font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.9em;
+    padding: 1px 4px;
+    border-radius: 4px;
+    background-color: var(--color-bg-app);
+    white-space: nowrap;
+}
+
+:where(.page-settings) .doc-code {
+    margin: 8px 0;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    overflow-x: auto;
+    line-height: 1.5;
+}
+
+:where(.page-settings) .doc-code code {
+    padding: 0;
+    background: none;
+    white-space: pre;
+}
+
+:where(.page-settings) .doc-contents {
+    margin: 16px 0;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background-color: var(--color-brand-subtle-bg);
+}
+
+:where(.page-settings) .doc-contents h2 {
+    margin: 0 0 4px;
+    font-size: 14px;
+}
+
+:where(.page-settings) .doc-contents ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+:where(.page-settings) .doc-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--color-brand);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+
+:where(.page-settings) .doc-table {
+    margin: 8px 0 12px;
+    overflow-x: auto;
+}
+
+:where(.page-settings) .doc-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+:where(.page-settings) .doc-table th, :where(.page-settings) .doc-table td {
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    vertical-align: top;
+}
+
+:where(.page-settings) .doc-table th {
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+:where(.page-settings) .doc-table td:first-child {
+    white-space: nowrap;
 }
 
 :where(.page-settings) .privacy-updated {

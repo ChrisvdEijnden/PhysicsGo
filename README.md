@@ -72,6 +72,8 @@ Code works in Dutch and in English, also mixed. The app shows it with the words 
 
 `sin`, `cos`, `tan`, `abs`, `exp`, `ln`, `log`, `min`, `max`, `hypot`, `pi` and `e` are the same in both. The interpreter's grammar and function table are in `InterpreterGo/src`; the app's translation is `src/lib/modelLanguage.ts`. The built-in assignments are in `server/presets.js` (English) and `server/presets.nl.js` (Dutch).
 
+For students and teachers the language is explained on the help page (`#/help`, behind the ? in the top bar): the text is in `src/data/help.ts`, the functions, keywords and constants in `src/lib/functionHelp.ts` (a test checks these against the interpreter).
+
 ## Styles
 
 A page's stylesheet only applies on that page: its root element has a page class (`page-auth`, `page-settings`, `page-admin`, `page-all-models`, `project-editor-page`, `modeling-page`) and every rule starts with `:where(.that-class)`, which keeps the rule's specificity as it was. Styles shared between pages live in `src/styles/global.css`, `src/pages/dashboard.css` (the dashboard-style layout), `src/pages/classes.css` (buttons, fields, lists, dialogs) and next to shared components (`src/components/*.css`). Dialogs are drawn outside the page, so their styles must be shared ones.

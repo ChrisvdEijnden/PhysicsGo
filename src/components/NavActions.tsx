@@ -17,10 +17,10 @@ function NavActions({ settings = true }: { settings?: boolean }) {
                     <img src={SettingsIcon21px} alt=""/>
                 </button>
             )}
-            {/* Help isn't written yet (WF-6); until then this goes home */}
-            <button type="button" aria-label={t("nav.help")} title={t("nav.help")} onClick={() => navigate("/")}>
+            {/* In a new tab, so open work stays where it is while reading */}
+            <a href="#/help" target="_blank" rel="noopener" aria-label={t("nav.helpNewTab")} title={t("nav.help")}>
                 <img src={HelpIcon21px} alt=""/>
-            </button>
+            </a>
             <UserMenu/>
         </div>
     );
