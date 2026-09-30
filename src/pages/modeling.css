@@ -1634,12 +1634,6 @@ a.analysis-view-toggle {
     text-decoration: none;
 }
 
-.embed-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
 .embed-status {
     min-height: 1.3em;
     margin: -4px 0 0;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../lib/useAuth";
+import { closesOnFocusOut, menuKeyDown, opensMenu } from "../lib/menuKeys";
 import { useTranslation } from "../lib/useTranslations";
 
 // "Chris van den Eijnden" → "CE"
@@ -51,7 +52,7 @@ export default function UserMenu() {
     };
 
     return (
-        <div className="user-menu" ref={rootRef}>
+        <div className="user-menu" ref={rootRef} onBlur={closesOnFocusOut(() => setOpen(false))}>
             <button
                 ref={buttonRef}
                 type="button"
@@ -61,12 +62,13 @@ export default function UserMenu() {
                 aria-label={t("nav.userMenu", { name: user.name })}
                 title={user.name}
                 onClick={() => setOpen(!open)}
+                onKeyDown={(e) => opensMenu(e) && setOpen(true)}
             >
                 <span className="user-avatar" aria-hidden="true">{initials(user.name)}</span>
                 <span className="user-menu-name">{user.name}</span>
             </button>
             {open && (
-                <div className="user-menu-items" role="menu">
+                <div className="user-menu-items" role="menu" aria-label={user.name} onKeyDown={menuKeyDown}>
                     <div className="user-menu-who">
                         <strong>{user.name}</strong>
                         <span>{user.email}</span>

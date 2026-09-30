@@ -20,7 +20,7 @@ export default function EmbedDialog({ onAdd, onClose, returnFocus }: {
 
     return (
         <Dialog labelledBy="embed-title" onClose={onClose} returnFocus={returnFocus}>
-            <form className="embed-form" onSubmit={(e) => {
+            <form className="dialog-form" onSubmit={(e) => {
                 e.preventDefault();
                 // Not also the form the dialog was opened from (the assignment editor's)
                 e.stopPropagation();
@@ -39,7 +39,7 @@ export default function EmbedDialog({ onAdd, onClose, returnFocus }: {
                         autoComplete="off"
                         spellCheck={false}
                         placeholder="https://"
-                        autoFocus
+                        data-autofocus
                         value={text}
                         aria-invalid={invalid}
                         aria-describedby="embed-status"

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import "../pages/classes.css";
 
+import Dialog from "./Dialog";
 import { useAuth } from "../lib/useAuth";
 import type { Result } from "../lib/api";
 import type { Publication, PublicationSettings } from "../lib/usePublished";
@@ -52,14 +53,6 @@ export default function PublishDialog({ title, current, onSave, onClose }: {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "Escape") onClose();
-        }
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [onClose]);
-
     function toggle(id: number) {
         setSelected((prev) => {
             const next = new Set(prev);
@@ -93,70 +86,68 @@ export default function PublishDialog({ title, current, onSave, onClose }: {
     }
 
     return (
-        <div className="dialog-backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-            <div className="dialog publish-dialog" role="dialog" aria-modal="true" aria-labelledby="publish-title">
-                <div className="dialog-header">
-                    <h2 id="publish-title">{t("publish.title", { title })}</h2>
-                    <p>{t("publish.description")}</p>
-                </div>
-
-                {classes.length === 0 ? (
-                    <div className="dialog-empty">
-                        <p>{t("publish.noClasses")}</p>
-                        <button type="button" className="class-button" onClick={() => navigate("/classes")}>
-                            {t("publish.createClass")}
-                        </button>
-                    </div>
-                ) : (
-                    <div className="publish-classes">
-                        {classes.map((c) => {
-                            const checked = selected.has(c.id);
-                            const draft = draftOf(c.id);
-                            return (
-                                <div key={c.id} className={`publish-class-block${checked ? " checked" : ""}`}>
-                                    <label className={`publish-class${checked ? " checked" : ""}`}>
-                                        <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
-                                        <span>{c.name}</span>
-                                    </label>
-                                    {checked && (
-                                        <div className="publish-settings">
-                                            <label className="publish-field">
-                                                <span>{t("publish.opens")}</span>
-                                                <input type="datetime-local" className="class-input" value={draft.opens}
-                                                       onChange={(e) => edit(c.id, { opens: e.target.value })}/>
-                                            </label>
-                                            <label className="publish-field">
-                                                <span>{t("publish.due")}</span>
-                                                <input type="datetime-local" className="class-input" value={draft.due}
-                                                       onChange={(e) => edit(c.id, { due: e.target.value })}/>
-                                            </label>
-                                            <label className="publish-field wide">
-                                                <span>{t("publish.instructions")}</span>
-                                                <textarea className="class-input" rows={3} maxLength={5000} value={draft.instructions}
-                                                          placeholder={t("publish.instructionsPlaceholder")}
-                                                          onChange={(e) => edit(c.id, { instructions: e.target.value })}/>
-                                            </label>
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {error && <p className="auth-error class-error" role="alert">{error}</p>}
-
-                <div className="dialog-actions">
-                    <button type="button" className="class-button" onClick={onClose}>
-                        {t("publish.cancel")}
-                    </button>
-                    {classes.length > 0 && (
-                        <button type="button" className="class-button primary" onClick={save} disabled={busy} autoFocus>
-                            {t("publish.save")}
-                        </button>
-                    )}
-                </div>
+        <Dialog labelledBy="publish-title" onClose={onClose} className="publish-dialog">
+            <div className="dialog-header">
+                <h2 id="publish-title">{t("publish.title", { title })}</h2>
+                <p>{t("publish.description")}</p>
             </div>
-        </div>
+
+            {classes.length === 0 ? (
+                <div className="dialog-empty">
+                    <p>{t("publish.noClasses")}</p>
+                    <button type="button" className="class-button" onClick={() => navigate("/classes")}>
+                        {t("publish.createClass")}
+                    </button>
+                </div>
+            ) : (
+                <div className="publish-classes">
+                    {classes.map((c) => {
+                        const checked = selected.has(c.id);
+                        const draft = draftOf(c.id);
+                        return (
+                            <div key={c.id} className={`publish-class-block${checked ? " checked" : ""}`}>
+                                <label className={`publish-class${checked ? " checked" : ""}`}>
+                                    <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
+                                    <span>{c.name}</span>
+                                </label>
+                                {checked && (
+                                    <div className="publish-settings">
+                                        <label className="publish-field">
+                                            <span>{t("publish.opens")}</span>
+                                            <input type="datetime-local" className="class-input" value={draft.opens}
+                                                   onChange={(e) => edit(c.id, { opens: e.target.value })}/>
+                                        </label>
+                                        <label className="publish-field">
+                                            <span>{t("publish.due")}</span>
+                                            <input type="datetime-local" className="class-input" value={draft.due}
+                                                   onChange={(e) => edit(c.id, { due: e.target.value })}/>
+                                        </label>
+                                        <label className="publish-field wide">
+                                            <span>{t("publish.instructions")}</span>
+                                            <textarea className="class-input" rows={3} maxLength={5000} value={draft.instructions}
+                                                      placeholder={t("publish.instructionsPlaceholder")}
+                                                      onChange={(e) => edit(c.id, { instructions: e.target.value })}/>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {error && <p className="auth-error class-error" role="alert">{error}</p>}
+
+            <div className="dialog-actions">
+                <button type="button" className="class-button" onClick={onClose}>
+                    {t("publish.cancel")}
+                </button>
+                {classes.length > 0 && (
+                    <button type="button" className="class-button primary" onClick={save} disabled={busy} data-autofocus>
+                        {t("publish.save")}
+                    </button>
+                )}
+            </div>
+        </Dialog>
     );
 }

@@ -18,3 +18,10 @@ dialog.modal > .dialog {
     max-height: calc(100vh - 32px);
     overflow-y: auto;
 }
+
+/* A dialog whose content is a form */
+.dialog-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}

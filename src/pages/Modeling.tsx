@@ -40,6 +40,7 @@ import type { Result } from "../lib/api";
 import HandInDialog from "../components/HandInDialog";
 import EmbedDialog from "../components/EmbedDialog";
 import { safeEmbedSrc } from "../lib/embeds";
+import { closesOnFocusOut, menuKeyDown, opensMenu } from "../lib/menuKeys";
 import type { Embed } from "../lib/embeds";
 import Markdown from "../components/Markdown";
 import { deleteServerMedia, mediaOnServer, mediaUrl, projectMediaUrl, uploadMedia, urlExists } from "../lib/mediaServer";
@@ -816,7 +817,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
             if (!insertMenuRef.current?.contains(e.target as Node)) setInsertMenuOpen(false);
         }
         function handleKeyDown(e: KeyboardEvent) {
-            if (e.key === "Escape") setInsertMenuOpen(false);
+            if (e.key !== "Escape") return;
+            setInsertMenuOpen(false);
+            insertMenuRef.current?.querySelector("button")?.focus();
         }
         window.addEventListener("pointerdown", handlePointerDown);
         window.addEventListener("keydown", handleKeyDown);
@@ -960,11 +963,12 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         />
                         {/* The icon buttons sit together, like settings and help */}
                         <div className="nav-icon-group">
-                            <div className="insert-menu-anchor" ref={insertMenuRef}>
+                            <div className="insert-menu-anchor" ref={insertMenuRef} onBlur={closesOnFocusOut(() => setInsertMenuOpen(false))}>
                                 <button
                                     type="button"
                                     className="nav-icon-btn"
                                     onClick={() => setInsertMenuOpen(!insertMenuOpen)}
+                                    onKeyDown={(e) => opensMenu(e) && setInsertMenuOpen(true)}
                                     disabled={panelsFull}
                                     aria-label={t("modeling.insertMediaEmbeds")}
                                     title={panelsFull ? t("modeling.removePanelTooltip") : t("modeling.insertMediaEmbeds")}
@@ -974,7 +978,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                     <img src={PlusIcon20px} alt=""/>
                                 </button>
                                 {insertMenuOpen && (
-                                    <div className="insert-menu" role="menu">
+                                    <div className="insert-menu" role="menu" aria-label={t("modeling.insertMediaEmbeds")} onKeyDown={menuKeyDown}>
                                         <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
                                             {t("modeling.insertGraph")}
                                         </button>

@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import "../pages/classes.css";
 
+import Dialog from "./Dialog";
 import { useAuth } from "../lib/useAuth";
 import { authErrorKey } from "../lib/authErrors";
 import { useTranslation } from "../lib/useTranslations";
@@ -37,15 +38,9 @@ function SignInAgain({ email: accountEmail, login, logout }: {
     };
 
     return (
-        <div className="dialog-backdrop">
-            <form
-                className="dialog"
-                role="alertdialog"
-                aria-modal="true"
-                aria-labelledby="session-ended-title"
-                aria-describedby="session-ended-description"
-                onSubmit={submit}
-            >
+        // It stays until they sign in again or sign out: Escape and clicking next to it don't close it
+        <Dialog labelledBy="session-ended-title" describedBy="session-ended-description" alert>
+            <form className="dialog-form" onSubmit={submit}>
                 <div className="dialog-header">
                     <h2 id="session-ended-title">{t("session.endedTitle")}</h2>
                     <p id="session-ended-description">{t("session.endedDescription")}</p>
@@ -57,7 +52,7 @@ function SignInAgain({ email: accountEmail, login, logout }: {
                 </label>
                 <label className="dialog-field">
                     <span>{t("auth.password")}</span>
-                    <input className="class-input" type="password" autoComplete="current-password" required autoFocus
+                    <input className="class-input" type="password" autoComplete="current-password" required data-autofocus
                            value={password} onChange={(e) => setPassword(e.target.value)}/>
                 </label>
                 {error && <p className="auth-error class-error" role="alert">{t(authErrorKey(error))}</p>}
@@ -70,6 +65,6 @@ function SignInAgain({ email: accountEmail, login, logout }: {
                     </button>
                 </div>
             </form>
-        </div>
+        </Dialog>
     );
 }
