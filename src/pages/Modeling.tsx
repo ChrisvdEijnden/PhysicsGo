@@ -11,6 +11,8 @@ import CloseIcon20px from "../assets/icons/close-20px.svg";
 import DownloadIcon20px from "../assets/icons/download-20px.svg";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
 import EditIcon20px from "../assets/icons/edit-20px.svg";
+import ChevronLeft16px from "../assets/icons/chevron-left-16px.svg";
+import ChevronRight16px from "../assets/icons/chevron-right-16px.svg";
 
 import Graph, { lineColor } from "../components/Graph.tsx";
 import ExportMenu from "../components/ExportMenu";
@@ -71,6 +73,7 @@ function codeVariables(source: string): string[] {
 type RunStatus = { kind: "stopped" | "limit" | "error"; steps: number; t: number | undefined };
 
 const MIN_PANEL_WIDTH_PERCENT = 15;
+const EXPLANATION_COLLAPSED_KEY = "physicsgo_explanation_collapsed";
 const MIN_ROW_HEIGHT_PERCENT = 15;
 
 // Moves the divider after panel `index` by `delta` percent, keeping both panels next to it at least `min`
@@ -375,6 +378,23 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         100 / 3,
     ]);
     const [draggingDivider, setDraggingDivider] = useState<number | null>(null);
+    // The explanation can be folded away to a narrow strip, giving the code and graphs the room;
+    // remembered in this browser
+    const [explanationCollapsed, setExplanationCollapsed] = useState(() => {
+        try {
+            return localStorage.getItem(EXPLANATION_COLLAPSED_KEY) === "1";
+        } catch {
+            return false;
+        }
+    });
+    const toggleExplanation = () => setExplanationCollapsed((collapsed) => {
+        try {
+            localStorage.setItem(EXPLANATION_COLLAPSED_KEY, collapsed ? "0" : "1");
+        } catch {
+            // Not remembered, but it still folds
+        }
+        return !collapsed;
+    });
 
     const handlePointerMove = useCallback((e: PointerEvent) => {
         const drag = dragState.current;
@@ -1040,8 +1060,24 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
             )}
             <PanelTabs tab={tab} onChange={setTab}/>
             <div className={`content-modeling tab-${tab}`} ref={contentRef}>
-                <div className="explanation-panel" id="panel-explanation" style={{ flex: `0 1 ${panelWidths[0]}%` }}>
-                    <div className="explanation">
+                <div
+                    className={`explanation-panel${explanationCollapsed ? " collapsed" : ""}`}
+                    id="panel-explanation"
+                    style={explanationCollapsed ? undefined : { flex: `0 1 ${panelWidths[0]}%` }}
+                >
+                    <button
+                        type="button"
+                        className="panel-toggle"
+                        onClick={toggleExplanation}
+                        aria-expanded={!explanationCollapsed}
+                        aria-controls="explanation-content"
+                        aria-label={explanationCollapsed ? t("modeling.expandExplanation") : t("modeling.collapseExplanation")}
+                        title={explanationCollapsed ? t("modeling.expandExplanation") : t("modeling.collapseExplanation")}
+                    >
+                        <img src={explanationCollapsed ? ChevronRight16px : ChevronLeft16px} alt=""/>
+                        {explanationCollapsed && <span className="panel-toggle-label">{t("modeling.tabExplanation")}</span>}
+                    </button>
+                    <div className="explanation" id="explanation-content">
                         {project && !isTeacher && !review && <AssignmentInfo publications={published[project.id] ?? []}/>}
                         {project && <Markdown text={project.explanation}/>}
                     </div>
@@ -1060,14 +1096,16 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     )}
                 </div>
 
-                <div
-                    className={`panel-divider${draggingDivider === 0 ? " dragging" : ""}`}
-                    onPointerDown={handleDividerPointerDown(0)}
-                    {...columnDividerProps(0)}
-                    aria-label={t("modeling.resizeExplanationCode")}
-                />
+                {!explanationCollapsed && (
+                    <div
+                        className={`panel-divider${draggingDivider === 0 ? " dragging" : ""}`}
+                        onPointerDown={handleDividerPointerDown(0)}
+                        {...columnDividerProps(0)}
+                        aria-label={t("modeling.resizeExplanationCode")}
+                    />
+                )}
 
-                <div className="code-panel" id="panel-code" style={{ flex: `0 1 ${panelWidths[1]}%` }}>
+                <div className="code-panel" id="panel-code" style={{ flex: explanationCollapsed ? `${panelWidths[1]} 1 0%` : `0 1 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
                             {simulation.running ? (
@@ -1143,7 +1181,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     aria-label={t("modeling.resizeCodeAnalysis")}
                 />
 
-                <div className="analysis-panel" id="panel-analysis" style={{ flex: `0 1 ${panelWidths[2]}%` }}>
+                <div className="analysis-panel" id="panel-analysis" style={{ flex: explanationCollapsed ? `${panelWidths[2]} 1 0%` : `0 1 ${panelWidths[2]}%` }}>
                     <div className="analysis-stack" ref={analysisStackRef}>
                         {rows.map((row, index) => {
                             const key = row.kind === "graph" ? row.graph.id : row.item.id;

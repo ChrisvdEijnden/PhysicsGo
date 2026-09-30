@@ -97,6 +97,62 @@
     background-color: var(--color-brand);
 }
 
+/* Folding the explanation away: a button in its top-right corner; folded, the panel is a narrow
+   strip with the button and the word "Uitleg" */
+.explanation-panel {
+    position: relative;
+}
+
+.panel-toggle {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 4px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.panel-toggle:hover {
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.panel-toggle img {
+    width: 16px;
+    height: 16px;
+}
+
+.panel-toggle-label {
+    writing-mode: vertical-rl;
+}
+
+.explanation-panel.collapsed {
+    flex: 0 0 44px;
+    /* The same space the drag handle takes when it's open */
+    margin-right: 8px;
+    padding: 12px 6px;
+    align-items: center;
+}
+
+.explanation-panel.collapsed .panel-toggle {
+    position: static;
+    padding: 8px 4px;
+}
+
+.explanation-panel.collapsed .explanation, .explanation-panel.collapsed .explanation-footer {
+    display: none;
+}
+
 .explanation {
     display: flex;
     flex-direction: column;
@@ -104,7 +160,8 @@
     height: 100%;
     background-color: var(--color-bg-app);
     border: 1px var(--color-border) solid;
-    padding: 16px;
+    /* Room on the right for the fold button */
+    padding: 16px 44px 16px 16px;
     border-radius: 12px;
     overflow: auto;
     transition: background-color 0.2s ease, border-color 0.2s ease;
@@ -1260,6 +1317,25 @@
 
     .content-modeling > .panel-divider {
         display: none;
+    }
+
+    /* The tabs already show one panel at a time: the explanation isn't folded here */
+    .panel-toggle {
+        display: none;
+    }
+
+    .explanation-panel.collapsed {
+        margin-right: 0;
+        padding: 12px;
+        align-items: stretch;
+    }
+
+    .explanation-panel.collapsed .explanation, .explanation-panel.collapsed .explanation-footer {
+        display: flex;
+    }
+
+    .explanation {
+        padding-right: 16px;
     }
 
     /* The widths set by dragging the dividers don't apply here */
