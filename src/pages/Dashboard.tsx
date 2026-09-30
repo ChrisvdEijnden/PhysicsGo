@@ -28,6 +28,7 @@ import { formatMark } from "../components/Feedback";
 import type { ReviewStatus } from "../lib/workSync";
 import ProjectClasses from "../components/ProjectClasses";
 import PublishButton from "../components/PublishButton";
+import StudentClasses from "../components/StudentClasses";
 
 function Dashboard() {
     const navigate = useNavigate();
@@ -161,13 +162,13 @@ function Dashboard() {
                     {user && (
                         <div className="curriculum-card">
                             <h2>{isTeacher ? t("dashboard.manageClassesTitle") : t("dashboard.yourClasses")}</h2>
-                            {user.classes.length > 0
+                            {!isTeacher ? <StudentClasses/> : user.classes.length > 0
                                 ? (
                                     <div className="class-chip-list">
                                         {user.classes.map((c) => <span key={c.id} className="class-chip">{c.name}</span>)}
                                     </div>
                                 )
-                                : <p className="classes-empty">{isTeacher ? t("dashboard.noClassesTeacher") : t("dashboard.noClasses")}</p>}
+                                : <p className="classes-empty">{t("dashboard.noClassesTeacher")}</p>}
                             <div className="presets-list">
                                 <Link className="preset-item" to={isTeacher ? "/classes" : "/join-class"}>
                                     <div className="preset-item-text">

@@ -259,6 +259,21 @@ describe("classes, assignments and work", () => {
         assert.deepEqual([row.status, row.mark], ["approved", 8]);
     });
 
+    test("students see their classes with teachers and assignments, and can leave one", async () => {
+        assert.equal((await teacher("GET", "/classes/mine")).status, 403);
+        const [mine] = (await student("GET", "/classes/mine")).data.classes;
+        assert.equal(mine.name, "5V natuurkunde");
+        assert.deepEqual(mine.teachers, ["Teacher Three"]);
+        assert.deepEqual(mine.assignments.map((a) => a.id), ["standard-freefall"]);
+
+        const left = await student("DELETE", `/classes/mine/${classId}`);
+        assert.deepEqual(left.data.user.classes, []);
+        assert.deepEqual((await student("GET", "/classes/mine")).data.classes, []);
+        assert.ok(!(await student("GET", "/projects")).data.projects.some((p) => p.id === "standard-freefall"));
+        assert.equal((await teacher("GET", `/classes/${classId}/students/${studentId}/work/standard-freefall`)).status, 404);
+        assert.equal((await student("DELETE", `/classes/mine/${classId}`)).status, 404);
+    });
+
     test("a teacher can delete a student's account from the class, with all their work", async () => {
         const before = await teacher("GET", `/classes/${classId}`);
         const b = before.data.class.students.find((s) => s.email === "b@school.test");

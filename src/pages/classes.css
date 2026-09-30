@@ -690,3 +690,91 @@
     }
 }
 
+
+/* Students' classes on their dashboard: name and teachers; opened, the assignments and "Leave class" */
+.student-classes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.student-class {
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    text-align: left;
+}
+
+.student-class summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.student-class summary::-webkit-details-marker {
+    display: none;
+}
+
+.student-class summary::before {
+    content: "›";
+    color: var(--color-text-tertiary);
+    transition: transform 0.15s ease;
+}
+
+.student-class[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.student-class-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.student-class-teachers {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.student-class-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 12px 12px 26px;
+}
+
+.student-class-assignments {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 13px;
+}
+
+.student-class-assignments li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.student-class-assignments a {
+    color: var(--color-text-primary);
+}
+
+.student-class-assignments span {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}

@@ -134,6 +134,42 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.status(201).json({ class: found.class, user: publicUser(req.user) });
     });
 
+    // Students: their classes, each with its teachers and the assignments open to it so far
+    router.get("/mine", (req, res) => {
+        if (req.user.role !== "student") return res.status(403).json({ error: "forbidden" });
+        const teachers = db.prepare(`
+            SELECT u.name FROM class_teachers t JOIN users u ON u.id = t.user_id WHERE t.class_id = ? ORDER BY t.added_at
+        `);
+        const assignments = db.prepare(`
+            SELECT p.id, p.title, pc.due_at AS dueAt FROM project_classes pc JOIN projects p ON p.id = pc.project_id
+            WHERE pc.class_id = ? AND (pc.opens_at IS NULL OR pc.opens_at <= ?)
+            ORDER BY pc.due_at IS NULL, pc.due_at, p.title COLLATE NOCASE
+        `);
+        const classes = db.prepare(`
+            SELECT c.id, c.name, s.joined_at AS joinedAt FROM class_students s
+            JOIN classes c ON c.id = s.class_id AND c.archived_at IS NULL
+            WHERE s.user_id = ? ORDER BY c.name COLLATE NOCASE
+        `).all(req.user.id);
+        const now = Date.now();
+        res.json({
+            classes: classes.map((c) => ({
+                ...c,
+                teachers: teachers.all(c.id).map((t) => t.name),
+                assignments: assignments.all(c.id, now),
+            })),
+        });
+    });
+
+    // Students: leave a class, e.g. one joined by mistake. Their work stays in their account, but the
+    // class's teachers no longer see it, and assignments only that class had disappear from their list.
+    router.delete("/mine/:studentClassId", (req, res) => {
+        if (req.user.role !== "student") return res.status(403).json({ error: "forbidden" });
+        const info = db.prepare("DELETE FROM class_students WHERE class_id = ? AND user_id = ?")
+            .run(Number(req.params.studentClassId), req.user.id);
+        if (info.changes === 0) return res.status(404).json({ error: "not_found" });
+        res.json({ user: publicUser(req.user) });
+    });
+
     // Everything below manages classes and is for teachers only
     router.use((req, res, next) => {
         if (req.user.role !== "teacher") return res.status(403).json({ error: "forbidden" });
