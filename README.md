@@ -33,7 +33,7 @@ Use pnpm rather than npm: `pnpm-lock.yaml` is the only lockfile.
 
 ### The first teacher and administrator
 
-Students join with a class code (or the join link and QR code on the Classes page), and teachers sign up with an invitation code. Create the first invitation from the command line, sign up with it, and make that account an administrator:
+Students join with the class code from the Classes page, and teachers sign up with an invitation code. Create the first invitation from the command line, sign up with it, and make that account an administrator:
 
 ```sh
 node server/create-teacher-code.js      # one use; pass a number for more

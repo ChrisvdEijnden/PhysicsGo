@@ -1,5 +1,4 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
@@ -15,8 +14,8 @@ import ConfirmButton from "../components/ConfirmButton";
 import { useProjects } from "../lib/useProjects";
 import { formatDueDate } from "../lib/formatDueDate";
 import { formatCode } from "../components/CodeInput";
-import QrCode from "../components/QrCode";
-import { joinLink } from "../lib/joinLink";
+import CopyIcon20px from "../assets/icons/copy-20px.svg";
+import CheckIcon20px from "../assets/icons/check-20px.svg";
 
 interface ClassSummary {
     id: number;
@@ -112,9 +111,7 @@ function Classes() {
     const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
     // A one-time code a student uses to choose a new password, shown until closed
     const [resetCode, setResetCode] = useState<{ studentId: number; code: string; expiresAt: number } | null>(null);
-    const [copied, setCopied] = useState<"code" | "link" | null>(null);
-    // The code and QR code full-screen, for the projector
-    const [presenting, setPresenting] = useState(false);
+    const [copied, setCopied] = useState(false);
     const [busy, setBusy] = useState(false);
     const selectedRef = useRef<number | null>(null);
     selectedRef.current = selectedId;
@@ -149,7 +146,7 @@ function Classes() {
     useEffect(() => {
         setDetail(null);
         setDetailError(null);
-        setCopied(null);
+        setCopied(false);
         setTeacherEmail("");
         setInvitedEmail(null);
         setResetCode(null);
@@ -230,12 +227,12 @@ function Classes() {
         else setNameDraft(detail.name);
     };
 
-    const copy = async (what: "code" | "link") => {
+    const copyCode = async () => {
         if (!detail) return;
         try {
-            await navigator.clipboard.writeText(what === "code" ? formatCode(detail.code) : joinLink(detail.code));
-            setCopied(what);
-            setTimeout(() => setCopied(null), 2000);
+            await navigator.clipboard.writeText(formatCode(detail.code));
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
         } catch {
             // Clipboard can be unavailable; the code stays selectable on screen
         }
@@ -299,9 +296,7 @@ function Classes() {
                 <h3>{c.name}</h3>
                 <p>{studentCount(c.studentCount)}</p>
             </div>
-            {c.archivedAt !== null
-                ? <span className="class-badge">{t("classes.archivedBadge")}</span>
-                : !c.joinOpen && <span className="class-badge">{t("classes.closedBadge")}</span>}
+            {c.archivedAt !== null && <span className="class-badge">{t("classes.archivedBadge")}</span>}
         </button>
     );
 
@@ -411,56 +406,15 @@ function Classes() {
                                 <section className="class-section">
                                     <div className="section-heading">
                                         <h3>{t("classes.studentCode")}</h3>
-                                        <p>{t("classes.studentCodeDesc")}</p>
                                     </div>
                                     <div className="code-row">
-                                        <span className={`class-code${detail.joinOpen ? "" : " closed"}`}>{formatCode(detail.code)}</span>
-                                        <button type="button" className="class-button" onClick={() => copy("code")}>
-                                            {copied === "code" ? t("classes.copied") : t("classes.copy")}
+                                        <span className="class-code">{formatCode(detail.code)}</span>
+                                        <button type="button" className="icon-button" onClick={copyCode}
+                                                aria-label={copied ? t("classes.copied") : t("classes.copy")}
+                                                title={copied ? t("classes.copied") : t("classes.copy")}>
+                                            <img src={copied ? CheckIcon20px : CopyIcon20px} alt=""/>
                                         </button>
-                                        <ConfirmButton
-                                            className="class-button"
-                                            label={t("classes.regenerate")}
-                                            disabled={busy}
-                                            onConfirm={() => mutate("/code", "POST")}
-                                        />
-                                    </div>
-                                    <p className="section-hint">{t("classes.regenerateHint")}</p>
-                                    {detail.joinOpen && (
-                                        // Students open the link or scan the code and only have to create their account
-                                        <div className="join-share">
-                                            <QrCode text={joinLink(detail.code)} size={112} label={t("classes.qrLabel", { name: detail.name })}/>
-                                            <div className="join-share-text">
-                                                <p className="section-hint">{t("classes.joinLinkDesc")}</p>
-                                                <div className="code-row">
-                                                    <input className="class-input join-link" readOnly value={joinLink(detail.code)}
-                                                           aria-label={t("classes.joinLink")} onFocus={(e) => e.target.select()}/>
-                                                    <button type="button" className="class-button" onClick={() => copy("link")}>
-                                                        {copied === "link" ? t("classes.copied") : t("classes.copyLink")}
-                                                    </button>
-                                                </div>
-                                                <button type="button" className="class-button" onClick={() => setPresenting(true)}>
-                                                    {t("classes.showOnScreen")}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {presenting && (
-                                        <JoinScreen name={detail.name} code={detail.code} onClose={() => setPresenting(false)}/>
-                                    )}
-                                    <div className="setting-row join-row">
-                                        <p>{detail.joinOpen ? t("classes.joinOpen") : t("classes.joinClosed")}</p>
-                                        <button
-                                            type="button"
-                                            className="class-switch"
-                                            role="switch"
-                                            aria-checked={detail.joinOpen}
-                                            aria-label={t("classes.toggleJoin")}
-                                            disabled={busy}
-                                            onClick={() => mutate("", "PATCH", { joinOpen: !detail.joinOpen })}
-                                        >
-                                            <span className="class-switch-thumb"></span>
-                                        </button>
+                                        <span className="visually-hidden" role="status">{copied ? t("classes.copied") : ""}</span>
                                     </div>
                                 </section>
                             )}
@@ -530,7 +484,6 @@ function Classes() {
                                 <section className="class-section">
                                     <div className="section-heading">
                                         <h3>{t("classes.assignments")}</h3>
-                                        <p>{t("classes.assignmentsDesc")}</p>
                                     </div>
                                     {progress.length === 0 && <p className="classes-empty">{t("classes.noAssignments")}</p>}
                                     {progress.map((p) => {
@@ -598,7 +551,6 @@ function Classes() {
                             <section className="class-section">
                                 <div className="section-heading">
                                     <h3>{t("classes.teachers")}</h3>
-                                    <p>{t("classes.teachersDesc")}</p>
                                 </div>
                                 <div className="member-list">
                                     {detail.teachers.map((m) => (
@@ -690,7 +642,6 @@ function Classes() {
                                 )}
                                 {detail.youAreOwner && !archived && (
                                     <>
-                                        {detail.teachers.length > 1 && <p className="section-hint">{t("classes.ownerLeaveHint")}</p>}
                                         <div className="setting-row">
                                             <p className="section-hint">{t("classes.deleteDesc")}</p>
                                             <ConfirmButton
@@ -712,30 +663,3 @@ function Classes() {
 }
 
 export default Classes;
-
-// The class code, link and QR code as large as the screen allows, for the projector
-function JoinScreen({ name, code, onClose }: { name: string; code: string; onClose: () => void }) {
-    const { t } = useTranslation();
-    useEffect(() => {
-        const onKeyDown = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-        window.addEventListener("keydown", onKeyDown);
-        return () => window.removeEventListener("keydown", onKeyDown);
-    }, [onClose]);
-    // On the body, so nothing of the class page's layout or styles applies to it
-    return createPortal(
-        <div className="join-screen" role="dialog" aria-modal="true" aria-labelledby="join-screen-title">
-            <h2 id="join-screen-title">{t("classes.joinScreenTitle", { name })}</h2>
-            <div className="join-screen-body">
-                <QrCode text={joinLink(code)} size={360} label={t("classes.qrLabel", { name })}/>
-                <div className="join-screen-steps">
-                    <p>{t("classes.joinScreenScan")}</p>
-                    <p>{t("classes.joinScreenOr")}</p>
-                    <p className="join-screen-link">{joinLink(code).replace(/^https?:\/\//, "").replace(/\?code=.*$/, "")}</p>
-                    <p className="join-screen-code">{formatCode(code)}</p>
-                </div>
-            </div>
-            <button type="button" className="class-button" autoFocus onClick={onClose}>{t("classes.close")}</button>
-        </div>,
-        document.body,
-    );
-}

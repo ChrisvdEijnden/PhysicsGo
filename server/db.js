@@ -239,6 +239,10 @@ const MIGRATIONS = [
             update.run({ ...p, equipment: JSON.stringify(p.equipment), graphs: JSON.stringify(p.graphs), now: Date.now() });
         }
     },
+    // 13: the Classes page no longer has a switch to stop students joining, so no class may stay closed
+    `
+    UPDATE classes SET join_open = 1;
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });
