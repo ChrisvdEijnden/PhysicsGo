@@ -331,6 +331,17 @@ body {
 }
 
 /* General */
+
+/* A text on the left and its control (button, switch) on the right; used on Settings and Classes */
+.setting-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 16px;
+}
+
 .content {
     display: flex;
     flex-direction: column;
