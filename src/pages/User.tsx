@@ -15,6 +15,7 @@ function User() {
     const [draft, setDraft] = useState({ name: "", email: "" });
     const [password, setPassword] = useState("");
     const [emailError, setEmailError] = useState<string | null>(null);
+    const [nameError, setNameError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const { user, updateUser } = useAuth();
 
@@ -22,18 +23,20 @@ function User() {
         if (user) setDraft({ name: user.name, email: user.email });
     }, [user]);
 
-    // The name saves when the field is left; a new email waits for the password (below)
+    // The name saves when the field is left; a new email waits for the password (below). A name that
+    // couldn't be saved stays in the field with the reason, so leaving it again tries again.
     const commitName = () => {
         if (!user) return;
         const value = draft.name.trim();
         if (!value) {
             setDraft((d) => ({ ...d, name: user.name })); // revert
+            setNameError(null);
             return;
         }
         if (value !== user.name) {
-            updateUser({ name: value }).then((res) => {
-                if (!res.ok) setDraft((d) => ({ ...d, name: user.name }));
-            });
+            updateUser({ name: value }).then((res) => setNameError(res.ok ? null : res.error));
+        } else {
+            setNameError(null);
         }
     };
 
@@ -93,12 +96,14 @@ function User() {
                                 type="text"
                                 autoComplete="name"
                                 value={draft.name}
-                                placeholder="Nick Von Hoff"
+                                placeholder={t("user.namePlaceholder")}
+                                aria-invalid={nameError !== null}
                                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                                 onBlur={commitName}
                                 onKeyDown={handleKeyDown}
                             />
                         </label>
+                        {nameError && <p className="auth-error" role="alert">{t("user.nameNotSaved", { reason: t(authErrorKey(nameError)) })}</p>}
                         <label className="set-email info-row">
                             <span className="info-label">{t("user.email")}</span>
                             <input
@@ -138,13 +143,26 @@ function User() {
                                 </div>
                             </>
                         )}
-                        {/* Class membership is managed through class codes, not edited here */}
-                        <div className="set-class info-row">
-                            <span className="info-label">{t("user.class")}</span>
+                        {/* Role, school and classes are managed elsewhere (class codes, Classes, Administration), not edited here */}
+                        <div className="info-row">
+                            <span className="info-label">{t("user.role")}</span>
                             <span className="info-value">
-                                {user.role === "teacher"
-                                    ? t("user.roleTeacher")
-                                    : user.classes.map((c) => c.name).join(", ") || "—"}
+                                {t(user.role === "teacher" ? "user.roleTeacher" : "user.roleStudent")}
+                                {user.isAdmin && ` · ${t("user.roleAdmin")}`}
+                            </span>
+                        </div>
+                        {user.school && (
+                            <div className="info-row">
+                                <span className="info-label">{t("user.school")}</span>
+                                <span className="info-value">{user.school.name}</span>
+                            </div>
+                        )}
+                        <div className="set-class info-row">
+                            <span className="info-label">
+                                {t(user.role === "student" && user.classes.length === 1 ? "user.class" : "user.classes")}
+                            </span>
+                            <span className="info-value">
+                                {user.classes.map((c) => c.name).join(", ") || t("user.noClasses")}
                             </span>
                         </div>
                     </form>

@@ -92,5 +92,15 @@ export const CONSTANT_HELP: Record<string, Text> = {
     },
 };
 
+// Points plotted in a video or photo, e.g. x_video1 or y_photo2_px
+export function measuredHelp(name: string, language: Language): string | null {
+    const match = /^([xy])_((?:video|photo)\d+)(_px)?$/.exec(name);
+    if (!match) return null;
+    const [, axis, media, pixels] = match;
+    return language === "nl"
+        ? `Gemeten ${axis}-positie van de punten in ${media}${pixels ? ", in pixels" : ""}, op de huidige t.`
+        : `Measured ${axis} position of the points in ${media}${pixels ? ", in pixels" : ""}, at the current t.`;
+}
+
 // A function's name in a language, and how it's called, e.g. "arctan2(y, x)"
 export const functionLabel = (f: FunctionHelp, language: Language) => `${language === "nl" ? f.nl : f.name}(${f.params[language]})`;

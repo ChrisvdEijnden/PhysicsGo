@@ -7,6 +7,8 @@ import { useTheme } from "../lib/useTheme";
 import type { Theme } from "../lib/useTheme";
 import type { Language } from "../lib/useLanguage";
 import { useTranslation } from "../lib/useTranslations";
+import { CONSTANT_HELP, FUNCTION_HELP, KEYWORD_HELP, functionLabel, measuredHelp } from "../lib/functionHelp";
+import { KEYWORDS } from "../lib/modelLanguage";
 
 interface CodeEditorProps {
     value: string;
@@ -149,6 +151,20 @@ let languageInfo: LanguageInfo = { functions: [], keywords: [], constants: [] };
 // Suggestions are in the interface's language (set by the editors on the page)
 let codeLanguage: Language = "nl";
 
+// What a word in the code means: its name as code, then the explanation (markdown)
+function hoverText(word: string, called: boolean): string[] | null {
+    const code = (text: string) => "`" + text + "`";
+    if (called) {
+        const f = FUNCTION_HELP.find((f) => f.name === word || f.nl === word);
+        return f ? [code(functionLabel(f, codeLanguage)), f.text[codeLanguage]] : null;
+    }
+    const keyword = KEYWORDS.find((k) => k.nl === word || k.en === word);
+    if (keyword) return [code(keyword[codeLanguage]), KEYWORD_HELP[keyword.en][codeLanguage]];
+    if (CONSTANT_HELP[word]) return [code(word), CONSTANT_HELP[word][codeLanguage]];
+    const measured = measuredHelp(word, codeLanguage);
+    return measured ? [code(word), measured] : null;
+}
+
 function definePhysicsGoLanguage() {
     monaco.languages.register({ id: LANGUAGE_ID });
     setTokens(languageInfo);
@@ -184,6 +200,23 @@ function definePhysicsGoLanguage() {
                     ...languageInfo.constants.map((c) => ({ label: c, kind: Constant, insertText: c, range })),
                     ...[...variables].map((v) => ({ label: v, kind: Variable, insertText: v, range })),
                 ],
+            };
+        },
+    });
+
+    // Hovering a function, keyword, constant or measured quantity explains it in the interface's language
+    monaco.languages.registerHoverProvider(LANGUAGE_ID, {
+        provideHover(model, position) {
+            const word = model.getWordAtPosition(position);
+            if (!word) return null;
+            const line = model.getLineContent(position.lineNumber);
+            const comment = line.indexOf("//");
+            if (comment !== -1 && comment < word.startColumn - 1) return null;
+            const contents = hoverText(word.word, /^\s*\(/.test(line.slice(word.endColumn - 1)));
+            if (!contents) return null;
+            return {
+                range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
+                contents: contents.map((value) => ({ value })),
             };
         },
     });
@@ -290,10 +323,16 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
+        // A value from outside (another language, the starter code put back) replaces the text as an
+        // edit, so Ctrl+Z brings back what was there; a read-only editor can only be set
         useEffect(() => {
             const editor = editorRef.current;
-            if (!editor) return;
-            if (editor.getValue() !== value) editor.setValue(value);
+            const model = editor?.getModel();
+            if (!editor || !model || model.getValue() === value) return;
+            if (editor.getOption(monaco.editor.EditorOption.readOnly)) return editor.setValue(value);
+            editor.pushUndoStop();
+            editor.executeEdits("outside", [{ range: model.getFullModelRange(), text: value }]);
+            editor.pushUndoStop();
         }, [value]);
 
         // Monaco has one theme for all editors on the page

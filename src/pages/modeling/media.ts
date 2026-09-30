@@ -3,7 +3,7 @@ import type { MediaItem } from "../../components/MediaTile.tsx";
 import type { MediaCategory, Project, SavedMedia } from "../../data/Projects.tsx";
 
 // Graphs and media share the right-hand column
-export const MAX_PANELS = 3;
+export const MAX_PANELS = 4;
 
 // Files that can be added (websites are added by address)
 const ACCEPT_BY_CATEGORY: Record<Exclude<MediaCategory, "embed">, string> = {

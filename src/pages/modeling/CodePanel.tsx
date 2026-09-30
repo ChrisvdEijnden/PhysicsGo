@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
 
 import PlayIcon20px from "../../assets/icons/play-20px.svg";
+import UndoIcon16px from "../../assets/icons/undo-16px.svg";
 import CodeEditor from "../../components/codeEditor.tsx";
+import ConfirmButton from "../../components/ConfirmButton";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { isMac } from "../../lib/platform";
 import { useTranslation } from "../../lib/useTranslations";
@@ -10,7 +12,7 @@ import type { useModelRun } from "./useModelRun";
 
 // The middle column: start values (run once) and model rules (run every step), the run button, the
 // number of steps, and how the last run went
-export default function CodePanel({ style, run, start, model, steps, readOnly, onStart, onModel, onSteps, onRun }: {
+export default function CodePanel({ style, run, start, model, steps, readOnly, onStart, onModel, onSteps, onRun, onReset }: {
     style: CSSProperties;
     run: ReturnType<typeof useModelRun>;
     start: string;
@@ -21,6 +23,8 @@ export default function CodePanel({ style, run, start, model, steps, readOnly, o
     onModel: (value: string) => void;
     onSteps: (value: string) => void;
     onRun: () => void;
+    // Puts back the assignment's starter code; missing when the code is the starter code (or can't change)
+    onReset?: () => void;
 }) {
     const { t, language } = useTranslation();
     const { simulation, wasm } = run;
@@ -31,6 +35,12 @@ export default function CodePanel({ style, run, start, model, steps, readOnly, o
         <div className="code-panel" id="panel-code" style={style}>
             <div className="code">
                 <div className="code-panel-actions">
+                    {/* The first click asks to confirm; Ctrl+Z in an editor brings the code back */}
+                    {onReset && !readOnly && (
+                        <ConfirmButton className="reset-code-btn" label={t("modeling.resetCode", { keys: isMac ? "⌘Z" : "Ctrl+Z" })} onConfirm={onReset}>
+                            <img src={UndoIcon16px} alt=""/>
+                        </ConfirmButton>
+                    )}
                     {simulation.running ? (
                         <button className="play-btn" aria-label={t("modeling.stopRun")} title={t("modeling.stopRun")}
                                 onClick={simulation.stop}>

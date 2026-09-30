@@ -1118,6 +1118,29 @@
     color: var(--color-text-primary);
 }
 
+/* Putting back the starter code: a small icon next to run; armed, a red "Confirm?" */
+:where(.modeling-page) .reset-code-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    padding: 0 2px;
+    border: none;
+    border-radius: 6px;
+    background-color: transparent;
+    cursor: pointer;
+}
+
+:where(.modeling-page) .reset-code-btn.armed {
+    padding: 0 8px;
+    background-color: rgba(214, 69, 69, 0.1);
+    color: var(--color-danger-text);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
 /* Deleting a student's own assignment: armed, the icon becomes a red "Confirm?" */
 :where(.modeling-page) .nav-icon-btn.delete-own.armed {
     padding: 3px 8px;

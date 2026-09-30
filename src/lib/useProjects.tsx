@@ -22,7 +22,8 @@ interface ProjectsContextValue {
     createProject: (fields: ProjectFields & { copyOf?: string }) => Promise<Result<{ project: Project }>>;
     // Takes a project as the server just sent it (e.g. after changing its media)
     replaceProject: (project: Project) => void;
-    updateProject: (id: string, fields: Partial<ProjectFields>) => Promise<Result<{ project: Project }>>;
+    // Also the graphs students start with (the editor doesn't change those; publishing from the modeling page can)
+    updateProject: (id: string, fields: Partial<ProjectFields & Pick<Project, "graphs">>) => Promise<Result<{ project: Project }>>;
     deleteProject: (id: string) => Promise<Result>;
 }
 
@@ -62,7 +63,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
         setProjects((list) => list?.map((p) => (p.id === project.id ? project : p)) ?? list);
     }, []);
 
-    const updateProject = useCallback(async (id: string, fields: Partial<ProjectFields>): Promise<Result<{ project: Project }>> => {
+    const updateProject = useCallback(async (id: string, fields: Partial<ProjectFields & Pick<Project, "graphs">>): Promise<Result<{ project: Project }>> => {
         const { ok, data } = await api<{ project: Project }>(`/projects/${id}`, "PATCH", fields);
         if (!ok || !data.project) return { ok: false, error: errorOf(data) };
         const project = data.project;

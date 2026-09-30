@@ -22,12 +22,33 @@ function dividerKeyDelta(key: string, orientation: "vertical" | "horizontal"): n
     return null;
 }
 
+// Sizes remembered in this browser under `key`, if they still fit `length` panels of at least `min`
+export function storedSplit<T extends number[]>(key: string, length: number, min: number): T | null {
+    try {
+        const sizes: unknown = JSON.parse(localStorage.getItem(key) ?? "null");
+        if (!Array.isArray(sizes) || sizes.length !== length) return null;
+        if (!sizes.every((n) => typeof n === "number" && Number.isFinite(n) && n >= min - 0.5)) return null;
+        const total = sizes.reduce((a, b) => a + b, 0);
+        return Math.abs(total - 100) < 1 ? (sizes as T) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function storeSplit(key: string, sizes: number[]) {
+    try {
+        localStorage.setItem(key, JSON.stringify(sizes.map((n) => Math.round(n * 100) / 100)));
+    } catch {
+        // Not remembered; the panels keep their size until the page is left
+    }
+}
+
 /**
  * Panels side by side (axis "x": columns) or stacked (axis "y": rows) whose sizes, in percent of the
  * container, change by dragging the dividers between them or with the keyboard. Each divider is a
  * focusable separator that reports the size of the panel before it.
  */
-export function useResizableSplit<T extends number[]>(axis: "x" | "y", initial: T, min: number) {
+export function useResizableSplit<T extends number[]>(axis: "x" | "y", initial: T | (() => T), min: number) {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [sizes, setSizes] = useState<T>(initial);
     const [dragging, setDragging] = useState<number | null>(null);

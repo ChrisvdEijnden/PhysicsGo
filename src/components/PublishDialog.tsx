@@ -30,13 +30,27 @@ function fromLocalInput(value: string) {
     return Number.isFinite(ms) ? ms : null;
 }
 
+// Opened from the modeling page after the teacher changed the code or graphs there: students start
+// with the assignment's saved starter code, not those changes. For their own assignment the teacher
+// can make their version the starting point; otherwise they're told how to give theirs.
+export interface StarterChoice {
+    // The teacher's own assignment, which they can change
+    own: boolean;
+    // The code or graphs differ from the assignment's starter ones
+    codeChanged: boolean;
+    // Videos, photos or websites added on the modeling page, which never go along
+    mediaLeftOut: boolean;
+}
+
 // Overlay where a teacher picks which of their classes a project is an assignment in, and per
 // class when it opens, when it's due and any instructions for that class
-export default function PublishDialog({ title, current, onSave, onClose }: {
+export default function PublishDialog({ title, current, starter, onSave, onClose }: {
     title: string;
     // Classes the project is published to now
     current: Publication[];
-    onSave: (classIds: number[], settings: Record<number, PublicationSettings>) => Promise<Result>;
+    starter?: StarterChoice;
+    // useMine: the teacher chose to make their current code the starting point
+    onSave: (classIds: number[], settings: Record<number, PublicationSettings>, useMine: boolean) => Promise<Result>;
     onClose: () => void;
 }) {
     const { t } = useTranslation();
@@ -50,6 +64,7 @@ export default function PublishDialog({ title, current, onSave, onClose }: {
         opens: toLocalInput(c.opensAt),
         due: toLocalInput(c.dueAt),
     }])));
+    const [useMine, setUseMine] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -79,7 +94,7 @@ export default function PublishDialog({ title, current, onSave, onClose }: {
         }
         setBusy(true);
         setError(null);
-        const res = await onSave([...selected], settings);
+        const res = await onSave([...selected], settings, !!starter?.own && starter.codeChanged && useMine && selected.size > 0);
         setBusy(false);
         if (res.ok) onClose();
         else setError(t(authErrorKey(res.error)));
@@ -133,6 +148,23 @@ export default function PublishDialog({ title, current, onSave, onClose }: {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+            {classes.length > 0 && starter && (
+                <div className="publish-starter">
+                    {starter.codeChanged && (starter.own ? (
+                        <>
+                            <label>
+                                <input type="checkbox" checked={useMine} onChange={(e) => setUseMine(e.target.checked)}/>
+                                <span>{t("publish.useMine")}</span>
+                            </label>
+                            <p>{t(useMine ? "publish.useMineHint" : "publish.keepStarterHint")}</p>
+                        </>
+                    ) : (
+                        <p>{t("publish.notMine")}</p>
+                    ))}
+                    {starter.mediaLeftOut && <p>{t(starter.own ? "publish.mediaLeftOutOwn" : "publish.mediaLeftOut")}</p>}
                 </div>
             )}
 

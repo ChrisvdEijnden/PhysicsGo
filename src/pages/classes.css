@@ -467,6 +467,45 @@
     accent-color: var(--color-brand);
 }
 
+/* Publishing from the modeling page after changing the code there: what students start with */
+.publish-starter {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+}
+
+.publish-starter label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.publish-starter input {
+    width: 16px;
+    height: 16px;
+    margin: 1px 0 0;
+    flex: none;
+    accent-color: var(--color-brand);
+}
+
+.publish-starter p {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: 12px;
+}
+
+.publish-starter label + p {
+    padding-left: 24px;
+}
+
 .dialog.publish-dialog {
     width: 520px;
 }

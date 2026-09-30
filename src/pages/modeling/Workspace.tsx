@@ -13,6 +13,7 @@ import { formatMark } from "../../components/Feedback";
 import HandInDialog from "../../components/HandInDialog";
 import MediaTile from "../../components/MediaTile.tsx";
 import PublishDialog from "../../components/PublishDialog";
+import type { StarterChoice } from "../../components/PublishDialog";
 import TopBar from "../../components/TopBar";
 import { newGraph, toLines } from "../../data/Projects.tsx";
 import type { GraphConfig, Project, ProjectWork } from "../../data/Projects.tsx";
@@ -38,7 +39,7 @@ import { PanelTabs, ReviewBar, SaveIndicator, TitleField } from "./parts";
 import type { PanelTab, Review } from "./parts";
 import { useMediaPanels } from "./useMediaPanels";
 import { useModelRun } from "./useModelRun";
-import { useResizableSplit } from "./useResizableSplit";
+import { storedSplit, storeSplit, useResizableSplit } from "./useResizableSplit";
 
 // Start values run once; model rules run every step. The comments are in the interface's language.
 const defaultStart = (comment: string, seconds: string) => `// ${comment}\nt = 0\ndt = 0.01 // ${seconds}\n`;
@@ -47,6 +48,9 @@ const DEFAULT_MODEL = "stop als t >= 10\n";
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
 const EXPLANATION_COLLAPSED_KEY = "physicsgo_explanation_collapsed";
+// Column widths, and row heights per number of rows, are remembered in this browser
+const COLUMNS_KEY = "physicsgo_modeling_columns";
+const rowsKey = (count: number) => `physicsgo_modeling_rows_${count}`;
 
 // Variables the code assigns (`name = ...`), in the order they first appear
 function codeVariables(source: string): string[] {
@@ -83,8 +87,15 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     const [publishOpen, setPublishOpen] = useState(false);
 
     // ---------- explanation / code / analysis column widths ----------
-    const columns = useResizableSplit<[number, number, number]>("x", [100 / 3, 100 / 3, 100 / 3], MIN_PANEL_WIDTH_PERCENT);
+    const columns = useResizableSplit<[number, number, number]>(
+        "x",
+        () => storedSplit(COLUMNS_KEY, 3, MIN_PANEL_WIDTH_PERCENT) ?? [100 / 3, 100 / 3, 100 / 3],
+        MIN_PANEL_WIDTH_PERCENT,
+    );
     const panelWidths = columns.sizes;
+    useEffect(() => {
+        if (columns.dragging === null) storeSplit(COLUMNS_KEY, columns.sizes);
+    }, [columns.sizes, columns.dragging]);
     // The explanation can be folded away to a narrow strip, giving the code and graphs the room;
     // remembered in this browser
     const [explanationCollapsed, setExplanationCollapsed] = useState(() => {
@@ -142,6 +153,28 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
         graphCount: graphs.length,
         onChange: (items) => saveWork({ media: items }),
     });
+    // The code new work starts with, in the interface's language
+    const starterStart = translateCode(project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds")), language);
+    const starterModel = translateCode(project?.model ?? DEFAULT_MODEL, language);
+    const codeIsStarter = start.trim() === starterStart.trim() && model.trim() === starterModel.trim();
+    function resetCode() {
+        setStart(starterStart);
+        setModel(starterModel);
+        saveWork({ start: starterStart, model: starterModel });
+    }
+
+    // What students start with is the assignment's saved starter code, graphs and media; a teacher
+    // who changed them here is told so when publishing (their changes are only their own work)
+    const currentGraphs = () => graphs.map((g) => ({ x: g.x, ys: g.ys.map((y) => y.name) }));
+    function starterChoice(): StarterChoice | undefined {
+        if (!project || !isTeacher || noSaving) return undefined;
+        const starterGraphs = project.graphs.length ? project.graphs : [{ x: "", ys: [] }];
+        const codeChanged = !codeIsStarter
+            || JSON.stringify(starterGraphs.map((g) => ({ x: g.x, ys: g.ys }))) !== JSON.stringify(currentGraphs());
+        const mediaLeftOut = media.mediaItems.some((m) => m.source !== "project");
+        return codeChanged || mediaLeftOut ? { own: project.mine, codeChanged, mediaLeftOut } : undefined;
+    }
+
     const run = useModelRun();
     const runModel = () => run.run(start, model, steps, media.measuredData);
 
@@ -241,10 +274,14 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     ], [graphs, media.mediaItems]);
     const stack = useResizableSplit<number[]>("y", [100], MIN_ROW_HEIGHT_PERCENT);
     const { setSizes: setRowHeights } = stack;
-    // Re-split the stack evenly whenever a graph or media panel is added or removed
+    // Whenever a graph or media panel is added or removed, the stack gets the heights last used for
+    // that many rows, or is split evenly
     useEffect(() => {
-        setRowHeights(Array(rows.length).fill(100 / rows.length));
+        setRowHeights(storedSplit(rowsKey(rows.length), rows.length, MIN_ROW_HEIGHT_PERCENT) ?? Array(rows.length).fill(100 / rows.length));
     }, [rows.length, setRowHeights]);
+    useEffect(() => {
+        if (stack.dragging === null && stack.sizes.length === rows.length && rows.length > 1) storeSplit(rowsKey(rows.length), stack.sizes);
+    }, [stack.sizes, stack.dragging, rows.length]);
 
     // Below about 1024px wide the three columns show one at a time (modeling.css)
     const [tab, setTab] = useState<PanelTab>("explanation");
@@ -350,7 +387,12 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                             <PublishDialog
                                 title={project.title}
                                 current={published[project.id] ?? []}
-                                onSave={async (classIds, settings) => {
+                                starter={starterChoice()}
+                                onSave={async (classIds, settings, useMine) => {
+                                    if (useMine) {
+                                        const updated = await updateProject(project.id, { start, model, graphs: currentGraphs() });
+                                        if (!updated.ok) return updated;
+                                    }
                                     const res = await setProjectClasses(project.id, classIds, settings);
                                     // Published to at least one class: back to the dashboard, where it now shows with its classes
                                     if (res.ok && classIds.length > 0) navigate("/dashboard");
@@ -432,6 +474,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                     onModel={handleModelChange}
                     onSteps={handleStepsChange}
                     onRun={runModel}
+                    onReset={codeIsStarter ? undefined : resetCode}
                 />
 
                 <div className={`panel-divider${columns.dragging === 1 ? " dragging" : ""}`}
