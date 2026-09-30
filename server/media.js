@@ -22,7 +22,8 @@ const WORD_TYPES = new Set([
 export const allowedType = (mime) =>
     (/^(image|video)\/[\w.+-]+$/.test(mime) && mime !== "image/svg+xml") || WORD_TYPES.has(mime);
 
-export const mediaPath = (userId, projectId, mediaId) => path.join(MEDIA_DIR, String(userId), projectId, mediaId);
+export const userMediaDir = (userId) => path.join(MEDIA_DIR, String(userId));
+export const mediaPath = (userId, projectId, mediaId) => path.join(userMediaDir(userId), projectId, mediaId);
 export const projectMediaDir = (projectId) => path.join(MEDIA_DIR, "projects", projectId);
 export const projectMediaPath = (projectId, mediaId) => path.join(projectMediaDir(projectId), mediaId);
 

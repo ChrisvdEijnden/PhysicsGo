@@ -2,7 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import { api, errorOf, onSessionEnded } from "./api";
 import type { Result } from "./api";
-import { setStorageUser } from "../data/Projects";
+import { forgetLocalWork, setStorageUser } from "../data/Projects";
+import { deleteScopeMedia } from "./mediaStore";
+import { storageScope } from "./storageScope";
 import { resumeSaving, syncLocalWork } from "./workSync";
 
 export type Role = "student" | "teacher";
@@ -46,6 +48,9 @@ interface AuthContextValue {
     checkResetCode: (code: string) => Promise<Result<{ account: { name: string; email: string } }>>;
     resetPassword: (code: string, password: string) => Promise<AuthResult>;
     refresh: () => Promise<void>;
+    // Deletes the signed-in account (after checking the password) and this browser's copy of its work.
+    // A teacher whose classes would be left without a teacher gets their names back instead.
+    deleteAccount: (password: string) => Promise<{ ok: true } | { ok: false; error: string; classes: string[] }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -173,9 +178,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [withUser]
     );
 
+    const deleteAccount = useCallback(async (password: string) => {
+        const { ok, data } = await api<{ classes: string[] }>("/auth/me", "DELETE", { password });
+        if (!ok) return { ok: false as const, error: errorOf(data), classes: data.classes ?? [] };
+        const scope = storageScope();
+        forgetLocalWork();
+        if (scope) await deleteScopeMedia(scope);
+        applyUser(null);
+        tellOtherTabs();
+        return { ok: true as const };
+    }, [applyUser, tellOtherTabs]);
+
     const value = useMemo(
-        () => ({ user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh }),
-        [user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh]
+        () => ({
+            user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass,
+            checkResetCode, resetPassword, refresh, deleteAccount,
+        }),
+        [user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass,
+            checkResetCode, resetPassword, refresh, deleteAccount]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

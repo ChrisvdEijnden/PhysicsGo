@@ -1,8 +1,9 @@
 import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
 import db from "./db.js";
-import { MAX_FILE, MEDIA_ID, allowedType, projectMediaDir, projectMediaPath, requestMime, sendMedia, storeUpload } from "./media.js";
+import { MAX_FILE, MEDIA_ID, allowedType, projectMediaDir, projectMediaPath, requestMime, sendMedia, storeUpload, userMediaDir } from "./media.js";
 
 // Built-in presets have readable ids ("standard-freefall"), teachers' projects random ones ("p-…")
 export const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
@@ -12,6 +13,8 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 // Starter media per project: with a graph that's the most panels the modeling page shows
 const MAX_PROJECT_MEDIA = 2;
 const CATEGORIES = new Set(["photo", "video", "animation", "document"]);
+// Students' own assignments per account, so one account can't fill the database
+const MAX_OWN_PROJECTS = 100;
 
 const projectMedia = (projectId) => db.prepare(`
     SELECT media_id AS id, name, mime, category FROM project_media WHERE project_id = ? ORDER BY created_at
@@ -53,7 +56,7 @@ function toProject(row, viewerId) {
 }
 
 // Teachers see the built-in presets, their own projects and those published to classes they teach;
-// students see what's published to their classes
+// students see what's published to their classes and the assignments they made themselves
 function visibleProjects(user) {
     const rows = user.role === "teacher"
         ? db.prepare(`
@@ -65,13 +68,13 @@ function visibleProjects(user) {
         `).all(user.id, user.id)
         : db.prepare(`
             SELECT p.* FROM projects p
-            WHERE EXISTS (
+            WHERE p.author_id = ? OR EXISTS (
                 SELECT 1 FROM project_classes pc
                 JOIN class_students s ON s.class_id = pc.class_id
                 JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
                 WHERE pc.project_id = p.id AND s.user_id = ?)
             ORDER BY p.title COLLATE NOCASE
-        `).all(user.id);
+        `).all(user.id, user.id);
     return rows.map((row) => toProject(row, user.id));
 }
 
@@ -126,12 +129,17 @@ export function projectsRouter({ requireAuth }) {
         res.json({ published: publishedClasses(req.user) });
     });
 
-    // A new project; `copyOf` (a project the teacher can see) also copies that project's starter media
+    // A new project. Teachers write them for their classes, and `copyOf` (a project the teacher can see)
+    // also copies that project's starter media. Students make their own, which only they see and can't publish.
     router.post("/", wrap(async (req, res) => {
-        if (req.user.role !== "teacher") return res.status(403).json({ error: "forbidden" });
+        const teacher = req.user.role === "teacher";
+        if (!teacher) {
+            const { count } = db.prepare("SELECT COUNT(*) AS count FROM projects WHERE author_id = ?").get(req.user.id);
+            if (count >= MAX_OWN_PROJECTS) return res.status(400).json({ error: "too_many_projects" });
+        }
         const fields = projectFields(req.body ?? {}, false);
         if (!fields) return res.status(400).json({ error: "invalid_project" });
-        const copyOf = typeof req.body.copyOf === "string" && visibleProjects(req.user).find((p) => p.id === req.body.copyOf);
+        const copyOf = teacher && typeof req.body.copyOf === "string" && visibleProjects(req.user).find((p) => p.id === req.body.copyOf);
         const id = `p-${crypto.randomBytes(6).toString("hex")}`;
         const now = Date.now();
         db.prepare(`
@@ -169,11 +177,19 @@ export function projectsRouter({ requireAuth }) {
         res.json({ project: toProject(authored(req), req.user.id) });
     });
 
-    // Deleting also unpublishes it and removes its starter media; students' saved work stays in their accounts
+    // Deleting also unpublishes it and removes its starter media, and the author's own work on it (for a
+    // student's own assignment, that's all of it). Other students' saved work stays in their accounts.
     router.delete("/:projectId", wrap(async (req, res) => {
+        const { projectId } = req.params;
         if (!authored(req)) return res.status(404).json({ error: "not_found" });
-        db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.projectId);
-        await fs.promises.rm(projectMediaDir(req.params.projectId), { recursive: true, force: true });
+        db.transaction(() => {
+            db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
+            for (const table of ["project_work", "media_files", "submissions"]) {
+                db.prepare(`DELETE FROM ${table} WHERE user_id = ? AND project_id = ?`).run(req.user.id, projectId);
+            }
+        })();
+        await fs.promises.rm(projectMediaDir(projectId), { recursive: true, force: true });
+        await fs.promises.rm(path.join(userMediaDir(req.user.id), projectId), { recursive: true, force: true });
         res.json({ ok: true });
     }));
 
@@ -189,10 +205,11 @@ export function projectsRouter({ requireAuth }) {
         sendMedia(res, projectMediaPath(projectId, mediaId), file.mime);
     });
 
-    // The body is the file; ?name= is its file name and ?category= photo, video, animation or document
+    // The body is the file; ?name= is its file name and ?category= photo, video, animation or document.
+    // Only teachers' projects have starter media (students add media to their work, within their quota).
     router.put("/:projectId/media/:mediaId", wrap(async (req, res) => {
         const { projectId, mediaId } = req.params;
-        if (!authored(req)) return res.status(404).json({ error: "not_found" });
+        if (req.user.role !== "teacher" || !authored(req)) return res.status(404).json({ error: "not_found" });
         const mime = requestMime(req);
         const name = str(req.query.name).trim().slice(0, 200);
         const category = str(req.query.category);

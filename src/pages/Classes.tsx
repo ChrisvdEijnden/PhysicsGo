@@ -472,6 +472,13 @@ function Classes() {
                                                                     disabled={busy}
                                                                     onConfirm={() => mutate(`/students/${s.id}`, "DELETE")}
                                                                 />
+                                                                {/* The account and all its work, e.g. for a student who left school */}
+                                                                <ConfirmButton
+                                                                    className="class-button danger"
+                                                                    label={t("classes.deleteAccount")}
+                                                                    disabled={busy}
+                                                                    onConfirm={() => mutate(`/students/${s.id}/account`, "DELETE")}
+                                                                />
                                                             </>
                                                         )}
                                                     </div>

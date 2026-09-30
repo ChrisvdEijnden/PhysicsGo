@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
@@ -13,6 +14,11 @@ import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // holds all the projects edited by the user
 import { assignmentPath, useProjects } from "../lib/useProjects";
+import type { ProjectFields } from "../lib/useProjects";
+import type { ProjectWork } from "../data/Projects";
+import { parseAssignmentFile } from "../lib/assignmentFile";
+import { api } from "../lib/api";
+import { authErrorKey } from "../lib/authErrors";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { formatRelativeDate } from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
@@ -28,8 +34,44 @@ function Dashboard() {
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
     const { lastEdit, byLastEdit, handedIn } = useWorkActivity();
-    const { projects } = useProjects();
-    const visibleProjects = (projects ?? []).filter((project) => canSeeProject(user, published, project.id));
+    const { projects, createProject } = useProjects();
+    const [busy, setBusy] = useState(false);
+    const [startError, setStartError] = useState<string | null>(null);
+    const fileInput = useRef<HTMLInputElement | null>(null);
+
+    // A new assignment with the given contents (the author's own; students' are only theirs), then open it
+    async function start(fields: Omit<ProjectFields, "estimatedTime" | "equipment">, work?: ProjectWork) {
+        setBusy(true);
+        setStartError(null);
+        const res = await createProject({ ...fields, estimatedTime: null, equipment: [] });
+        if (res.ok && work) await api(`/work/${res.project.id}`, "PUT", { work, version: 0 });
+        setBusy(false);
+        if (!res.ok) return setStartError(res.error);
+        navigate(assignmentPath(res.project.id));
+    }
+
+    // Teachers write a new assignment in the editor; students get an empty one of their own
+    function startEmpty() {
+        if (isTeacher) return navigate("/projects/new");
+        start({ title: t("dashboard.untitledAssignment"), explanation: "", start: null, model: null });
+    }
+
+    // An assignment exported from PhysicsGo becomes a new one with that code, graphs and points
+    async function openFile(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0];
+        e.target.value = ""; // the same file can be picked again
+        if (!file) return;
+        const opened = parseAssignmentFile(await file.text());
+        if (!opened) return setStartError("invalid_assignment_file");
+        start({
+            title: opened.title ?? file.name.replace(/(\.physicsgo)?\.json$/i, "").slice(0, 100),
+            explanation: opened.explanation,
+            start: opened.work.start,
+            model: opened.work.model,
+        }, opened.work);
+    }
+
+    const visibleProjects = (projects ?? []).filter((project) => canSeeProject(user, published, project));
     return (
         <div>
             <div className="nav">
@@ -46,22 +88,24 @@ function Dashboard() {
                     <div className="creator-card">
                         <h2>{t("dashboard.startNewModel")}</h2>
                         <div className="dual-action-buttons">
-                            {/* Teachers start a new project for their classes; students an empty model */}
-                            <button type="button" className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
+                            {/* Teachers write a new assignment for their classes; students start one of their own */}
+                            <button type="button" className="action-new" disabled={busy} onClick={startEmpty}>
                                 <img src={NewFile24px} alt=""/>
                                 <span className="action-text">
                                     <span className="action-title">{t("dashboard.emptyProjectTitle")}</span>
                                     <span className="action-description">{t("dashboard.emptyProjectDesc")}</span>
                                 </span>
                             </button>
-                            <button type="button" className="action-open" onClick={() => navigate("/modeling")}>
+                            <button type="button" className="action-open" disabled={busy} onClick={() => fileInput.current?.click()}>
                                 <img src={FolderOpen24px} alt=""/>
                                 <span className="action-text">
                                     <span className="action-title">{t("dashboard.openProjectTitle")}</span>
                                     <span className="action-description">{t("dashboard.openProjectDesc")}</span>
                                 </span>
                             </button>
+                            <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={openFile}/>
                         </div>
+                        {startError && <p className="class-error" role="alert">{t(authErrorKey(startError))}</p>}
                     </div>
                     {user && (
                         <div className="curriculum-card">
@@ -95,7 +139,7 @@ function Dashboard() {
                                         <div className="preset-item-text">
                                             <h3><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></h3>
                                         </div>
-                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
                                         {isTeacher && (
                                             <PublishButton
                                                 title={project.title}
@@ -133,7 +177,7 @@ function Dashboard() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>

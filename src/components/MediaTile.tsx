@@ -10,6 +10,10 @@ import ConfirmButton from "./ConfirmButton";
 import type { LengthUnit, MediaPoint, SavedMedia } from "../data/Projects.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { realPoints, unitsPerPixel } from "../lib/calibration";
+import ExportMenu from "./ExportMenu";
+import { toCsv } from "../lib/csv";
+import type { CsvCell } from "../lib/csv";
+import { downloadFile, fileNameFor } from "../lib/download";
 
 // Saved media plus the URL of its file for this session ("" when the file isn't on this device)
 export interface MediaItem extends SavedMedia {
@@ -81,7 +85,7 @@ export default function MediaTile({
     // Viewing someone else's work: the media and its points can be looked at, not changed
     readOnly?: boolean;
 }) {
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const isImage = item.mime.startsWith("image/");
     const isVideo = item.mime.startsWith("video/");
     const isLooping = item.category === "animation";
@@ -228,6 +232,32 @@ export default function MediaTile({
         }
     }
 
+    // The plotted points as a spreadsheet, named like the code's variables: in the calibrated unit,
+    // with the pixel positions too once there's a scale; in time (or click) order
+    function exportPoints() {
+        const c = item.calibration;
+        const unit = c ? c.unit : "px";
+        const time = item.category === "video" ? "t (s)" : item.category === "animation" ? "n" : null;
+        const headers = [
+            ...(time ? [time] : []),
+            `x_${item.varName} (${unit})`,
+            `y_${item.varName} (${unit})`,
+            ...(c ? [`x_${item.varName}_px`, `y_${item.varName}_px`] : []),
+        ];
+        const real = realPoints(item);
+        const rows: CsvCell[][] = item.points
+            .map((p, i) => ({ pixels: p, real: real[i] }))
+            .sort((a, b) => (a.pixels.t ?? 0) - (b.pixels.t ?? 0))
+            .map(({ pixels, real }) => [
+                ...(time ? [real.t] : []),
+                real.x,
+                real.y,
+                ...(c ? [pixels.x, pixels.y] : []),
+            ]);
+        const csv = toCsv(headers, rows, language);
+        downloadFile(fileNameFor(`${item.name.replace(/\.[^.]+$/, "")} points`, "csv"), new Blob([csv], { type: "text/csv" }));
+    }
+
     // Removes the most recently plotted point; for a video, steps back to its frame
     function undoPoint() {
         if (item.points.length === 0) return;
@@ -365,6 +395,11 @@ export default function MediaTile({
                         >
                             <p>{showGraph ? t("modeling.showMedia") : t("modeling.showGraph")}</p>
                         </button>
+                    )}
+                    {canPlot && item.points.length > 0 && (
+                        <ExportMenu label={t("modeling.export")} items={[
+                            { label: t("modeling.exportPointsCsv"), onSelect: exportPoints },
+                        ]}/>
                     )}
                     {!readOnly && <button
                         type="button"

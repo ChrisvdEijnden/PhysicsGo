@@ -1,0 +1,39 @@
+# Runs on every push to main and on pull requests: interpreter tests, a production build (which builds
+# the interpreter and type-checks the app), and the app's unit tests and API tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The pnpm version comes from "packageManager" in package.json
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: InterpreterGo
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-pack
+
+      - run: pnpm install --frozen-lockfile
+      - name: Interpreter tests
+        run: cargo test --manifest-path InterpreterGo/Cargo.toml
+      - name: Build (interpreter, type-check, bundle)
+        run: pnpm build
+      - name: Unit and API tests
+        run: pnpm test

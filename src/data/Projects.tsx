@@ -67,6 +67,17 @@ function adoptLegacyWork() {
     adoptLegacyMedia(storageScope()!);
 }
 
+// Removes this browser's copy of the signed-in account's work, e.g. when the account is deleted
+export function forgetLocalWork() {
+    if (!storageScope()) return;
+    try {
+        localStorage.removeItem(scoped(WORK_KEY));
+        localStorage.removeItem(scoped(SYNC_KEY));
+    } catch {
+        // Storage unavailable: there's nothing stored either
+    }
+}
+
 // Switches this browser's saved work to the signed-in account (null when signed out)
 export function setStorageUser(userId: number | null) {
     if (setStorageScope(userId) && userId !== null) adoptLegacyWork();

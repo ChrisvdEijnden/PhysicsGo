@@ -8,10 +8,10 @@ import type { AuthUser, ClassRef } from "./useAuth";
 // For each project id, the user's own classes it's published to
 export type PublishedMap = Record<string, ClassRef[]>;
 
-// Teachers see every project; students only those published to one of their classes
-export function canSeeProject(user: AuthUser | null, published: PublishedMap, projectId: string) {
+// Teachers see every project; students those published to one of their classes and their own
+export function canSeeProject(user: AuthUser | null, published: PublishedMap, project: { id: string; mine: boolean }) {
     if (!user) return false;
-    return user.role === "teacher" || (published[projectId]?.length ?? 0) > 0;
+    return user.role === "teacher" || project.mine || (published[project.id]?.length ?? 0) > 0;
 }
 
 export function usePublished() {

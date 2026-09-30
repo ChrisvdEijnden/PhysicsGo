@@ -9,6 +9,7 @@ import { classesOf, classesRouter, lookupCode, purgeArchivedClasses } from "./cl
 import { projectsRouter } from "./projects.js";
 import { findReset, purgeExpiredResets } from "./resets.js";
 import { mediaRouter, workRouter } from "./work.js";
+import { classesOnlyTaughtBy, deleteAccount } from "./accounts.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -288,6 +289,19 @@ api.post("/auth/password", requireAuth, passwordLimiter, wrap(async (req, res) =
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, req.user.id);
     endOtherSessions(req.user.id, req.sessionHash);
     res.json({ sessions: sessionsOf(req.user.id, req.sessionHash) });
+}));
+
+// Deleting your own account takes the password. A teacher first hands over (or deletes) the classes
+// that would otherwise be left without a teacher; those are named in the answer.
+api.delete("/auth/me", requireAuth, passwordLimiter, wrap(async (req, res) => {
+    const valid = await argon.verify(req.user.password_hash, str(req.body?.password)).catch(() => false);
+    if (!valid) return res.status(403).json({ error: "wrong_password" });
+    const alone = classesOnlyTaughtBy(req.user.id);
+    if (alone.length > 0) return res.status(409).json({ error: "classes_need_teacher", classes: alone.map((c) => c.name) });
+
+    await deleteAccount(req.user.id);
+    res.clearCookie(COOKIE, cookieOptions);
+    res.json({ ok: true });
 }));
 
 api.get("/auth/sessions", requireAuth, (req, res) => {

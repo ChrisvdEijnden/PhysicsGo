@@ -2,6 +2,7 @@ import express from "express";
 import db from "./db.js";
 import { generateCode, normalizeCode } from "./codes.js";
 import { createReset } from "./resets.js";
+import { deleteAccount } from "./accounts.js";
 import { readSubmission, readWork } from "./work.js";
 
 const MAX_CLASS_NAME = 60;
@@ -9,6 +10,7 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
 // A deleted class is archived: restorable this long, then removed for good
 export const ARCHIVE_MS = 30 * 24 * 60 * 60 * 1000;
 const str = (v) => (typeof v === "string" ? v : "");
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // Owner of class `c`: its owner_id, or its longest-serving teacher if the owner's account is gone
 const OWNER = `COALESCE(c.owner_id, (
@@ -260,6 +262,16 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         if (!inClass) return res.status(404).json({ error: "student_not_found" });
         res.status(201).json(createReset(userId, req.user.id));
     });
+
+    // Deletes a student's account altogether (e.g. one who left school), with all their work.
+    // Any teacher of one of the student's classes may do this; the app asks twice first.
+    router.delete("/:classId/students/:userId/account", active, wrap(async (req, res) => {
+        const userId = Number(req.params.userId);
+        const inClass = db.prepare("SELECT 1 FROM class_students WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
+        if (!inClass) return res.status(404).json({ error: "student_not_found" });
+        await deleteAccount(userId);
+        res.json({ class: classDetail(req.classId, req.user.id) });
+    }));
 
     // Per project published to the class, where each student is: not started, working, or handed in
     router.get("/:classId/progress", (req, res) => {

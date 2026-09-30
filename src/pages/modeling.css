@@ -1071,3 +1071,91 @@
 .markdown a {
     color: var(--color-brand);
 }
+
+/* A student's own assignment: its name is edited in place in the top bar */
+.title-field {
+    min-width: 0;
+    width: 22ch;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+
+.title-field:hover {
+    border-color: var(--color-border);
+}
+
+.title-field:focus {
+    outline: none;
+    border-color: var(--color-brand-accent);
+    color: var(--color-text-primary);
+}
+
+.insert-media-btn.delete-own.armed {
+    color: #B42318;
+}
+
+/* Export menu on graphs and media: a small summary button with a list of downloads under it */
+.export-menu {
+    position: relative;
+}
+
+.export-menu summary {
+    list-style: none;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    border-radius: 6px;
+    background-color: var(--color-brand-subtle-bg);
+    color: var(--color-brand-accent);
+    font-family: "Figtree", sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.export-menu summary::-webkit-details-marker {
+    display: none;
+}
+
+.export-menu-items {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: max-content;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.export-menu-items button {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    background: none;
+    text-align: left;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.export-menu-items button:hover:not(:disabled) {
+    background-color: var(--color-bg-app);
+}
+
+.export-menu-items button:disabled {
+    color: var(--color-text-tertiary);
+    cursor: default;
+}

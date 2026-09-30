@@ -11,7 +11,10 @@ import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 
-import Graph from "../components/Graph.tsx";
+import Graph, { lineColor } from "../components/Graph.tsx";
+import ExportMenu from "../components/ExportMenu";
+import { runCsv } from "../lib/csv";
+import { chartImage, chartPng } from "../lib/chartImage";
 import MediaTile, { DEFAULT_POINT_STEP, pointSeries } from "../components/MediaTile.tsx";
 import type { MediaItem } from "../components/MediaTile.tsx";
 import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/mediaStore";
@@ -20,6 +23,9 @@ import { formatTick } from "../components/lineChart.tsx";
 import type { ChartPoint } from "../components/lineChart.tsx";
 import { newGraph, normalizeWork } from "../data/Projects.tsx";
 import { useProjects } from "../lib/useProjects";
+import { assignmentFileContents } from "../lib/assignmentFile";
+import { downloadFile, fileNameFor } from "../lib/download";
+import ConfirmButton from "../components/ConfirmButton";
 import type { GraphConfig, MediaCategory, Project, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
 import { openWork, useWorkSync } from "../lib/workSync";
 import type { OpenedWork, SaveStatus, Submission } from "../lib/workSync";
@@ -184,19 +190,22 @@ function Modeling() {
     // ended keeps the open workspace, which then sends what couldn't be saved (reopening at that
     // moment would race with that save and look like a conflict).
     const userId = user?.id ?? null;
+    // Likewise renaming the assignment (a new project object with the same id) doesn't reopen it
+    const openId = project?.id ?? null;
+    const projectsLoaded = projects !== null;
 
     useEffect(() => {
-        if (userId === null || projects === null) return;
-        if (!project) return setOpened({ projectId: null, work: NO_WORK });
+        if (userId === null || !projectsLoaded) return;
+        if (openId === null) return setOpened({ projectId: null, work: NO_WORK });
         let cancelled = false;
         setOpened(null);
-        openWork(project.id).then((work) => {
-            if (!cancelled) setOpened({ projectId: project.id, work });
+        openWork(openId).then((work) => {
+            if (!cancelled) setOpened({ projectId: openId, work });
         });
         return () => {
             cancelled = true;
         };
-    }, [userId, projects, project, reloads]);
+    }, [userId, projectsLoaded, openId, reloads]);
 
     if (!user || projects === null) return <LoadingScreen/>;
     if (projectId !== undefined && !project) {
@@ -296,6 +305,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
+    const { updateProject, deleteProject } = useProjects();
+    // A student's own assignment: they rename and delete it here (teachers use the assignment editor)
+    const ownAssignment = !!project?.mine && !isTeacher && !review && !preview;
     const [publishOpen, setPublishOpen] = useState(false);
 
     // ---------- explanation / code / analysis column widths ----------
@@ -377,6 +389,40 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     }
 
     // Hands in the work as it is now: the latest changes are saved first, so the teacher sees exactly this
+    // The assignment as a file that "Open assignment" on the dashboard can open again
+    function exportAssignment() {
+        if (!project) return;
+        const media = mediaLoaded.current ? toSaved(mediaItems) : initialMedia;
+        const contents = assignmentFileContents(project.title, project.explanation, { start, model, steps, graphs, media });
+        downloadFile(fileNameFor(project.title, "physicsgo.json"), new Blob([contents], { type: "application/json" }));
+    }
+
+    // Every variable of the last run at every step, for a spreadsheet
+    function exportRunCsv() {
+        if (!history) return;
+        const csv = runCsv(history, codeVariables(`${start}\n${model}`), language);
+        downloadFile(fileNameFor(`${project?.title ?? "model"} run`, "csv"), new Blob([csv], { type: "text/csv" }));
+    }
+
+    // A graph as it's shown now, as a PNG or SVG image with a legend (always in light colours)
+    async function exportGraph(graph: GraphConfig, index: number, format: "png" | "svg") {
+        const chart = analysisStackRef.current?.querySelector(`[data-graph-id="${graph.id}"] svg.recharts-surface`);
+        if (!(chart instanceof SVGSVGElement)) return;
+        const image = chartImage(chart, { lines: graph.ys.map((y) => ({ name: y.name, color: lineColor(y.color) })), x: graph.x });
+        const name = fileNameFor(`${project?.title ?? "model"} graph ${index + 1}`, format);
+        if (format === "svg") downloadFile(name, new Blob([image.svg], { type: "image/svg+xml" }));
+        else downloadFile(name, await chartPng(image));
+    }
+
+    // What's still waiting is saved first, so nothing is written for the assignment after it's gone
+    async function deleteOwnAssignment() {
+        if (!project) return;
+        await sync.saveNow();
+        const res = await deleteProject(project.id);
+        if (res.ok) navigate("/dashboard", { replace: true });
+        else setMediaError({ name: project.title, error: res.error });
+    }
+
     async function handIn(): Promise<Result> {
         if (!project) return { ok: false, error: "server_error" };
         if (sync.version === 0) saveWork({}); // nothing saved yet: save the starting state
@@ -765,7 +811,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
-                    <h2>{ project?.title }</h2>
+                    {ownAssignment && project
+                        ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
+                        : <h2>{ project?.title }</h2>}
                     {project && !noSaving && <SaveIndicator status={sync.status}/>}
                 </div>
 
@@ -816,6 +864,14 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             style={{ display: "none" }}
                         />
                         {/* Teachers publish projects to their classes; students hand them in */}
+                        {project && (
+                            <button type="button" className="insert-media-btn" onClick={exportAssignment} title={t("modeling.exportHint")}>
+                                <p>{t("modeling.export")}</p>
+                            </button>
+                        )}
+                        {ownAssignment && (
+                            <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
+                        )}
                         {isTeacher && project && (
                             <button
                                 className="insert-media-btn"
@@ -1011,8 +1067,21 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                         />
                                     )}
                                     {row.kind === "graph" ? (
-                                        <div className="analysis" style={rowStyle}>
+                                        <div className="analysis" style={rowStyle} data-graph-id={row.graph.id}>
                                             <div className="analysis-panel-actions">
+                                                <ExportMenu label={t("modeling.export")} items={[
+                                                    { label: t("modeling.exportRunCsv"), disabled: !history, onSelect: exportRunCsv },
+                                                    {
+                                                        label: t("modeling.exportPng"),
+                                                        disabled: !row.graph.x || row.graph.ys.length === 0,
+                                                        onSelect: () => exportGraph(row.graph, index, "png"),
+                                                    },
+                                                    {
+                                                        label: t("modeling.exportSvg"),
+                                                        disabled: !row.graph.x || row.graph.ys.length === 0,
+                                                        onSelect: () => exportGraph(row.graph, index, "svg"),
+                                                    },
+                                                ]}/>
                                                 <button
                                                     type="button"
                                                     className="analysis-media-remove"
@@ -1084,6 +1153,38 @@ function ReviewBar({ review }: { review: Review }) {
                 {t("review.backToClass")}
             </button>
         </div>
+    );
+}
+
+// A student's own assignment's name, edited in place in the top bar; Enter or leaving the field saves it
+function TitleField({ title, onSave }: { title: string; onSave: (title: string) => Promise<Result> }) {
+    const { t } = useTranslation();
+    const [draft, setDraft] = useState(title);
+    useEffect(() => setDraft(title), [title]);
+
+    const commit = async () => {
+        const next = draft.trim();
+        if (!next || next === title) return setDraft(title);
+        const res = await onSave(next.slice(0, 100));
+        if (!res.ok) setDraft(title);
+    };
+
+    return (
+        <input
+            className="title-field"
+            aria-label={t("modeling.assignmentName")}
+            value={draft}
+            maxLength={100}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                    setDraft(title);
+                    e.currentTarget.blur();
+                }
+            }}
+        />
     );
 }
 

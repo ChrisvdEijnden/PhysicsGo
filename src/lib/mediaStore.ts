@@ -47,6 +47,12 @@ export function deleteMediaFile(key: string): Promise<void> {
     return withStore("readwrite", (store) => store.delete(key));
 }
 
+// Removes every file one account (`scope`) kept on this device, e.g. when the account is deleted
+export async function deleteScopeMedia(scope: string): Promise<void> {
+    await withStore("readwrite", (store) => store.delete(IDBKeyRange.bound(`${scope}/`, `${scope}/\uffff`)))
+        .catch(() => undefined);
+}
+
 // Files saved before keys included an account ("<project>/<media>") move to `scope`
 export function adoptLegacyMedia(scope: string) {
     adoption = openDb().then((db) => new Promise<void>((resolve, reject) => {

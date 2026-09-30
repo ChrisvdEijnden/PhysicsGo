@@ -48,7 +48,7 @@ function AllModels() {
                     </div>
                     <div className="recents-list">
                         {(projects ?? [])
-                            .filter((project) => canSeeProject(user, published, project.id))
+                            .filter((project) => canSeeProject(user, published, project))
                             .sort(byLastEdit)
                             .map((project) => (
                                 <div key={project.id} className="recent-item">
@@ -60,7 +60,7 @@ function AllModels() {
                                         </div>
                                     </div>
                                     <div className="other-filters">
-                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
+                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
                                     </div>
                                     <div className="other-filters">
                                         <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>

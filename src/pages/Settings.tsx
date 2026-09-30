@@ -4,6 +4,7 @@ import "../styles/global.css";
 import "./settings.css";
 import NavBrand from "../components/NavBrand";
 import NavActions from "../components/NavActions";
+import ConfirmButton from "../components/ConfirmButton";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
@@ -312,7 +313,80 @@ function Settings() {
                         )}
                     </div>
                 )}
+                {user && <DeleteAccount isTeacher={user.role === "teacher"}/>}
             </div>
+        </div>
+    );
+}
+
+// Deleting the account: the password, then a second confirmation. A teacher is told which classes
+// need another teacher first.
+function DeleteAccount({ isTeacher }: { isTeacher: boolean }) {
+    const { t } = useTranslation();
+    const navigate = useNavigate();
+    const { deleteAccount } = useAuth();
+    const [open, setOpen] = useState(false);
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState<{ error: string; classes: string[] } | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    const remove = async () => {
+        if (busy) return;
+        setBusy(true);
+        setError(null);
+        const res = await deleteAccount(password);
+        setBusy(false);
+        if (res.ok) navigate("/login", { replace: true });
+        else setError({ error: res.error, classes: res.classes });
+    };
+
+    return (
+        <div className="password delete-account">
+            <div className="setting-row">
+                <div className="setting-row-text">
+                    <h3>{t("settings.deleteTitle")}</h3>
+                    <p>{isTeacher ? t("settings.deleteDescriptionTeacher") : t("settings.deleteDescription")}</p>
+                </div>
+                {!open && (
+                    <button type="button" className="logout-button" onClick={() => setOpen(true)}>
+                        {t("settings.deleteAccount")}
+                    </button>
+                )}
+            </div>
+            {open && (
+                <form className="password-form" onSubmit={(e) => e.preventDefault()}>
+                    <label className="password-field">
+                        <span>{t("settings.deletePassword")}</span>
+                        <input type="password" autoComplete="current-password" required autoFocus
+                               value={password} onChange={(e) => {
+                                   setPassword(e.target.value);
+                                   setError(null);
+                               }}/>
+                    </label>
+                    {error && (
+                        <p className="session-error" role="alert">
+                            {error.error === "classes_need_teacher"
+                                ? t("settings.deleteNeedsTeacher", { classes: error.classes.join(", ") })
+                                : t(authErrorKey(error.error))}
+                        </p>
+                    )}
+                    <div className="password-actions">
+                        <button type="button" className="session-signout" onClick={() => {
+                            setOpen(false);
+                            setPassword("");
+                            setError(null);
+                        }}>
+                            {t("user.cancel")}
+                        </button>
+                        <ConfirmButton
+                            className="logout-button"
+                            label={t("settings.deleteForGood")}
+                            disabled={busy || !password}
+                            onConfirm={remove}
+                        />
+                    </div>
+                </form>
+            )}
         </div>
     );
 }

@@ -49,10 +49,13 @@ Other server scripts:
 ## Checks
 
 ```sh
-pnpm exec tsc --noEmit                               # type-check the app
+pnpm test                                            # unit tests (src/**/*.test.ts) and API tests (server/test)
 cargo test --manifest-path InterpreterGo/Cargo.toml  # interpreter tests
+pnpm exec tsc --noEmit                               # type-check the app
 pnpm build                                           # production build into dist/
 ```
+
+The API tests start their own server on a temporary database, so they don't touch yours. GitHub Actions runs all of these on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
 
 ## Server configuration
 

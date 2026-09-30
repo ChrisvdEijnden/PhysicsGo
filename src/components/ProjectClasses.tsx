@@ -2,11 +2,16 @@ import type { ClassRef } from "../lib/useAuth";
 import { useTranslation } from "../lib/useTranslations";
 
 // Bubbles for the classes a project is open to: the first one, then "+N" for the rest.
-// Teachers also see when a project isn't open to any class yet.
-export default function ProjectClasses({ classes, isTeacher }: { classes: ClassRef[] | undefined; isTeacher: boolean }) {
+// Teachers also see when a project isn't open to any class yet; students see which assignments are their own.
+export default function ProjectClasses({ classes, isTeacher, own = false }: {
+    classes: ClassRef[] | undefined;
+    isTeacher: boolean;
+    own?: boolean;
+}) {
     const { t } = useTranslation();
     if (!classes || classes.length === 0) {
-        return isTeacher ? <span className="class-chip muted">{t("publish.notPublished")}</span> : null;
+        if (isTeacher) return <span className="class-chip muted">{t("publish.notPublished")}</span>;
+        return own ? <span className="class-chip muted">{t("dashboard.ownAssignment")}</span> : null;
     }
     const [first, ...rest] = classes;
     return (
