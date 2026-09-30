@@ -26,7 +26,8 @@ import type { OpenedWork, SaveStatus, Submission } from "../lib/workSync";
 import { api, errorOf } from "../lib/api";
 import type { Result } from "../lib/api";
 import HandInDialog from "../components/HandInDialog";
-import { deleteServerMedia, mediaOnServer, mediaUrl, uploadMedia } from "../lib/mediaServer";
+import Markdown from "../components/Markdown";
+import { deleteServerMedia, mediaOnServer, mediaUrl, projectMediaUrl, uploadMedia, urlExists } from "../lib/mediaServer";
 import { authErrorKey } from "../lib/authErrors";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
@@ -102,7 +103,27 @@ function nextVarName(category: MediaCategory, items: SavedMedia[]) {
     return `${category}${n}`;
 }
 
-const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced: false, offline: false };
+// The media a project gives every student to start with; its files stay the project's
+function starterMedia(project: Project | undefined): SavedMedia[] {
+    const items: SavedMedia[] = [];
+    for (const m of project?.media ?? []) {
+        items.push({
+            id: m.id,
+            name: m.name,
+            mime: m.mime,
+            category: m.category,
+            varName: nextVarName(m.category, items),
+            step: DEFAULT_POINT_STEP,
+            points: [],
+            graphX: m.category === "photo" ? "x" : "t",
+            graphYs: [{ name: "y", color: 0 }],
+            source: "project",
+        });
+    }
+    return items;
+}
+
+const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced: false, offline: false, conflictWith: null };
 
 // Work is saved per account, so the workspace only opens once it's known who is signed in and
 // their work has loaded; a different account gets a fresh workspace, not the previous one's state
@@ -213,11 +234,30 @@ export function ReviewWork() {
     );
 }
 
-function ModelingWorkspace({ project, opened, onReload, review }: {
+// A teacher trying a project the way a student first sees it: nothing is saved
+export function PreviewProject() {
+    const navigate = useNavigate();
+    const { projectId } = useParams();
+    const { user, loading } = useAuth();
+    const { projects, byId } = useProjects();
+    const project = byId(projectId);
+
+    useEffect(() => {
+        if (loading) return;
+        if (!user) navigate("/login", { replace: true });
+        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
+    }, [loading, user, navigate]);
+
+    if (loading || user?.role !== "teacher" || projects === null || !project) return null;
+    return <ModelingWorkspace key={project.id} project={project} opened={NO_WORK} onReload={() => undefined} preview/>;
+}
+
+function ModelingWorkspace({ project, opened, onReload, review, preview = false }: {
     project: Project | undefined;
     opened: OpenedWork;
     onReload: () => void;
     review?: Review;
+    preview?: boolean;
 }) {
     const navigate = useNavigate();
     const { t, language } = useTranslation();
@@ -289,8 +329,12 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
     // ---------- code panel ----------
     // A project reopens with the code and steps saved for it; an empty project starts fresh
     const savedWork = opened.work;
+    // Media the work starts with: what was saved, or for new work the project's starter media
+    const [initialMedia] = useState(() => savedWork?.media ?? starterMedia(project));
+    // Viewing a student's work or previewing a project: nothing is saved
+    const noSaving = !!review || preview;
     // Viewing a student's work saves nothing
-    const sync = useWorkSync(review ? null : project?.id ?? null, opened.version);
+    const sync = useWorkSync(noSaving ? null : project?.id ?? null, opened);
     // The handed-in copy of this work, if any (students)
     const [submission, setSubmission] = useState<Submission | null>(opened.submission);
     const [handInOpen, setHandInOpen] = useState(false);
@@ -311,9 +355,9 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
 
     // Every change to a project is saved with it and counts as an edit
     function saveWork(changes: Partial<ProjectWork>) {
-        if (!project || review) return;
+        if (!project || noSaving) return;
         // Until the media files have loaded, keep the media that was saved before
-        const media = mediaLoaded.current ? toSaved(mediaItems) : savedWork?.media ?? [];
+        const media = mediaLoaded.current ? toSaved(mediaItems) : initialMedia;
         sync.save({ start, model, steps, graphs, media, ...changes });
     }
 
@@ -452,8 +496,12 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
     useEffect(() => {
         if (!project) return;
         let cancelled = false;
-        const saved = savedWork?.media ?? [];
+        const saved = initialMedia;
         Promise.all(saved.map(async (media): Promise<MediaItem> => {
+            if (media.source === "project") {
+                const url = projectMediaUrl(project.id, media.id);
+                return { ...media, url: (await urlExists(url)) ? url : "" };
+            }
             if (review) {
                 const onServer = await mediaOnServer(project.id, media.id, review.studentId);
                 return { ...media, url: onServer ? mediaUrl(project.id, media.id, review.studentId) : "" };
@@ -478,7 +526,7 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
         return () => {
             cancelled = true;
         };
-    }, [project, savedWork, review?.studentId]);
+    }, [project, initialMedia, review?.studentId]);
 
     // Revoke every blob URL on unmount so nothing leaks.
     useEffect(() => {
@@ -490,7 +538,7 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
     const panelCountRef = useRef(0);
 
     const openFilePicker = useCallback(() => {
-        if (panelCountRef.current >= MAX_PANELS || review) return;
+        if (panelCountRef.current >= MAX_PANELS || noSaving) return;
         const input = fileInputRef.current;
         if (!input) return;
         input.accept = ALL_MEDIA_ACCEPT;
@@ -554,7 +602,8 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
         const target = mediaItems.find((item) => item.id === id);
         if (target?.url.startsWith("blob:")) URL.revokeObjectURL(target.url);
         setMedia(mediaItems.filter((item) => item.id !== id));
-        if (!project) return;
+        // Starter media stays the project's; only the student's own files are deleted
+        if (!project || noSaving || target?.source === "project") return;
         deleteMediaFile(mediaKey(project.id, id)).catch(() => {});
         deleteServerMedia(project.id, id);
     }
@@ -669,12 +718,17 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
                     <NavBrand />
                     <div className="spacer"></div>
                     <h2>{ project?.title }</h2>
-                    {project && !review && <SaveIndicator status={sync.status}/>}
+                    {project && !noSaving && <SaveIndicator status={sync.status}/>}
                 </div>
 
                 <div className="system-actions">
                     {review ? (
                         <ReviewBar review={review}/>
+                    ) : preview ? (
+                        <div className="review-bar">
+                            <span className="review-student">{t("preview.notice")}</span>
+                            <button type="button" className="review-back" onClick={() => navigate(-1)}>{t("preview.close")}</button>
+                        </div>
                     ) : (
                         <>
                         <div className="insert-menu-anchor" ref={insertMenuRef}>
@@ -722,6 +776,11 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
                                 })}
                             >
                                 <p>{project.mine ? t("projectEditor.edit") : t("projectEditor.duplicate")}</p>
+                            </button>
+                        )}
+                        {isTeacher && project && (
+                            <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/preview`)}>
+                                <p>{t("preview.button")}</p>
                             </button>
                         )}
                         {isTeacher ? (
@@ -805,7 +864,7 @@ function ModelingWorkspace({ project, opened, onReload, review }: {
             <div className="content-modeling" ref={contentRef}>
                 <div className="explanation-panel" style={{ flex: `0 0 ${panelWidths[0]}%` }}>
                     <div className="explanation">
-                        <p>{ project?.explanation }</p>
+                        {project && <Markdown text={project.explanation}/>}
                     </div>
                     {project && (
                         <div className="explanation-footer">

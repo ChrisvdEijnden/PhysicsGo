@@ -15,7 +15,16 @@ export interface Project {
     builtIn: boolean;
     // Written by the signed-in teacher, who can edit it
     mine: boolean;
+    // Videos and photos every student starts with
+    media: ProjectMedia[];
     updatedAt: number;
+}
+
+export interface ProjectMedia {
+    id: string;
+    name: string;
+    mime: string;
+    category: MediaCategory;
 }
 
 // This browser's copy of each project's work (the server has the real one, see lib/workSync),
@@ -89,6 +98,8 @@ export interface SavedMedia {
     graphYs: YLine[];
     // Scale and origin that turn the pixel positions into real distances; none means pixels
     calibration?: Calibration | null;
+    // "project": starter media from the project, whose file is the project's, not the student's
+    source?: "project";
 }
 
 export type LengthUnit = "m" | "cm" | "mm";
@@ -155,6 +166,11 @@ export const newGraph = (x = "", ys: YLine[] = []): GraphConfig => ({
     x,
     ys,
 });
+
+// Projects this browser has a copy of work for
+export function localWorkIds(): string[] {
+    return storageScope() ? Object.keys(readStore(scoped(WORK_KEY))) : [];
+}
 
 export function loadProjectWork(id: string): ProjectWork | null {
     if (!storageScope()) return null;

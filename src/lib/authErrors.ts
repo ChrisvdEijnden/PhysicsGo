@@ -29,6 +29,7 @@ const MAP: Record<string, TranslationKey> = {
     no_work: "handIn.errNoWork",
     not_published: "handIn.errNotPublished",
     invalid_project: "projectEditor.errInvalid",
+    too_many_media: "projectEditor.errTooManyMedia",
     not_found: "classes.errNotFound",
     forbidden: "classes.errForbidden",
 };

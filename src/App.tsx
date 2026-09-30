@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import User from "./pages/User";
 import Dashboard from "./pages/Dashboard";
-import Modeling, { ReviewWork } from "./pages/Modeling";
+import Modeling, { PreviewProject, ReviewWork } from "./pages/Modeling";
 import Settings from "./pages/Settings";
 import AllModels from "./pages/AllModels";
 import SignIn from "./pages/SignIn";
@@ -28,6 +28,7 @@ function App() {
                 <Route path="/review/:classId/:userId/:projectId" element={<ReviewWork />} />
                 <Route path="/projects/new" element={<ProjectEditor />} />
                 <Route path="/projects/:projectId/edit" element={<ProjectEditor />} />
+                <Route path="/projects/:projectId/preview" element={<PreviewProject />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/all-models" element={<AllModels />} />
                 <Route path="/classes" element={<Classes />} />

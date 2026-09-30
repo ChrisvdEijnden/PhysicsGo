@@ -291,6 +291,19 @@ export const translations = {
         "projectEditor.deleteHint": "This also removes it from your classes. Students keep the work they saved.",
         "projectEditor.errInvalid": "Check the fields: a title is needed, and the time must be between 1 and 600 minutes.",
 
+        "projectEditor.markdownHint": "Formatting: # heading, **bold**, *italic*, - list, 1. numbered list, [link](https://…)",
+        "projectEditor.preview": "How students see the explanation",
+
+        "preview.button": "Preview as student",
+        "preview.close": "Close preview",
+        "preview.notice": "Preview: what a student sees when opening this project for the first time. Nothing is saved.",
+        "projectEditor.starterMedia": "Starter media",
+        "projectEditor.starterMediaHint": "Up to 2 videos or photos every student starts with, for example the video they measure.",
+        "projectEditor.saveFirst": "Save the project first, then add media here.",
+        "projectEditor.mediaCopied": "The media of the project you're copying comes along when you save.",
+        "projectEditor.addMedia": "Add video or photo",
+        "projectEditor.errTooManyMedia": "A project can have at most 2 starter media.",
+
         "user.roleTeacher": "Teacher",
         "user.roleStudent": "Student",
     },
@@ -584,6 +597,19 @@ export const translations = {
         "projectEditor.delete": "Project verwijderen",
         "projectEditor.deleteHint": "Het project verdwijnt dan ook uit je klassen. Leerlingen houden het werk dat ze hebben opgeslagen.",
         "projectEditor.errInvalid": "Controleer de velden: een titel is nodig en de tijd moet tussen 1 en 600 minuten liggen.",
+
+        "projectEditor.markdownHint": "Opmaak: # kop, **vet**, *schuin*, - lijst, 1. genummerde lijst, [link](https://…)",
+        "projectEditor.preview": "Zo zien leerlingen de uitleg",
+
+        "preview.button": "Bekijken als leerling",
+        "preview.close": "Voorbeeld sluiten",
+        "preview.notice": "Voorbeeld: zo ziet een leerling dit project de eerste keer. Er wordt niets opgeslagen.",
+        "projectEditor.starterMedia": "Startmedia",
+        "projectEditor.starterMediaHint": "Maximaal 2 video's of foto's waarmee elke leerling begint, bijvoorbeeld de video die ze meten.",
+        "projectEditor.saveFirst": "Sla het project eerst op en voeg dan hier media toe.",
+        "projectEditor.mediaCopied": "De media van het project dat je kopieert gaan mee als je opslaat.",
+        "projectEditor.addMedia": "Video of foto toevoegen",
+        "projectEditor.errTooManyMedia": "Een project kan maximaal 2 startmedia hebben.",
 
         "user.roleTeacher": "Docent",
         "user.roleStudent": "Leerling",

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { api, errorOf } from "./api";
 import type { Result } from "./api";
 import { setStorageUser } from "../data/Projects";
+import { syncLocalWork } from "./workSync";
 
 export type Role = "student" | "teacher";
 
@@ -64,6 +65,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         refresh().then(() => setLoading(false));
     }, [refresh]);
+
+    // Work this browser has that the server hasn't (made offline, or from before work was saved online)
+    // is sent after signing in and whenever the connection comes back
+    const userId = user?.id ?? null;
+    useEffect(() => {
+        if (userId === null) return;
+        syncLocalWork();
+        window.addEventListener("online", syncLocalWork);
+        return () => window.removeEventListener("online", syncLocalWork);
+    }, [userId]);
 
     // Shared by every call that returns the updated account
     const withUser = useCallback(async (res: Promise<{ ok: boolean; data: UserData & { error?: string } }>) => {

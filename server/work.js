@@ -1,32 +1,11 @@
 import express from "express";
-import crypto from "node:crypto";
 import fs from "node:fs";
-import path from "node:path";
-import { Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { fileURLToPath } from "node:url";
 import db from "./db.js";
 import { PROJECT_ID } from "./projects.js";
 import { teachesStudent } from "./classes.js";
+import { MAX_FILE, MEDIA_ID, QUOTA, allowedType, mediaPath, requestMime, sendMedia, storeUpload } from "./media.js";
 
-const MB = 1024 * 1024;
-// Media files live on disk, one folder per user and project (PHYSICSGO_MEDIA_DIR)
-const MEDIA_DIR = process.env.PHYSICSGO_MEDIA_DIR ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "media");
-const MAX_FILE = (Number(process.env.PHYSICSGO_MEDIA_MAX_MB) || 200) * MB;
-const QUOTA = (Number(process.env.PHYSICSGO_MEDIA_QUOTA_MB) || 2048) * MB;
-// Media ids are made in the app from a timestamp and random letters
-const MEDIA_ID = /^[a-z0-9-]{1,64}$/;
-const WORD_TYPES = new Set([
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-]);
-// What "Insert media" accepts. SVG is left out: it can carry scripts.
-const allowedType = (mime) => (/^(image|video)\/[\w.+-]+$/.test(mime) && mime !== "image/svg+xml") || WORD_TYPES.has(mime);
-
-const str = (v) => (typeof v === "string" ? v : "");
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
-
-export const mediaPath = (userId, projectId, mediaId) => path.join(MEDIA_DIR, String(userId), projectId, mediaId);
 
 // A user's saved work on a project; version 0 and no work when nothing is saved yet
 export function readWork(userId, projectId) {
@@ -177,16 +156,13 @@ export function mediaRouter({ requireAuth }) {
         const userId = ownerFor(req);
         const file = userId !== null && findFile(userId, req.params);
         if (!file) return res.status(404).json({ error: "not_found" });
-        // Never rendered as a page of this site, whatever the file contains
-        res.set("Content-Security-Policy", "default-src 'none'; sandbox");
-        res.set("Cache-Control", "private, max-age=3600");
-        res.sendFile(mediaPath(userId, req.params.projectId, req.params.mediaId), { headers: { "Content-Type": file.mime } });
+        sendMedia(res, mediaPath(userId, req.params.projectId, req.params.mediaId), file.mime);
     });
 
     // The request body is the file itself, streamed to disk
     router.put("/:projectId/:mediaId", wrap(async (req, res) => {
         const { projectId, mediaId } = req.params;
-        const mime = str(req.get("content-type")).split(";")[0].trim().toLowerCase();
+        const mime = requestMime(req);
         if (!allowedType(mime)) return res.status(415).json({ error: "unsupported_media" });
 
         const { used } = db.prepare(`
@@ -198,24 +174,8 @@ export function mediaRouter({ requireAuth }) {
         const tooBig = limit === MAX_FILE ? "file_too_large" : "storage_full";
         if (limit <= 0 || declared > limit) return res.status(413).json({ error: tooBig });
 
-        const file = mediaPath(req.user.id, projectId, mediaId);
-        const part = `${file}.${crypto.randomBytes(4).toString("hex")}.part`;
-        await fs.promises.mkdir(path.dirname(file), { recursive: true });
-        let size = 0;
-        const count = new Transform({
-            transform(chunk, _encoding, done) {
-                size += chunk.length;
-                done(size > limit ? Object.assign(new Error("too large"), { tooBig: true }) : null, chunk);
-            },
-        });
-        try {
-            await pipeline(req, count, fs.createWriteStream(part));
-        } catch (e) {
-            await fs.promises.rm(part, { force: true });
-            if (e.tooBig) return res.status(413).set("Connection", "close").json({ error: tooBig });
-            throw e;
-        }
-        await fs.promises.rename(part, file);
+        const size = await storeUpload(req, mediaPath(req.user.id, projectId, mediaId), limit);
+        if (size === null) return res.status(413).set("Connection", "close").json({ error: tooBig });
 
         db.prepare(`
             INSERT INTO media_files (user_id, project_id, media_id, mime, size, created_at) VALUES (?, ?, ?, ?, ?, ?)

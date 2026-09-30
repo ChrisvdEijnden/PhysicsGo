@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./classes.css";
+import "./modeling.css";
 import "./projecteditor.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
@@ -10,10 +11,22 @@ import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
 import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
+import Markdown from "../components/Markdown";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { useProjects } from "../lib/useProjects";
 import { authErrorKey } from "../lib/authErrors";
+import { deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
+import type { MediaCategory, Project } from "../data/Projects";
+
+const MAX_STARTER_MEDIA = 2;
+
+function categoryOf(file: File): MediaCategory {
+    if (file.type === "image/gif") return "animation";
+    if (file.type.startsWith("video/")) return "video";
+    if (file.type.startsWith("image/")) return "photo";
+    return "document";
+}
 
 // Where teachers write a project: /projects/new (optionally a copy of another) or /projects/<id>/edit
 function ProjectEditor() {
@@ -22,7 +35,7 @@ function ProjectEditor() {
     const { projectId } = useParams();
     const { t } = useTranslation();
     const { user, loading } = useAuth();
-    const { projects, byId, createProject, updateProject, deleteProject } = useProjects();
+    const { projects, byId, createProject, replaceProject, updateProject, deleteProject } = useProjects();
     const editing = projectId !== undefined;
     const existing = byId(projectId);
     const copyOf = byId((location.state as { copyOf?: string } | null)?.copyOf);
@@ -75,11 +88,34 @@ function ProjectEditor() {
         };
         setBusy(true);
         setError(null);
-        const res = editing ? await updateProject(projectId, fields) : await createProject(fields);
+        const res = editing ? await updateProject(projectId, fields) : await createProject({ ...fields, copyOf: copyOf?.id });
         setBusy(false);
         if (!res.ok) return setError(res.error);
         // Opens the project the way students will see it, where it can be published
         navigate("/modeling", { state: { presetId: res.project.id }, replace: true });
+    };
+
+    // Starter media is saved straight away, so it can only be added to a project that exists
+    const addMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        e.target.value = "";
+        if (!file || !projectId) return;
+        setBusy(true);
+        setError(null);
+        const mediaId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const res = await uploadProjectMedia<Project>(projectId, mediaId, file, categoryOf(file));
+        setBusy(false);
+        if (res.ok) replaceProject(res.project);
+        else setError(res.error);
+    };
+
+    const removeMedia = async (mediaId: string) => {
+        if (!projectId) return;
+        setBusy(true);
+        const res = await deleteProjectMedia<Project>(projectId, mediaId);
+        setBusy(false);
+        if (res.ok) replaceProject(res.project);
+        else setError(res.error);
     };
 
     const remove = async () => {
@@ -119,7 +155,14 @@ function ProjectEditor() {
                 <label className="project-field">
                     <span>{t("projectEditor.explanation")}</span>
                     <textarea className="class-input" rows={8} maxLength={20000} value={form.explanation} onChange={set("explanation")}/>
+                    <span className="section-hint">{t("projectEditor.markdownHint")}</span>
                 </label>
+                {form.explanation.trim() && (
+                    <div className="project-field">
+                        <span>{t("projectEditor.preview")}</span>
+                        <Markdown className="project-explanation-preview" text={form.explanation}/>
+                    </div>
+                )}
                 <div className="project-field-row">
                     <label className="project-field">
                         <span>{t("projectEditor.estimatedTime")}</span>
@@ -129,6 +172,29 @@ function ProjectEditor() {
                         <span>{t("projectEditor.equipment")}</span>
                         <textarea className="class-input" rows={3} value={form.equipment} onChange={set("equipment")}/>
                     </label>
+                </div>
+                <div className="project-field">
+                    <span>{t("projectEditor.starterMedia")}</span>
+                    <p className="section-hint">{t("projectEditor.starterMediaHint")}</p>
+                    {editing && existing ? (
+                        <div className="member-list">
+                            {existing.media.map((m) => (
+                                <div key={m.id} className="member-row">
+                                    <div className="member-text"><p className="member-name">{m.name}</p></div>
+                                    <ConfirmButton className="class-button danger" label={t("classes.remove")} disabled={busy}
+                                                   onConfirm={() => removeMedia(m.id)}/>
+                                </div>
+                            ))}
+                            {existing.media.length < MAX_STARTER_MEDIA && (
+                                <label className="class-button project-add-media">
+                                    {t("projectEditor.addMedia")}
+                                    <input type="file" accept="image/*,video/*" onChange={addMedia} disabled={busy} hidden/>
+                                </label>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="section-hint">{copyOf?.media.length ? t("projectEditor.mediaCopied") : t("projectEditor.saveFirst")}</p>
+                    )}
                 </div>
                 <div className="project-field">
                     <span>{t("projectEditor.starterCode")}</span>
@@ -152,6 +218,11 @@ function ProjectEditor() {
                             <ConfirmButton className="class-button danger" label={t("projectEditor.delete")} disabled={busy} onConfirm={remove}/>
                             <p className="section-hint">{t("projectEditor.deleteHint")}</p>
                         </div>
+                    )}
+                    {editing && (
+                        <button type="button" className="class-button" onClick={() => navigate(`/projects/${projectId}/preview`)}>
+                            {t("preview.button")}
+                        </button>
                     )}
                     <button type="button" className="class-button" onClick={() => navigate(-1)}>{t("publish.cancel")}</button>
                     <button type="submit" className="class-button primary" disabled={busy || !form.title.trim()}>

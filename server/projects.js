@@ -1,11 +1,21 @@
 import express from "express";
 import crypto from "node:crypto";
+import fs from "node:fs";
 import db from "./db.js";
+import { MAX_FILE, MEDIA_ID, allowedType, projectMediaDir, projectMediaPath, requestMime, sendMedia, storeUpload } from "./media.js";
 
 // Built-in presets have readable ids ("standard-freefall"), teachers' projects random ones ("p-…")
 export const PROJECT_ID = /^[a-z0-9][a-z0-9-]{0,99}$/;
 
 const str = (v) => (typeof v === "string" ? v : "");
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+// Starter media per project: with a graph that's the most panels the modeling page shows
+const MAX_PROJECT_MEDIA = 2;
+const CATEGORIES = new Set(["photo", "video", "animation", "document"]);
+
+const projectMedia = (projectId) => db.prepare(`
+    SELECT media_id AS id, name, mime, category FROM project_media WHERE project_id = ? ORDER BY created_at
+`).all(projectId);
 
 // The classes the user belongs to (as teacher or student) that the project is published to.
 // Archived classes are left out; their publications come back if the class is restored.
@@ -37,6 +47,7 @@ function toProject(row, viewerId) {
         curriculum: Boolean(row.curriculum),
         builtIn: Boolean(row.built_in),
         mine: row.author_id !== null && row.author_id === viewerId,
+        media: projectMedia(row.id),
         updatedAt: row.updated_at,
     };
 }
@@ -115,10 +126,12 @@ export function projectsRouter({ requireAuth }) {
         res.json({ published: publishedClasses(req.user) });
     });
 
-    router.post("/", (req, res) => {
+    // A new project; `copyOf` (a project the teacher can see) also copies that project's starter media
+    router.post("/", wrap(async (req, res) => {
         if (req.user.role !== "teacher") return res.status(403).json({ error: "forbidden" });
         const fields = projectFields(req.body ?? {}, false);
         if (!fields) return res.status(400).json({ error: "invalid_project" });
+        const copyOf = typeof req.body.copyOf === "string" && visibleProjects(req.user).find((p) => p.id === req.body.copyOf);
         const id = `p-${crypto.randomBytes(6).toString("hex")}`;
         const now = Date.now();
         db.prepare(`
@@ -126,8 +139,16 @@ export function projectsRouter({ requireAuth }) {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(id, req.user.id, fields.title, fields.explanation, fields.start, fields.model,
             fields.estimated_time, fields.equipment, now, now);
+        for (const m of copyOf ? copyOf.media : []) {
+            const source = db.prepare("SELECT * FROM project_media WHERE project_id = ? AND media_id = ?").get(copyOf.id, m.id);
+            await fs.promises.mkdir(projectMediaDir(id), { recursive: true });
+            await fs.promises.copyFile(projectMediaPath(copyOf.id, m.id), projectMediaPath(id, m.id));
+            db.prepare(`
+                INSERT INTO project_media (project_id, media_id, name, mime, category, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).run(id, m.id, source.name, source.mime, source.category, source.size, now);
+        }
         res.status(201).json({ project: toProject(db.prepare("SELECT * FROM projects WHERE id = ?").get(id), req.user.id) });
-    });
+    }));
 
     router.param("projectId", (req, res, next, id) =>
         PROJECT_ID.test(id) ? next() : res.status(400).json({ error: "bad_request" }));
@@ -148,12 +169,58 @@ export function projectsRouter({ requireAuth }) {
         res.json({ project: toProject(authored(req), req.user.id) });
     });
 
-    // Deleting also unpublishes it; students' saved work stays in their accounts
-    router.delete("/:projectId", (req, res) => {
+    // Deleting also unpublishes it and removes its starter media; students' saved work stays in their accounts
+    router.delete("/:projectId", wrap(async (req, res) => {
         if (!authored(req)) return res.status(404).json({ error: "not_found" });
         db.prepare("DELETE FROM projects WHERE id = ?").run(req.params.projectId);
+        await fs.promises.rm(projectMediaDir(req.params.projectId), { recursive: true, force: true });
         res.json({ ok: true });
+    }));
+
+    router.param("mediaId", (req, res, next, id) =>
+        MEDIA_ID.test(id) ? next() : res.status(400).json({ error: "bad_request" }));
+
+    // Starter media: anyone who can open the project can view it; its author adds and removes it
+    router.get("/:projectId/media/:mediaId", (req, res) => {
+        const { projectId, mediaId } = req.params;
+        const file = visibleProjects(req.user).some((p) => p.id === projectId)
+            && db.prepare("SELECT mime FROM project_media WHERE project_id = ? AND media_id = ?").get(projectId, mediaId);
+        if (!file) return res.status(404).json({ error: "not_found" });
+        sendMedia(res, projectMediaPath(projectId, mediaId), file.mime);
     });
+
+    // The body is the file; ?name= is its file name and ?category= photo, video, animation or document
+    router.put("/:projectId/media/:mediaId", wrap(async (req, res) => {
+        const { projectId, mediaId } = req.params;
+        if (!authored(req)) return res.status(404).json({ error: "not_found" });
+        const mime = requestMime(req);
+        const name = str(req.query.name).trim().slice(0, 200);
+        const category = str(req.query.category);
+        if (!allowedType(mime)) return res.status(415).json({ error: "unsupported_media" });
+        if (!name || !CATEGORIES.has(category)) return res.status(400).json({ error: "bad_request" });
+        const exists = db.prepare("SELECT 1 FROM project_media WHERE project_id = ? AND media_id = ?").get(projectId, mediaId);
+        if (!exists && projectMedia(projectId).length >= MAX_PROJECT_MEDIA) return res.status(400).json({ error: "too_many_media" });
+        if (Number(req.get("content-length")) > MAX_FILE) return res.status(413).json({ error: "file_too_large" });
+
+        const size = await storeUpload(req, projectMediaPath(projectId, mediaId), MAX_FILE);
+        if (size === null) return res.status(413).set("Connection", "close").json({ error: "file_too_large" });
+        db.prepare(`
+            INSERT INTO project_media (project_id, media_id, name, mime, category, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT (project_id, media_id) DO UPDATE SET name = excluded.name, mime = excluded.mime,
+                category = excluded.category, size = excluded.size
+        `).run(projectId, mediaId, name, mime, category, size, Date.now());
+        db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(Date.now(), projectId);
+        res.status(201).json({ project: toProject(authored(req), req.user.id) });
+    }));
+
+    // Students who already started keep the media in their work, shown as missing from then on
+    router.delete("/:projectId/media/:mediaId", wrap(async (req, res) => {
+        const { projectId, mediaId } = req.params;
+        if (!authored(req)) return res.status(404).json({ error: "not_found" });
+        db.prepare("DELETE FROM project_media WHERE project_id = ? AND media_id = ?").run(projectId, mediaId);
+        await fs.promises.rm(projectMediaPath(projectId, mediaId), { force: true });
+        res.json({ project: toProject(authored(req), req.user.id) });
+    }));
 
     // Teachers set which of their active classes a project is open to. Classes they don't teach,
     // and archived ones, are left alone, so co-teachers' other classes aren't affected.

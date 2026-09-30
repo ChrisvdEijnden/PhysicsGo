@@ -192,6 +192,20 @@ const MIGRATIONS = [
     ALTER TABLE project_classes_new RENAME TO project_classes;
     CREATE INDEX project_classes_class ON project_classes(class_id);
     `,
+    // 9: videos and photos a teacher adds to a project, which every student starts with.
+    // The files are on disk under projects/ (see media.js).
+    `
+    CREATE TABLE project_media (
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        media_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        category TEXT NOT NULL CHECK (category IN ('photo', 'video', 'animation', 'document')),
+        size INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (project_id, media_id)
+    );
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

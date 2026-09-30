@@ -90,3 +90,16 @@
     font-weight: 600;
     color: var(--color-text-secondary);
 }
+
+.project-explanation-preview {
+    padding: 16px;
+    border: 1px dashed var(--color-border);
+    border-radius: 12px;
+    background-color: var(--color-bg-app);
+    font-weight: 400;
+}
+
+.project-add-media {
+    align-self: flex-start;
+    font-weight: 500;
+}

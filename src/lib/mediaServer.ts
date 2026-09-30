@@ -32,3 +32,41 @@ export async function mediaOnServer(projectId: string, mediaId: string, userId?:
 export function deleteServerMedia(projectId: string, mediaId: string) {
     return fetch(mediaUrl(projectId, mediaId), { method: "DELETE" }).catch(() => undefined);
 }
+
+// Starter media of a project, which everyone who can open the project can view
+export const projectMediaUrl = (projectId: string, mediaId: string) => `/api/projects/${projectId}/media/${mediaId}`;
+
+export async function urlExists(url: string): Promise<boolean> {
+    try {
+        return (await fetch(url, { method: "HEAD" })).ok;
+    } catch {
+        return false;
+    }
+}
+
+// Adds a file to a project's starter media (its author only); resolves with the updated project
+export async function uploadProjectMedia<P>(projectId: string, mediaId: string, file: File, category: string): Promise<Result<{ project: P }>> {
+    try {
+        const params = new URLSearchParams({ name: file.name, category });
+        const res = await fetch(`${projectMediaUrl(projectId, mediaId)}?${params}`, {
+            method: "PUT",
+            headers: { "Content-Type": file.type || "application/octet-stream" },
+            body: file,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.project) return { ok: true, project: data.project };
+        return { ok: false, error: data.error ?? (res.status === 413 ? "file_too_large" : "server_error") };
+    } catch {
+        return { ok: false, error: "network" };
+    }
+}
+
+export async function deleteProjectMedia<P>(projectId: string, mediaId: string): Promise<Result<{ project: P }>> {
+    try {
+        const res = await fetch(projectMediaUrl(projectId, mediaId), { method: "DELETE" });
+        const data = await res.json().catch(() => ({}));
+        return res.ok && data.project ? { ok: true, project: data.project } : { ok: false, error: data.error ?? "server_error" };
+    } catch {
+        return { ok: false, error: "network" };
+    }
+}

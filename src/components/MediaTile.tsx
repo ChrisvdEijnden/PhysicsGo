@@ -22,14 +22,23 @@ export const DEFAULT_POINT_STEP = 1 / 30;
 export const pointAxes = (item: SavedMedia) => (item.category === "photo" ? ["x", "y"] : ["t", "x", "y"]);
 
 // Only video points have a real time, so only they become variables in the code;
-// they're in the media's calibrated units, or pixels without a calibration
+// they're in the media's calibrated units, or pixels without a calibration. With a calibration
+// the pixel positions stay available too, as x_video1_px and y_video1_px.
 export function pointSeries(item: SavedMedia) {
     if (item.category !== "video" || item.points.length === 0) return [];
-    const sorted = realPoints(item).sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
-    const t = sorted.map((p) => p.t ?? 0);
+    const byTime = <P extends MediaPoint>(points: P[]) => [...points].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    const real = byTime(realPoints(item));
+    const t = real.map((p) => p.t ?? 0);
+    const series = [
+        { name: `x_${item.varName}`, t, values: real.map((p) => p.x) },
+        { name: `y_${item.varName}`, t, values: real.map((p) => p.y) },
+    ];
+    if (!item.calibration) return series;
+    const pixels = byTime(item.points);
     return [
-        { name: `x_${item.varName}`, t, values: sorted.map((p) => p.x) },
-        { name: `y_${item.varName}`, t, values: sorted.map((p) => p.y) },
+        ...series,
+        { name: `x_${item.varName}_px`, t, values: pixels.map((p) => p.x) },
+        { name: `y_${item.varName}_px`, t, values: pixels.map((p) => p.y) },
     ];
 }
 

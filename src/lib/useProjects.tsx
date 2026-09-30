@@ -13,7 +13,10 @@ interface ProjectsContextValue {
     // Null until loaded for the signed-in user
     projects: Project[] | null;
     byId: (id: string | undefined) => Project | undefined;
-    createProject: (fields: ProjectFields) => Promise<Result<{ project: Project }>>;
+    // With copyOf, the other project's starter media is copied too
+    createProject: (fields: ProjectFields & { copyOf?: string }) => Promise<Result<{ project: Project }>>;
+    // Takes a project as the server just sent it (e.g. after changing its media)
+    replaceProject: (project: Project) => void;
     updateProject: (id: string, fields: Partial<ProjectFields>) => Promise<Result<{ project: Project }>>;
     deleteProject: (id: string) => Promise<Result>;
 }
@@ -39,12 +42,16 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
     const byId = useCallback((id: string | undefined) => projects?.find((p) => p.id === id), [projects]);
 
-    const createProject = useCallback(async (fields: ProjectFields): Promise<Result<{ project: Project }>> => {
+    const createProject = useCallback(async (fields: ProjectFields & { copyOf?: string }): Promise<Result<{ project: Project }>> => {
         const { ok, data } = await api<{ project: Project }>("/projects", "POST", fields);
         if (!ok || !data.project) return { ok: false, error: errorOf(data) };
         const project = data.project;
         setProjects((list) => [...(list ?? []), project].sort((a, b) => a.title.localeCompare(b.title)));
         return { ok: true, project };
+    }, []);
+
+    const replaceProject = useCallback((project: Project) => {
+        setProjects((list) => list?.map((p) => (p.id === project.id ? project : p)) ?? list);
     }, []);
 
     const updateProject = useCallback(async (id: string, fields: Partial<ProjectFields>): Promise<Result<{ project: Project }>> => {
@@ -63,8 +70,8 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const value = useMemo(
-        () => ({ projects, byId, createProject, updateProject, deleteProject }),
-        [projects, byId, createProject, updateProject, deleteProject]
+        () => ({ projects, byId, createProject, replaceProject, updateProject, deleteProject }),
+        [projects, byId, createProject, replaceProject, updateProject, deleteProject]
     );
     return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;
 }
