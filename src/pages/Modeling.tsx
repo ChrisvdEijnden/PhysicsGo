@@ -10,6 +10,7 @@ import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 import DownloadIcon20px from "../assets/icons/download-20px.svg";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
+import EditIcon20px from "../assets/icons/edit-20px.svg";
 
 import Graph, { lineColor } from "../components/Graph.tsx";
 import ExportMenu from "../components/ExportMenu";
@@ -933,8 +934,14 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
                         )}
                         {isTeacher && project && (project.mine ? (
-                            <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/edit`)}>
-                                <p>{t("projectEditor.edit")}</p>
+                            <button
+                                type="button"
+                                className="nav-icon-btn"
+                                onClick={() => navigate(`/projects/${project.id}/edit`)}
+                                aria-label={t("projectEditor.edit")}
+                                title={t("projectEditor.edit")}
+                            >
+                                <img src={EditIcon20px} alt=""/>
                             </button>
                         ) : (
                             <button
