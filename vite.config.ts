@@ -1,20 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 import pkg from "./package.json" with { type: "json" };
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig(() => ({
-    plugins: [
-        react(),
-        // @ts-expect-error - plugin type definitions might need a bypass
-        monacoEditorPlugin.default({})
-    ],
+    plugins: [react()],
     // Shown on the sign-in pages, so the version is only kept in package.json
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
-    // The simulation worker imports the interpreter, so it's built as an ES module
+    // The simulation worker imports the interpreter, and Monaco's editor worker is made of modules too
     worker: { format: "es" as const },
     clearScreen: false,
     server: {

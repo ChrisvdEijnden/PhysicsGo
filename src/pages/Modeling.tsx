@@ -21,7 +21,7 @@ import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/
 import { realPoints } from "../lib/calibration";
 import { formatTick } from "../components/lineChart.tsx";
 import type { ChartPoint } from "../components/lineChart.tsx";
-import { newGraph, normalizeWork } from "../data/Projects.tsx";
+import { newGraph, normalizeWork, toLines } from "../data/Projects.tsx";
 import { useProjects } from "../lib/useProjects";
 import { assignmentFileContents } from "../lib/assignmentFile";
 import { downloadFile, fileNameFor } from "../lib/download";
@@ -428,7 +428,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_MODEL);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
     // A new project starts with one empty graph
-    const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs ?? [newGraph()]);
+    const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs
+        ?? (project?.graphs.length ? project.graphs.map((g) => newGraph(g.x, toLines(g.ys))) : [newGraph()]));
     // Media is loaded from this device after opening; mediaLoaded is false until then
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const mediaLoaded = useRef(!project);
@@ -584,7 +585,11 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         const result = await simulation.run(start, model, stepCount(), measuredData);
         if (!result) return; // stopped
         const samples = result.samples;
-        const status = { steps: Math.max(0, samples.length - 1), t: valueAt(samples, "t", samples.length - 1) };
+        // A model that steps through something other than time (say, a position) leaves t where it is
+        const tEnd = valueAt(samples, "t", samples.length - 1);
+        const tStart = valueAt(samples, "t", 0);
+        const moved = tEnd !== undefined && tEnd !== (tStart !== undefined && Number.isFinite(tStart) ? tStart : 0);
+        const status = { steps: Math.max(0, samples.length - 1), t: moved ? tEnd : undefined };
 
         if (!result.ok) {
             setRunStatus({ kind: "error", ...status });

@@ -161,6 +161,8 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
     }, [domain, all, isEmpty]);
 
     const labels = useMemo(() => new Map(lines.map((l) => [l.key, l.label])), [lines]);
+    // Wide enough for the longest tick label, so "-3.0e-6" isn't cut off at the edge
+    const yWidth = Math.max(48, ...yScale.ticks.map((tick) => formatTick(tick).length * 7 + 10));
 
     return (
         <div className="chart-area" ref={chartAreaRef}>
@@ -190,7 +192,7 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                     />
                     <YAxis
                         type="number"
-                        width={48}
+                        width={yWidth}
                         tickMargin={4}
                         domain={yScale.domain}
                         ticks={yScale.ticks}

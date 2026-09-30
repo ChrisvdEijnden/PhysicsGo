@@ -29,5 +29,6 @@ dist-ssr
 server/physicsgo.db
 server/physicsgo.db-*
 
-# Uploaded media files (videos, photos) from the local server
+# Uploaded media files (videos, photos) and database backups from the local server
 server/media/
+server/backups/

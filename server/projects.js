@@ -60,6 +60,7 @@ function toProject(row, viewerId) {
         model: row.model,
         estimatedTime: row.estimated_time,
         equipment: JSON.parse(row.equipment),
+        graphs: JSON.parse(row.graphs),
         curriculum: Boolean(row.curriculum),
         builtIn: Boolean(row.built_in),
         mine: row.author_id !== null && row.author_id === viewerId,
@@ -123,6 +124,16 @@ function projectFields(body, partial) {
         }
         fields.equipment = JSON.stringify(v.map((x) => x.trim()));
     }
+    // The graphs students start with: [{ x: "t", ys: ["h", "v"] }]
+    if ("graphs" in body) {
+        const name = (n) => typeof n === "string" && n.length <= 50;
+        const v = body.graphs ?? [];
+        if (!Array.isArray(v) || v.length > 3
+            || !v.every((g) => g && name(g.x) && Array.isArray(g.ys) && g.ys.length <= 6 && g.ys.every(name))) {
+            return null;
+        }
+        fields.graphs = JSON.stringify(v.map((g) => ({ x: g.x, ys: g.ys })));
+    }
     return fields;
 }
 
@@ -155,11 +166,13 @@ export function projectsRouter({ requireAuth }) {
         const copyOf = teacher && typeof req.body.copyOf === "string" && visibleProjects(req.user).find((p) => p.id === req.body.copyOf);
         const id = `p-${crypto.randomBytes(6).toString("hex")}`;
         const now = Date.now();
+        // A copy starts with the same graphs unless others are given
+        const graphs = fields.graphs ?? (copyOf ? JSON.stringify(copyOf.graphs) : "[]");
         db.prepare(`
-            INSERT INTO projects (id, author_id, title, explanation, start, model, estimated_time, equipment, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO projects (id, author_id, title, explanation, start, model, estimated_time, equipment, graphs, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(id, req.user.id, fields.title, fields.explanation, fields.start, fields.model,
-            fields.estimated_time, fields.equipment, now, now);
+            fields.estimated_time, fields.equipment, graphs, now, now);
         for (const m of copyOf ? copyOf.media : []) {
             const source = db.prepare("SELECT * FROM project_media WHERE project_id = ? AND media_id = ?").get(copyOf.id, m.id);
             await fs.promises.mkdir(projectMediaDir(id), { recursive: true });

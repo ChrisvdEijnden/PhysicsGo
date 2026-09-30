@@ -1,13 +1,14 @@
 import Database from "better-sqlite3";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { PRESETS } from "./presets.js";
 
 const file = process.env.PHYSICSGO_DB ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "physicsgo.db");
 const db = new Database(file);
 db.pragma("journal_mode = WAL");
 db.pragma("foreign_keys = ON");
 
-// Each entry upgrades the schema by one version; PRAGMA user_version tracks which have run
+// Each entry upgrades the schema by one version (SQL, or a function for data); PRAGMA user_version tracks which have run
 const MIGRATIONS = [
     // 1: accounts and sessions
     `
@@ -226,12 +227,26 @@ const MIGRATIONS = [
     ALTER TABLE teacher_invites ADD COLUMN created_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
     ALTER TABLE teacher_invites ADD COLUMN expires_at INTEGER;
     `,
+    // 12: the graphs a project starts with, and real content for the built-in assignments (presets.js)
+    (db) => {
+        db.exec("ALTER TABLE projects ADD COLUMN graphs TEXT NOT NULL DEFAULT '[]'");
+        const update = db.prepare(`
+            UPDATE projects SET explanation = @explanation, start = @start, model = @model, estimated_time = @minutes,
+                equipment = @equipment, graphs = @graphs, updated_at = @now
+            WHERE id = @id AND built_in = 1
+        `);
+        for (const p of PRESETS) {
+            update.run({ ...p, equipment: JSON.stringify(p.equipment), graphs: JSON.stringify(p.graphs), now: Date.now() });
+        }
+    },
 ];
 
 const current = db.pragma("user_version", { simple: true });
 db.transaction(() => {
     for (let v = current; v < MIGRATIONS.length; v++) {
-        db.exec(MIGRATIONS[v]);
+        const migration = MIGRATIONS[v];
+        if (typeof migration === "function") migration(db);
+        else db.exec(migration);
         db.pragma(`user_version = ${v + 1}`);
     }
 })();

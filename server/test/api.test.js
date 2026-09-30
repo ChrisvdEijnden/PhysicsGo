@@ -16,6 +16,9 @@ const env = {
     PORT: String(port),
     PHYSICSGO_DB: path.join(dataDir, "test.db"),
     PHYSICSGO_MEDIA_DIR: path.join(dataDir, "media"),
+    PHYSICSGO_BACKUP_DIR: path.join(dataDir, "backups"),
+    // No built app is served during the tests
+    PHYSICSGO_STATIC: path.join(dataDir, "no-app"),
     NODE_ENV: "test",
 };
 const BASE = `http://localhost:${port}/api`;
@@ -71,6 +74,21 @@ before(async () => {
 after(() => {
     server?.kill();
     fs.rmSync(dataDir, { recursive: true, force: true });
+});
+
+describe("running the server", () => {
+    test("the health check answers, and today's database backup exists", async () => {
+        const res = await fetch(`${BASE}/health`);
+        const body = await res.json();
+        assert.equal(body.ok, true);
+        assert.match(body.version, /^\d+\.\d+\.\d+$/);
+        // Made in the background when the server starts
+        const today = [`physicsgo-${new Date().toISOString().slice(0, 10)}.db`];
+        const dir = path.join(dataDir, "backups");
+        const backups = () => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.endsWith(".partial")) : []);
+        for (let i = 0; i < 50 && backups().length === 0; i++) await new Promise((resolve) => setTimeout(resolve, 50));
+        assert.deepEqual(backups(), today);
+    });
 });
 
 describe("signing in", () => {
@@ -140,7 +158,11 @@ describe("classes, assignments and work", () => {
         assert.equal((await student("PUT", "/projects/standard-freefall/classes", { classIds: [classId] })).status, 403);
         const published = await teacher("PUT", "/projects/standard-freefall/classes", { classIds: [classId] });
         assert.deepEqual(published.data.classes.map((c) => c.id), [classId]);
-        assert.deepEqual((await student("GET", "/projects")).data.projects.map((p) => p.id), ["standard-freefall"]);
+        const [freefall] = (await student("GET", "/projects")).data.projects;
+        assert.equal(freefall.id, "standard-freefall");
+        // Built-in assignments come with starter code and the graphs to start with
+        assert.match(freefall.model, /stop als/);
+        assert.deepEqual(freefall.graphs[0], { x: "t", ys: ["h"] });
     });
 
     test("students make their own assignments, which only they see and can't publish", async () => {

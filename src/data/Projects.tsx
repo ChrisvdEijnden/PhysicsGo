@@ -11,6 +11,8 @@ export interface Project {
     model: string | null;
     estimatedTime: number | null; // in minutes
     equipment: string[];
+    // The graphs students start with (an X variable and Y variables each)
+    graphs: { x: string; ys: string[] }[];
     curriculum: boolean;
     builtIn: boolean;
     // Written by the signed-in teacher, who can edit it
@@ -173,7 +175,7 @@ function splitLegacyCode(code: string): { start: string; model: string } {
 }
 type StoredMedia = Omit<SavedMedia, "graphYs"> & { graphYs?: (YLine | string)[]; graphY?: string };
 
-const toLines = (ys: (YLine | string)[]): YLine[] =>
+export const toLines = (ys: (YLine | string)[]): YLine[] =>
     ys.map((y, i) => (typeof y === "string" ? { name: y, color: i } : y));
 
 export const newGraph = (x = "", ys: YLine[] = []): GraphConfig => ({

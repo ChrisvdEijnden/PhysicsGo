@@ -69,13 +69,19 @@ Set these environment variables for the API (all optional):
 | `PHYSICSGO_MEDIA_DIR` | `server/media` | Where uploaded videos and photos are stored |
 | `PHYSICSGO_MEDIA_MAX_MB` | `200` | Largest upload |
 | `PHYSICSGO_MEDIA_QUOTA_MB` | `2048` | Storage per account |
+| `PHYSICSGO_BACKUP_DIR` | `server/backups` | Daily database copies (the last `PHYSICSGO_BACKUPS`, default 14, are kept; `0` turns them off) |
+| `PHYSICSGO_STATIC` | `dist` | The built app, served by the same server when it's there |
 | `ACCOUNT_RETENTION_DAYS` | `730` | Accounts not used for this many days are deleted (administrators, and teachers who are a class's only teacher, are kept); `0` keeps them |
 
 The database and media folder hold student data; neither is committed. What is stored and for how long is described for schools in [docs/privacy.md](docs/privacy.md), and for students and teachers in the app's privacy statement (`#/privacy`).
 
+## Deployment
+
+`pnpm build` and then `node server/index.js` serve the app and the API together on one port; `/api/health` reports whether it runs. [docs/deployment.md](docs/deployment.md) covers Docker, HTTPS with a reverse proxy, backups and updates.
+
 ## Desktop app
 
-`pnpm tauri dev` starts the Tauri shell around the dev server. The desktop app still needs the API running and reachable at `/api`. Its version is read from `package.json`.
+`pnpm tauri dev` starts the Tauri shell around the dev server, for development only: PhysicsGo is deployed as a web app (see docs/deployment.md). The desktop app needs the API running and reachable at `/api`. Its version is read from `package.json`.
 
 ## Recommended editor setup
 

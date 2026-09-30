@@ -1,0 +1,13 @@
+node_modules
+server/node_modules
+dist
+src/wasm
+InterpreterGo/target
+InterpreterGo/pkg
+src-tauri/target
+server/physicsgo.db*
+server/media
+server/backups
+.git
+.github
+*.log

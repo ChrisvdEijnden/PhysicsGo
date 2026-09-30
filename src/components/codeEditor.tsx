@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as monaco from "monaco-editor";
+import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 
 import { useTheme } from "../lib/useTheme";
 import type { Theme } from "../lib/useTheme";
@@ -23,6 +24,10 @@ export interface CodeEditorHandle {
     setErrors: (errors: InterpreterError[]) => void;
     clearErrors: () => void;
 }
+
+// Monaco's own worker (for things like word suggestions), bundled by Vite as a file of its own; the
+// modeling language needs no language worker
+self.MonacoEnvironment = { getWorker: () => new EditorWorker() };
 
 const MARKER_OWNER = "physicsgo-interpreter";
 // Editor themes follow the app's light/dark setting

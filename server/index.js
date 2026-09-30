@@ -4,7 +4,11 @@ import cookieParser from "cookie-parser";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import argon from "argon2";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import db from "./db.js";
+import { backupIfDue } from "./backup.js";
 import { classesOf, classesRouter, lookupCode, purgeArchivedClasses } from "./classes.js";
 import { projectsRouter } from "./projects.js";
 import { findReset, purgeExpiredResets } from "./resets.js";
@@ -24,6 +28,10 @@ const TOUCH_MS = 5 * 60 * 1000;
 const RETENTION_DAYS = Number(process.env.ACCOUNT_RETENTION_DAYS ?? 730);
 const COOKIE = "physicsgo_session";
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).version;
+// The built web app (pnpm build), served next to the API so one server runs everything
+const STATIC_DIR = process.env.PHYSICSGO_STATIC ?? path.join(ROOT, "dist");
 
 const app = express();
 // Rate limits need the real client IP. Behind a reverse proxy, set TRUST_PROXY to the number of
@@ -31,7 +39,27 @@ const app = express();
 // is ignored so clients can't pick their own IP.
 const TRUST_PROXY = process.env.TRUST_PROXY;
 if (TRUST_PROXY) app.set("trust proxy", /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
-app.use(helmet());
+// The app loads nothing from elsewhere: its scripts, styles, fonts, the interpreter (WebAssembly) and
+// its workers all come from this server; photos and videos are shown from blob: URLs
+app.use(helmet({
+    contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
+            workerSrc: ["'self'", "blob:"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", "data:", "blob:"],
+            mediaSrc: ["'self'", "blob:"],
+            fontSrc: ["'self'", "data:"],
+            connectSrc: ["'self'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
+            frameAncestors: ["'none'"],
+        },
+    },
+}));
 // JSON only: cross-site form posts are ignored. Saved work and projects can be larger and have their
 // own limits (work.js, projects.js).
 const smallJson = express.json({ limit: "10kb" });
@@ -144,11 +172,18 @@ function cleanUp() {
     purgeArchivedClasses(now);
     purgeExpiredResets(now);
     if (RETENTION_DAYS > 0) deleteInactiveAccounts(now - RETENTION_DAYS * 24 * 60 * 60 * 1000).catch((e) => console.error(e));
+    backupIfDue(now).catch((e) => console.error("Database backup failed:", e));
 }
 cleanUp();
 setInterval(cleanUp, 60 * 60 * 1000).unref();
 
 const api = express.Router();
+
+// For uptime monitoring and container health checks: the server answers and the database can be read
+api.get("/health", (req, res) => {
+    db.prepare("SELECT 1").get();
+    res.json({ ok: true, version: VERSION });
+});
 
 api.get("/auth/me", (req, res) => {
     const session = currentSession(req);
@@ -353,10 +388,17 @@ api.use("/admin", adminRouter({ requireAuth }));
 app.use("/api", api);
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));
 
+// The web app itself, when it has been built. Files under assets/ have a hash in their name, so
+// browsers may keep them; index.html is always checked, so a new version is picked up right away.
+if (fs.existsSync(path.join(STATIC_DIR, "index.html"))) {
+    app.use("/assets", express.static(path.join(STATIC_DIR, "assets"), { immutable: true, maxAge: "1y", index: false }));
+    app.use(express.static(STATIC_DIR, { maxAge: 0 }));
+}
+
 app.use((err, req, res, _next) => {
     if (err.status && err.status < 500) return res.status(err.status).json({ error: "bad_request" });
     console.error(err);
     res.status(500).json({ error: "server_error" });
 });
 
-app.listen(PORT, () => console.log(`PhysicsGo API on :${PORT}`));
+app.listen(PORT, () => console.log(`PhysicsGo ${VERSION} on :${PORT}`));
