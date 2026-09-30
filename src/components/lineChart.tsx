@@ -32,6 +32,13 @@ export interface ChartMarkers {
     points: ChartPoint[];
 }
 
+// A dashed curve through its own points, e.g. a fit; it doesn't widen the axes
+export interface ChartCurve {
+    key: string;
+    color: string;
+    points: ChartPoint[];
+}
+
 type Domain = [number, number];
 
 // Axes shown while there is nothing to plot yet
@@ -50,12 +57,14 @@ function extent(values: number[]): Domain {
 }
 
 const NO_MARKERS: ChartMarkers[] = [];
+const NO_CURVES: ChartCurve[] = [];
 
-export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, emptyMessage }: {
+export default function LineChart({ rows, lines, markers = NO_MARKERS, curves = NO_CURVES, xLabel, emptyMessage }: {
     rows: ChartRow[];
     // Drawn in order through the rows, one per Y variable
     lines: ChartLine[];
     markers?: ChartMarkers[];
+    curves?: ChartCurve[];
     xLabel: string;
     emptyMessage: string;
 }) {
@@ -232,6 +241,22 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                             stroke={line.color}
                             strokeWidth={2}
                             dot={false}
+                            isAnimationActive={false}
+                        />
+                    ))}
+                    {curves.map((c) => (
+                        <Line
+                            key={`curve-${c.key}`}
+                            data={c.points}
+                            type="linear"
+                            dataKey="y"
+                            stroke={c.color}
+                            strokeWidth={1.5}
+                            strokeDasharray="5 4"
+                            dot={false}
+                            activeDot={false}
+                            tooltipType="none"
+                            legendType="none"
                             isAnimationActive={false}
                         />
                     ))}

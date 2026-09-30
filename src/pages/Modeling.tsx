@@ -11,6 +11,8 @@ import CloseIcon20px from "../assets/icons/close-20px.svg";
 import DownloadIcon20px from "../assets/icons/download-20px.svg";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
 import EditIcon20px from "../assets/icons/edit-20px.svg";
+import TableIcon18px from "../assets/icons/table-18px.svg";
+import ChartIcon18px from "../assets/icons/chart-18px.svg";
 import ChevronLeft16px from "../assets/icons/chevron-left-16px.svg";
 import ChevronRight16px from "../assets/icons/chevron-right-16px.svg";
 
@@ -29,7 +31,7 @@ import { useProjects } from "../lib/useProjects";
 import { assignmentFileContents } from "../lib/assignmentFile";
 import { downloadFile, fileNameFor } from "../lib/download";
 import ConfirmButton from "../components/ConfirmButton";
-import type { GraphConfig, MediaCategory, Project, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
+import type { GraphConfig, MediaCategory, Project, ProjectWork, SavedMedia } from "../data/Projects.tsx";
 import { openWork, useWorkSync } from "../lib/workSync";
 import type { Feedback, OpenedWork, SaveStatus, Submission } from "../lib/workSync";
 import { FeedbackForm, FeedbackView, formatMark } from "../components/Feedback";
@@ -562,8 +564,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         saveWork({ graphs: next });
     }
 
-    function updateGraph(id: string, x: string, ys: YLine[]) {
-        setGraphList(graphs.map((g) => (g.id === id ? { ...g, x, ys } : g)));
+    function updateGraph(id: string, changes: Partial<GraphConfig>) {
+        setGraphList(graphs.map((g) => (g.id === id ? { ...g, ...changes } : g)));
     }
 
     // An empty field runs the placeholder's number of steps
@@ -1221,15 +1223,24 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                                     { label: t("modeling.exportRunCsv"), disabled: !history, onSelect: exportRunCsv },
                                                     {
                                                         label: t("modeling.exportPng"),
-                                                        disabled: !row.graph.x || row.graph.ys.length === 0,
+                                                        disabled: !row.graph.x || row.graph.ys.length === 0 || row.graph.view === "table",
                                                         onSelect: () => exportGraph(row.graph, index, "png"),
                                                     },
                                                     {
                                                         label: t("modeling.exportSvg"),
-                                                        disabled: !row.graph.x || row.graph.ys.length === 0,
+                                                        disabled: !row.graph.x || row.graph.ys.length === 0 || row.graph.view === "table",
                                                         onSelect: () => exportGraph(row.graph, index, "svg"),
                                                     },
                                                 ]}/>
+                                                <button
+                                                    type="button"
+                                                    className="analysis-view-toggle"
+                                                    aria-label={row.graph.view === "table" ? t("modeling.showChart") : t("modeling.showTable")}
+                                                    title={row.graph.view === "table" ? t("modeling.showChart") : t("modeling.showTable")}
+                                                    onClick={() => updateGraph(row.graph.id, { view: row.graph.view === "table" ? undefined : "table" })}
+                                                >
+                                                    <img src={row.graph.view === "table" ? ChartIcon18px : TableIcon18px} alt=""/>
+                                                </button>
                                                 <button
                                                     type="button"
                                                     className="analysis-media-remove"
@@ -1246,7 +1257,10 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                                     variables={variables}
                                                     x={row.graph.x}
                                                     ys={row.graph.ys}
-                                                    onChange={(x, ys) => updateGraph(row.graph.id, x, ys)}
+                                                    view={row.graph.view}
+                                                    fit={row.graph.fit}
+                                                    onChange={(x, ys) => updateGraph(row.graph.id, { x, ys })}
+                                                    onFitChange={(fit) => updateGraph(row.graph.id, { fit })}
                                                     markersFor={markersFor}
                                                     runPrompt={t("modeling.chartRunPrompt")}
                                                 />

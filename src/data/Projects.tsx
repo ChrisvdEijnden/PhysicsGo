@@ -1,5 +1,6 @@
 import { setStorageScope, storageScope } from "../lib/storageScope";
 import { adoptLegacyMedia } from "../lib/mediaStore";
+import type { FitKind } from "../lib/fit";
 
 // A project as the server sends it: a built-in preset or one a teacher wrote
 export interface Project {
@@ -109,6 +110,8 @@ export interface SavedMedia {
     // Variables on the axes of the points graph: one X, any number of Y lines
     graphX: string;
     graphYs: YLine[];
+    // A curve fitted through the points on that graph
+    graphFit?: GraphFit;
     // Scale and origin that turn the pixel positions into real distances; none means pixels
     calibration?: Calibration | null;
     // Videos: frames per second of the recording (30 when not set), to number frames and step one at a time
@@ -140,11 +143,21 @@ export interface YLine {
     color: number;
 }
 
-// A graph panel: one shared X variable ("" when none is chosen) and a line per Y variable
+// A curve fitted through one Y variable's values: the model's, or the points measured for it
+export interface GraphFit {
+    kind: FitKind;
+    y: string;
+    measured: boolean;
+}
+
+// A graph panel: one shared X variable ("" when none is chosen) and a line per Y variable,
+// shown as a chart or as a table of the values
 export interface GraphConfig {
     id: string;
     x: string;
     ys: YLine[];
+    view?: "table";
+    fit?: GraphFit;
 }
 
 // What the student has done in a project: the start values (run once) and model rules

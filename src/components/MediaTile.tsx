@@ -490,7 +490,10 @@ export default function MediaTile({
                         variables={pointAxes(item)}
                         x={item.graphX}
                         ys={item.graphYs}
+                        fit={item.graphFit}
+                        samplesMeasured
                         onChange={(graphX, graphYs) => onChange({ ...item, graphX, graphYs })}
+                        onFitChange={(graphFit) => onChange({ ...item, graphFit })}
                         runPrompt={t("modeling.pointsGraphEmpty")}
                     />
                 </div>
