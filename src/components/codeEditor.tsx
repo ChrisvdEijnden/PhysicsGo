@@ -269,6 +269,8 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
                 editor.dispose();
                 editorRef.current = null;
             };
+            // The editor is made once; value, language, theme and readOnly are kept up to date by their own effects
+            // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
         useEffect(() => {

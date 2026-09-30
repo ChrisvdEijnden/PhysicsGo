@@ -141,7 +141,8 @@ function sine(points: ChartPoint[]): number[] | null {
     const refined = refine(MODELS.sine.f, points, start);
     if (!refined) return null;
     // One way of writing it: A above zero, φ between −π and π
-    let [A, w, phi] = refined;
+    let [A, , phi] = refined;
+    const w = refined[1];
     if (A < 0) {
         A = -A;
         phi += Math.PI;

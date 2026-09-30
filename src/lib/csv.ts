@@ -16,7 +16,7 @@ export function toCsv(headers: string[], rows: CsvCell[][], language: Language):
         if (value === null || value === undefined) return "";
         return /[";,\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
     };
-    return `﻿${[headers, ...rows].map((row) => row.map(cell).join(separator)).join("\r\n")}\r\n`;
+    return `\uFEFF${[headers, ...rows].map((row) => row.map(cell).join(separator)).join("\r\n")}\r\n`;
 }
 
 // Every variable of a run at every step, in the given column order (other variables after it)

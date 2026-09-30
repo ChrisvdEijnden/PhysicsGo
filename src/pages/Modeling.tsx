@@ -545,7 +545,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     // was saved on the server) are sent as soon as the project opens
     useEffect(() => {
         if (opened.unsynced && savedWork) sync.save(savedWork);
-    }, []); // only on opening
+        // Only on opening: later changes are saved as they're made
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // The editors also report values set from outside, so only real changes count as an edit
     function handleStartChange(value: string) {
@@ -674,6 +676,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         mediaItemsRef.current = mediaItems;
     }, [mediaItems]);
 
+    // A teacher looking at a student's work sees that student's files
+    const reviewedStudent = review?.studentId;
+
     // Reopening a project brings back its media: from this browser when it has the file (sending it to
     // the server if that doesn't have it yet), otherwise from the server. A file found in neither keeps its points.
     useEffect(() => {
@@ -687,9 +692,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                 const url = projectMediaUrl(project.id, media.id);
                 return { ...media, url: (await urlExists(url)) ? url : "" };
             }
-            if (review) {
-                const onServer = await mediaOnServer(project.id, media.id, review.studentId);
-                return { ...media, url: onServer ? mediaUrl(project.id, media.id, review.studentId) : "" };
+            if (reviewedStudent !== undefined) {
+                const onServer = await mediaOnServer(project.id, media.id, reviewedStudent);
+                return { ...media, url: onServer ? mediaUrl(project.id, media.id, reviewedStudent) : "" };
             }
             const file = await loadMediaFile(mediaKey(project.id, media.id)).catch(() => undefined);
             if (file) {
@@ -711,7 +716,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return () => {
             cancelled = true;
         };
-    }, [project, initialMedia, review?.studentId]);
+    }, [project, initialMedia, reviewedStudent]);
 
     // Revoke every blob URL on unmount so nothing leaks.
     useEffect(() => {
@@ -728,7 +733,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         if (!input) return;
         input.accept = ALL_MEDIA_ACCEPT;
         input.click();
-    }, []);
+    }, [noSaving]);
 
     // Cmd+O (Mac) / Ctrl+O (Windows/Linux) opens the same picker as the
     // button. preventDefault stops the browser's own "Open File" dialog,

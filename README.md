@@ -49,6 +49,7 @@ Every account, class and teacher invitation belongs to a school. Teachers only c
 ## Checks
 
 ```sh
+pnpm lint                                            # ESLint: mistakes, not formatting (also run in CI)
 pnpm test                                            # unit tests (src/**/*.test.ts) and API tests (server/test)
 cargo test --manifest-path InterpreterGo/Cargo.toml  # interpreter tests
 pnpm exec tsc --noEmit                               # type-check the app

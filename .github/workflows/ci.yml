@@ -1,5 +1,5 @@
-# Runs on every push to main and on pull requests: interpreter tests, a production build (which builds
-# the interpreter and type-checks the app), and the app's unit tests and API tests.
+# Runs on every push to main and on pull requests: lint, interpreter tests, a production build (which
+# builds the interpreter and type-checks the app), and the app's unit tests and API tests.
 name: CI
 
 on:
@@ -31,6 +31,8 @@ jobs:
           tool: wasm-pack
 
       - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm lint --max-warnings 0
       - name: Interpreter tests
         run: cargo test --manifest-path InterpreterGo/Cargo.toml
       - name: Build (interpreter, type-check, bundle)
