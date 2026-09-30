@@ -175,9 +175,8 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                         left: 0,
                     }}
                 >
-                    <CartesianGrid
-                        stroke="#E2E8F0"
-                    />
+                    {/* Grid and axis colours come from the theme (modeling.css) */}
+                    <CartesianGrid/>
 
                     <XAxis
                         type="number"
@@ -208,6 +207,9 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                             contentStyle={{
                                 fontSize: "13px",
                                 fontFamily: "Figtree, sans-serif",
+                                backgroundColor: "var(--color-bg-surface)",
+                                borderColor: "var(--color-border)",
+                                color: "var(--color-text-primary)",
                             }}
                             labelStyle={{
                                 fontSize: "13px",
@@ -239,7 +241,7 @@ export default function LineChart({ rows, lines, markers = NO_MARKERS, xLabel, e
                             dataKey="y"
                             name={m.label}
                             stroke="none"
-                            dot={{ r: 3, fill: m.color, stroke: "#FFFFFF", strokeWidth: 1 }}
+                            dot={{ r: 3, fill: m.color, stroke: "var(--color-bg-surface)", strokeWidth: 1 }}
                             activeDot={false}
                             tooltipType="none"
                             legendType="none"

@@ -327,7 +327,7 @@ export default function MediaTile({
                         onClick={togglePlay}
                         aria-label={isPlaying ? t("modeling.pause") : t("modeling.play")}
                     >
-                        {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt="PlayIcon20px"/>}
+                        {isPlaying ? <span className="pause-icon"/> : <img src={PlayIcon20px} alt=""/>}
                     </button>
                 )}
                 <div className="right-btns">
@@ -348,7 +348,7 @@ export default function MediaTile({
                             aria-pressed={pointMode}
                             onClick={togglePointMode}
                         >
-                            {!pointMode && <img src={PlusIcon14px} alt="PlusIcon14px"/>}
+                            {!pointMode && <img src={PlusIcon14px} alt=""/>}
                             <p>{pointMode ? t("modeling.pointsDone") : t("modeling.insertPoints")}</p>
                         </button>
                     )}
@@ -372,7 +372,7 @@ export default function MediaTile({
                         onClick={onRemove}
                         aria-label={t("modeling.removeMedia", { name: item.name })}
                     >
-                        <img src={CloseIcon20px} alt="CloseIcon20px"/>
+                        <img src={CloseIcon20px} alt=""/>
                     </button>}
                 </div>
             </div>

@@ -1,6 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as monaco from "monaco-editor";
 
+import { useTheme } from "../lib/useTheme";
+import type { Theme } from "../lib/useTheme";
+
 interface CodeEditorProps {
     value: string;
     onChange: (value: string) => void;
@@ -22,11 +25,12 @@ export interface CodeEditorHandle {
 }
 
 const MARKER_OWNER = "physicsgo-interpreter";
-const THEME_NAME = "physicsgo-light";
+// Editor themes follow the app's light/dark setting
+const THEME_NAMES: Record<Theme, string> = { light: "physicsgo-light", dark: "physicsgo-dark" };
 const LANGUAGE_ID = "physicsgo";
 
-function definePhysicsGoTheme() {
-    monaco.editor.defineTheme(THEME_NAME, {
+function definePhysicsGoThemes() {
+    monaco.editor.defineTheme(THEME_NAMES.light, {
         base: "vs",
         inherit: true,
         rules: [
@@ -61,8 +65,48 @@ function definePhysicsGoTheme() {
             "editorWidget.border": "#E2E8F0",
         },
     });
+    // Matches the dark app tokens in global.css
+    monaco.editor.defineTheme(THEME_NAMES.dark, {
+        base: "vs-dark",
+        inherit: true,
+        rules: [
+            { token: "comment", foreground: "94A3B8", fontStyle: "italic" },
+            { token: "keyword", foreground: "2DD4BF" },
+            { token: "number", foreground: "5EEAD4" },
+            { token: "string", foreground: "5EEAD4" },
+            { token: "identifier", foreground: "F1F5F9" },
+            { token: "delimiter", foreground: "94A3B8" },
+            { token: "operator", foreground: "94A3B8" },
+            { token: "predefined", foreground: "2DD4BF", fontStyle: "bold" },
+        ],
+        colors: {
+            "editor.background": "#0B1220",
+            "editor.foreground": "#F1F5F9",
+            "editorLineNumber.foreground": "#8A9BB3",
+            "editorLineNumber.activeForeground": "#CBD5E1",
+            "editorCursor.foreground": "#2DD4BF",
+            "editor.selectionBackground": "#0F766E88",
+            "editor.inactiveSelectionBackground": "#33415588",
+            "editor.lineHighlightBackground": "#1E293B",
+            "editor.lineHighlightBorder": "#00000000",
+            "editorIndentGuide.background": "#334155",
+            "editorIndentGuide.activeBackground": "#475569",
+            "editorWhitespace.foreground": "#334155",
+            "editorBracketMatch.background": "#0F766E55",
+            "editorBracketMatch.border": "#2DD4BF",
+            "scrollbarSlider.background": "#94A3B833",
+            "scrollbarSlider.hoverBackground": "#94A3B855",
+            "scrollbarSlider.activeBackground": "#94A3B877",
+            "editorWidget.background": "#1E293B",
+            "editorWidget.border": "#334155",
+        },
+    });
 }
-definePhysicsGoTheme();
+definePhysicsGoThemes();
+
+// Monaco measures character widths once; when the bundled font arrives after that, measure again
+// so the cursor and selections line up with the text
+document.fonts?.load('13px "JetBrains Mono Variable"').then(() => monaco.editor.remeasureFonts(), () => undefined);
 
 function definePhysicsGoLanguage() {
     monaco.languages.register({ id: LANGUAGE_ID });
@@ -94,6 +138,7 @@ definePhysicsGoLanguage();
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     ({ value, onChange, language = LANGUAGE_ID, onRun, readOnly = false }, ref) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
+        const { theme } = useTheme();
         const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
         const onChangeRef = useRef(onChange);
@@ -131,11 +176,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             const editor = monaco.editor.create(containerRef.current, {
                 value,
                 language,
-                theme: THEME_NAME,
+                theme: THEME_NAMES[theme],
                 automaticLayout: true,
                 minimap: { enabled: false },
                 fontSize: 13,
-                fontFamily: '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontFamily: '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
                 padding: { top: 16, bottom: 16 },
                 scrollBeyondLastLine: false,
                 renderLineHighlight: "line",
@@ -169,6 +214,11 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
             if (!editor) return;
             if (editor.getValue() !== value) editor.setValue(value);
         }, [value]);
+
+        // Monaco has one theme for all editors on the page
+        useEffect(() => {
+            monaco.editor.setTheme(THEME_NAMES[theme]);
+        }, [theme]);
 
         return <div ref={containerRef} className="monaco-container"/>;
     }

@@ -4,9 +4,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import "./modeling.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
@@ -34,6 +33,7 @@ import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { usePublished } from "../lib/usePublished";
 import PublishDialog from "../components/PublishDialog";
+import ErrorBoundary from "../components/ErrorBoundary";
 
 // Start values run once; model rules run every step
 const DEFAULT_START = [
@@ -128,19 +128,14 @@ const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced
 // Work is saved per account, so the workspace only opens once it's known who is signed in and
 // their work has loaded; a different account gets a fresh workspace, not the previous one's state
 function Modeling() {
-    const navigate = useNavigate();
     const location = useLocation();
-    const { user, loading } = useAuth();
+    const { user } = useAuth();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
     const { projects, byId } = useProjects();
     const project = byId(presetId);
     const [opened, setOpened] = useState<OpenedWork | null>(null);
     // Bumped to load the work again, e.g. after choosing another device's version
     const [reloads, setReloads] = useState(0);
-
-    useEffect(() => {
-        if (!loading && !user) navigate("/login", { replace: true });
-    }, [loading, user, navigate]);
 
     useEffect(() => {
         if (!user || projects === null) return;
@@ -155,7 +150,7 @@ function Modeling() {
         };
     }, [user, projects, project, reloads]);
 
-    if (loading || !user || !opened) return null;
+    if (!user || !opened) return null;
     return (
         <ModelingWorkspace
             key={`${user.id}-${reloads}`}
@@ -179,9 +174,8 @@ interface Review {
 
 // A teacher's read-only view of a student's work on a project published to their class
 export function ReviewWork() {
-    const navigate = useNavigate();
     const { t } = useTranslation();
-    const { user, loading } = useAuth();
+    const { user } = useAuth();
     const params = useParams();
     const classId = Number(params.classId);
     const studentId = Number(params.userId);
@@ -190,12 +184,6 @@ export function ReviewWork() {
     const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showing, setShowing] = useState<"submission" | "work">("submission");
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
 
     useEffect(() => {
         if (user?.role !== "teacher" || !project) return;
@@ -208,7 +196,7 @@ export function ReviewWork() {
         });
     }, [user, project, classId, studentId]);
 
-    if (loading || user?.role !== "teacher" || projects === null) return null;
+    if (projects === null) return null;
     if (!project || error) {
         return <p className="review-error" role="alert">{t(authErrorKey(error ?? "not_found"))}</p>;
     }
@@ -236,19 +224,11 @@ export function ReviewWork() {
 
 // A teacher trying a project the way a student first sees it: nothing is saved
 export function PreviewProject() {
-    const navigate = useNavigate();
     const { projectId } = useParams();
-    const { user, loading } = useAuth();
     const { projects, byId } = useProjects();
     const project = byId(projectId);
 
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
-
-    if (loading || user?.role !== "teacher" || projects === null || !project) return null;
+    if (projects === null || !project) return null;
     return <ModelingWorkspace key={project.id} project={project} opened={NO_WORK} onReload={() => undefined} preview/>;
 }
 
@@ -741,7 +721,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                 aria-haspopup="menu"
                                 aria-expanded={insertMenuOpen}
                             >
-                                <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                                <img src={PlusIcon14px} alt=""/>
                                 <p>{t("modeling.insertMediaEmbeds")}</p>
                             </button>
                             {insertMenuOpen && (
@@ -786,7 +766,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         {isTeacher ? (
                             project && (
                                 <button className="hand-in-btn" onClick={() => setPublishOpen(true)}>
-                                    <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                                    <img src={arrowIcon14px} alt=""/>
                                     <p>{t("publish.button")}</p>
                                 </button>
                             )
@@ -828,14 +808,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         )}
                         </>
                     )}
-                    <div className="right-system-actions">
-                        <button onClick={() => navigate("/settings")}>
-                            <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                        </button>
-                        <button onClick={() => navigate("/")}>
-                            <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                        </button>
-                    </div>
+                    <NavActions/>
                 </div>
             </div>
 
@@ -893,20 +866,24 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     <div className="code">
                         <div className="code-panel-actions">
                             <button className="play-btn" aria-label={t("modeling.runSimulation")} onClick={runSimulation} disabled={!wasmReady}>
-                                <img src={PlayIcon20px} alt="PlayIcon20px"/>
+                                <img src={PlayIcon20px} alt=""/>
                             </button>
                         </div>
                         {/* Start values run once before the first step; model rules run every step */}
                         <div className="code-block code-block-start">
                             <p className="code-block-label">{t("modeling.startValues")}</p>
                             <div className="code-editor">
-                                <CodeEditor ref={startEditorRef} value={start} onChange={handleStartChange} onRun={runSimulation} readOnly={!!review}/>
+                                <ErrorBoundary compact>
+                                    <CodeEditor ref={startEditorRef} value={start} onChange={handleStartChange} onRun={runSimulation} readOnly={!!review}/>
+                                </ErrorBoundary>
                             </div>
                         </div>
                         <div className="code-block code-block-model">
                             <p className="code-block-label">{t("modeling.modelRules")}</p>
                             <div className="code-editor">
-                                <CodeEditor ref={modelEditorRef} value={model} onChange={handleModelChange} onRun={runSimulation} readOnly={!!review}/>
+                                <ErrorBoundary compact>
+                                    <CodeEditor ref={modelEditorRef} value={model} onChange={handleModelChange} onRun={runSimulation} readOnly={!!review}/>
+                                </ErrorBoundary>
                             </div>
                         </div>
                     </div>
@@ -963,27 +940,32 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                                     onClick={() => setGraphList(graphs.filter((g) => g.id !== row.graph.id))}
                                                     aria-label={t("modeling.closeGraph")}
                                                 >
-                                                    <img src={CloseIcon20px} alt="CloseIcon20px"/>
+                                                    <img src={CloseIcon20px} alt=""/>
                                                 </button>
                                             </div>
-                                            <Graph
-                                                samples={history}
-                                                variables={variables}
-                                                x={row.graph.x}
-                                                ys={row.graph.ys}
-                                                onChange={(x, ys) => updateGraph(row.graph.id, x, ys)}
-                                                markersFor={markersFor}
-                                                runPrompt={t("modeling.chartRunPrompt")}
-                                            />
+                                            {/* A new run gets a fresh chance to render */}
+                                            <ErrorBoundary compact resetKey={history}>
+                                                <Graph
+                                                    samples={history}
+                                                    variables={variables}
+                                                    x={row.graph.x}
+                                                    ys={row.graph.ys}
+                                                    onChange={(x, ys) => updateGraph(row.graph.id, x, ys)}
+                                                    markersFor={markersFor}
+                                                    runPrompt={t("modeling.chartRunPrompt")}
+                                                />
+                                            </ErrorBoundary>
                                         </div>
                                     ) : (
-                                        <MediaTile
-                                            item={row.item}
-                                            style={rowStyle}
-                                            onRemove={() => removeMediaItem(row.item.id)}
-                                            onChange={updateMediaItem}
-                                            readOnly={!!review}
-                                        />
+                                        <ErrorBoundary compact>
+                                            <MediaTile
+                                                item={row.item}
+                                                style={rowStyle}
+                                                onRemove={() => removeMediaItem(row.item.id)}
+                                                onChange={updateMediaItem}
+                                                readOnly={!!review}
+                                            />
+                                        </ErrorBoundary>
                                     )}
                                 </Fragment>
                             );

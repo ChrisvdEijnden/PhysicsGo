@@ -4,7 +4,7 @@ export const translations = {
         "nav.settings": "Settings",
         "nav.allModels": "All Models",
         "nav.login": "Login",
-        "nav.user": "Login",
+        "nav.user": "Profile",
 
         "settings.appearanceTitle": "Appearance",
         "settings.darkModeOn": "Dark mode is on",
@@ -306,13 +306,26 @@ export const translations = {
 
         "user.roleTeacher": "Teacher",
         "user.roleStudent": "Student",
+
+        "nav.help": "Help",
+        "app.loading": "Loading…",
+        "settings.signedOutTitle": "Not signed in",
+        "settings.signedOutDescription": "Sign in to see your account and the devices you're signed in on.",
+        "error.title": "Something went wrong",
+        "error.description": "This page ran into a problem and couldn't be shown. Your saved work is safe.",
+        "error.toDashboard": "Go to dashboard",
+        "error.reload": "Reload",
+        "error.panel": "This panel couldn't be shown.",
+        "error.retry": "Try again",
+        "notFound.title": "Page not found",
+        "notFound.description": "There's no page at this address. It may have moved, or the link is incomplete.",
     },
     nl: {
         "nav.dashboard": "Dashboard",
         "nav.settings": "Instellingen",
         "nav.allModels": "Alle Modellen",
         "nav.login": "Inloggen",
-        "nav.user": "Inloggen",
+        "nav.user": "Profiel",
 
         "settings.appearanceTitle": "Weergave",
         "settings.darkModeOn": "Donkere modus is aan",
@@ -613,6 +626,19 @@ export const translations = {
 
         "user.roleTeacher": "Docent",
         "user.roleStudent": "Leerling",
+
+        "nav.help": "Help",
+        "app.loading": "Laden…",
+        "settings.signedOutTitle": "Niet ingelogd",
+        "settings.signedOutDescription": "Log in om je account te zien en de apparaten waarop je bent ingelogd.",
+        "error.title": "Er ging iets mis",
+        "error.description": "Deze pagina liep tegen een probleem aan en kon niet worden getoond. Je opgeslagen werk is veilig.",
+        "error.toDashboard": "Naar dashboard",
+        "error.reload": "Opnieuw laden",
+        "error.panel": "Dit paneel kon niet worden getoond.",
+        "error.retry": "Opnieuw proberen",
+        "notFound.title": "Pagina niet gevonden",
+        "notFound.description": "Op dit adres staat geen pagina. Misschien is hij verplaatst, of is de link onvolledig.",
     },
 } as const;
 

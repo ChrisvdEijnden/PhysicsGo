@@ -6,14 +6,12 @@ import "./classes.css";
 import "./modeling.css";
 import "./projecteditor.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
 import Markdown from "../components/Markdown";
 import { useTranslation } from "../lib/useTranslations";
-import { useAuth } from "../lib/useAuth";
 import { useProjects } from "../lib/useProjects";
 import { authErrorKey } from "../lib/authErrors";
 import { deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
@@ -34,7 +32,6 @@ function ProjectEditor() {
     const location = useLocation();
     const { projectId } = useParams();
     const { t } = useTranslation();
-    const { user, loading } = useAuth();
     const { projects, byId, createProject, replaceProject, updateProject, deleteProject } = useProjects();
     const editing = projectId !== undefined;
     const existing = byId(projectId);
@@ -45,12 +42,6 @@ function ProjectEditor() {
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
-    }, [loading, user, navigate]);
 
     // Filled in once the projects have loaded: the project being edited, the one being copied, or empty
     useEffect(() => {
@@ -67,7 +58,7 @@ function ProjectEditor() {
         });
     }, [projects, form, editing, existing, copyOf, t]);
 
-    if (loading || user?.role !== "teacher" || projects === null) return null;
+    if (projects === null) return null;
     if (editing && !existing?.mine) return <p className="review-error" role="alert">{t("classes.errNotFound")}</p>;
     if (!form) return null;
 
@@ -137,14 +128,7 @@ function ProjectEditor() {
                     <div className="spacer"></div>
                     <h2>{editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <form className="project-editor" onSubmit={save}>

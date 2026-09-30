@@ -4,9 +4,8 @@ import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
 import NewFile24px from "../assets/icons/newfile-24px.svg";
 import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
@@ -15,7 +14,7 @@ import FileCode18px from "../assets/icons/filecode-18px.svg";
 // holds all the projects edited by the user
 import { useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
-import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
+import { formatRelativeDate } from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { canSeeProject, usePublished } from "../lib/usePublished";
@@ -24,7 +23,7 @@ import PublishButton from "../components/PublishButton";
 
 function Dashboard() {
     const navigate = useNavigate();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
@@ -39,14 +38,7 @@ function Dashboard() {
                     <div className="spacer"></div>
                     <h2>{t("nav.dashboard")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <div className="content-dashboard">
@@ -56,14 +48,14 @@ function Dashboard() {
                         <div className="dual-action-buttons">
                             {/* Teachers start a new project for their classes; students an empty model */}
                             <div className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
-                                <img src={NewFile24px} alt="NewFile24px"/>
+                                <img src={NewFile24px} alt=""/>
                                 <div className="action-text">
                                     <h3>{t("dashboard.emptyProjectTitle")}</h3>
                                     <p>{t("dashboard.emptyProjectDesc")}</p>
                                 </div>
                             </div>
                             <div className="action-open" onClick={() => navigate("/modeling")}>
-                                <img src={FolderOpen24px} alt="FolderOpen24px"/>
+                                <img src={FolderOpen24px} alt=""/>
                                 <div className="action-text">
                                     <h3>{t("dashboard.openProjectTitle")}</h3>
                                     <p>{t("dashboard.openProjectDesc")}</p>
@@ -122,7 +114,7 @@ function Dashboard() {
                                                 onSave={(classIds) => setProjectClasses(project.id, classIds)}
                                             />
                                         )}
-                                        <img src={AscewArrow67px} alt="AscewArrow67px"/>
+                                        <img src={AscewArrow67px} alt=""/>
                                     </div>
                                 ))}
                         </div>
@@ -161,7 +153,7 @@ function Dashboard() {
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!) : t("classes.statusNotStarted") }</p>
+                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>
                                     </div>
                                     {isTeacher && (
                                         <div className="publish-col">

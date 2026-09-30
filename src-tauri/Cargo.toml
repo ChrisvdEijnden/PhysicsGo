@@ -1,8 +1,8 @@
 [package]
 name = "physicsgo"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "PhysicsGo: physics modeling for secondary schools"
+authors = ["C.H.M. van den Eijnden", "J.J. van Wegen"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -4,9 +4,8 @@ import "./allmodels.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import { useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { useAuth } from "../lib/useAuth";
@@ -14,12 +13,12 @@ import { canSeeProject, usePublished } from "../lib/usePublished";
 import ProjectClasses from "../components/ProjectClasses";
 import PublishButton from "../components/PublishButton";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
-import {formatRelativeDate} from "../lib/formatRelativeDate.tsx";
+import {formatRelativeDate} from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
 
 function AllModels() {
     const navigate = useNavigate();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
@@ -33,14 +32,7 @@ function AllModels() {
                     <div className="spacer"></div>
                     <h2>{t("nav.allModels")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <div className="content-allmodels">
@@ -78,7 +70,7 @@ function AllModels() {
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!) : t("classes.statusNotStarted") }</p>
+                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>
                                     </div>
                                     {isTeacher && (
                                         <div className="publish-col">

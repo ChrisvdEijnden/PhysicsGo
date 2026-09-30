@@ -4,9 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/global.css";
 import "./login.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import Credits from "../components/Credits";
+import NavActions from "../components/NavActions";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
@@ -51,21 +51,14 @@ function Register() {
 
     return (
         <div>
-            <img className="background-logo" src={LogoIcon750px} alt="LogoIcon750px" />
+            <img className="background-logo" src={LogoIcon750px} alt="" />
             <div className="nav">
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.register")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <div className="content">
@@ -73,7 +66,7 @@ function Register() {
                     <div className="header-group">
                         <div className="full-brand">
                             <div className="brand">
-                                <img src={LogoIcon35px} alt="LogoIcon35px"/>
+                                <img src={LogoIcon35px} alt=""/>
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>
@@ -113,9 +106,7 @@ function Register() {
                             {t("register.submit")}
                         </button>
                     </div>
-                    <div className="footer-context">
-                        <p>PhysicsGo v1.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>
-                    </div>
+                    <Credits/>
                 </form>
             </div>
         </div>

@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./settings.css";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
 import { useTheme } from "../lib/useTheme";
@@ -75,10 +75,6 @@ function Settings() {
     const others = sessions?.filter((s) => !s.current).length ?? 0;
     const formatTime = (ms: number) => new Date(ms).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
 
-    useEffect(() => {
-        if (!user) navigate("/login", { replace: true });
-    }, [user, navigate]);
-
     return (
         <div>
             <div className="nav">
@@ -87,32 +83,40 @@ function Settings() {
                     <div className="spacer"></div>
                     <h2>{t("nav.settings")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions settings={false}/>
             </div>
 
             <div className="content-settings">
+                {user ? (
                 <div className="user">
                     <div className="user-top-row">
                         <div className="user-name">
-                            <h3>{user?.name ?? "—"}</h3>
+                            <h3>{user.name}</h3>
                         </div>
-                        {user && (
-                            <div className="user-class">
-                                <h3>
-                                    ({user.role === "teacher" ? t("user.roleTeacher") : t("user.roleStudent")}
-                                    {user.classes.length > 0 && ` · ${user.classes.map((c) => c.name).join(", ")}`})
-                                </h3>
-                            </div>
-                        )}
+                        <div className="user-class">
+                            <h3>
+                                ({user.role === "teacher" ? t("user.roleTeacher") : t("user.roleStudent")}
+                                {user.classes.length > 0 && ` · ${user.classes.map((c) => c.name).join(", ")}`})
+                            </h3>
+                        </div>
                     </div>
                     <div className="user-email">
-                        <p>{user?.email ?? "—"}</p>
+                        <p>{user.email}</p>
                     </div>
                 </div>
+                ) : (
+                    <div className="user">
+                        <div className="setting-row">
+                            <div className="setting-row-text">
+                                <h3>{t("settings.signedOutTitle")}</h3>
+                                <p>{t("settings.signedOutDescription")}</p>
+                            </div>
+                            <button type="button" className="logout-button sign-in" onClick={() => navigate("/login")}>
+                                {t("login.signIn")}
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="language">
                     <div className="setting-row">
                         <div className="setting-row-text">
@@ -122,7 +126,7 @@ function Settings() {
                         <div
                             className="language-toggle"
                             role="radiogroup"
-                            aria-label="Language"
+                            aria-label={t("settings.languageTitle")}
                             data-active={language}
                         >
                             <button
@@ -171,6 +175,7 @@ function Settings() {
                         </button>
                     </div>
                 </div>
+                {user && (
                 <div className="logout">
                     <div className="setting-row">
                         <div className="setting-row-text">
@@ -182,6 +187,7 @@ function Settings() {
                         </button>
                     </div>
                 </div>
+                )}
                 {user && (
                     <div className="sessions">
                         <div className="setting-row">

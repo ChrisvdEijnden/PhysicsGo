@@ -5,9 +5,8 @@ import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
+import NavActions from "../components/NavActions";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
@@ -86,7 +85,7 @@ function Classes() {
     const navigate = useNavigate();
     const location = useLocation();
     const { t, language } = useTranslation();
-    const { user, loading, refresh } = useAuth();
+    const { user, refresh } = useAuth();
     const { byId } = useProjects();
     const isTeacher = user?.role === "teacher";
     // Coming back from a student's work opens the class it belongs to
@@ -110,12 +109,6 @@ function Classes() {
     const [busy, setBusy] = useState(false);
     const selectedRef = useRef<number | null>(null);
     selectedRef.current = selectedId;
-
-    useEffect(() => {
-        if (loading) return;
-        if (!user) navigate("/login", { replace: true });
-        else if (!isTeacher) navigate("/dashboard", { replace: true });
-    }, [loading, user, isTeacher, navigate]);
 
     const loadList = useCallback(async () => {
         const { ok, data } = await api<{ classes: ClassSummary[] }>("/classes");
@@ -281,7 +274,6 @@ function Classes() {
         n === 1 ? t("classes.studentOne") : t("classes.studentMany", { count: n });
     const formatDate = (ms: number) => new Date(ms).toLocaleDateString(language);
 
-    if (loading || !isTeacher) return null;
 
     const activeClasses = classes?.filter((c) => c.archivedAt === null) ?? [];
     const archivedClasses = classes?.filter((c) => c.archivedAt !== null) ?? [];
@@ -314,14 +306,7 @@ function Classes() {
                     <div className="spacer"></div>
                     <h2>{t("nav.classes")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <div className="content-dashboard">

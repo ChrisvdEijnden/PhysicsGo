@@ -381,6 +381,10 @@
     background-color: var(--color-bg-surface);
 }
 
+.steps-input:focus {
+    border-color: var(--color-brand-accent);
+}
+
 .code-footer, .explanation-footer, .analysis-footer  {
     flex-shrink: 0;
     display: flex;
@@ -488,6 +492,20 @@
 
 .chart-area {
     position: relative;
+}
+
+/* Chart lines and labels follow the light/dark theme */
+.chart-area .recharts-cartesian-grid line {
+    stroke: var(--color-border);
+}
+
+.chart-area .recharts-cartesian-axis-line,
+.chart-area .recharts-cartesian-axis-tick-line {
+    stroke: var(--color-text-tertiary);
+}
+
+.chart-area .recharts-cartesian-axis-tick-value {
+    fill: var(--color-text-secondary);
 }
 
 .chart-empty {
@@ -737,7 +755,7 @@
     cursor: pointer;
 }
 
-.y-line-select:focus {
+.y-line-select:focus:not(:focus-visible) {
     outline: none;
 }
 

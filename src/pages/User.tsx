@@ -2,9 +2,8 @@ import "../styles/global.css";
 import "./login.css";
 
 import NavBrand from "../components/NavBrand";
-import SettingsIcon21px from "../assets/icons/settings-21px.svg";
-import HelpIcon21px from "../assets/icons/help-21px.svg";
-import {useNavigate} from "react-router-dom";
+import Credits from "../components/Credits";
+import NavActions from "../components/NavActions";
 import {useTranslation} from "../lib/useTranslations.ts";
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
@@ -13,13 +12,12 @@ import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 
 function User() {
-    const navigate = useNavigate();
     const { t } = useTranslation();
     const [draft, setDraft] = useState({ name: "", email: "" });
     const [password, setPassword] = useState("");
     const [emailError, setEmailError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
-    const { user, loading, updateUser } = useAuth();
+    const { user, updateUser } = useAuth();
 
     useEffect(() => {
         if (user) setDraft({ name: user.name, email: user.email });
@@ -71,29 +69,18 @@ function User() {
         }
     };
 
-    useEffect(() => {
-        if (!loading && !user) navigate("/login", { replace: true });
-    }, [loading, user, navigate]);
-
-    if (loading || !user) return null;
+    if (!user) return null;
 
     return (
         <div>
-            <img className="background-logo" src={LogoIcon750px} alt="LogoIcon750px" />
+            <img className="background-logo" src={LogoIcon750px} alt="" />
             <div className="nav">
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
                     <h2>{t("nav.user")}</h2>
                 </div>
-                <div className="right-system-actions">
-                    <button onClick={() => navigate("/settings")}>
-                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
-                    </button>
-                    <button onClick={() => navigate("/")}>
-                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
-                    </button>
-                </div>
+                <NavActions/>
             </div>
 
             <div className="content">
@@ -101,7 +88,7 @@ function User() {
                     <div className="header-group">
                         <div className="full-brand">
                             <div className="brand">
-                                <img src={LogoIcon35px} alt="LogoIcon35px"/>
+                                <img src={LogoIcon35px} alt=""/>
                             </div>
                             <h1>PhysicsGo</h1>
                         </div>
@@ -169,9 +156,7 @@ function User() {
                             </span>
                         </div>
                     </form>
-                    <div className="footer-context">
-                        <p>PhysicsGo v1.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>
-                    </div>
+                    <Credits/>
                 </div>
             </div>
         </div>

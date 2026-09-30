@@ -168,6 +168,15 @@
 .logout-button:hover {
     background: rgba(214, 69, 69, 0.1);
 }
+
+/* Signing in from Settings when signed out: the same shape, in the brand colour */
+.logout-button.sign-in {
+    color: var(--color-brand-accent);
+}
+
+.logout-button.sign-in:hover {
+    background: var(--color-brand-subtle-bg);
+}
 /* Signed-in devices */
 .sessions {
     display: flex;
