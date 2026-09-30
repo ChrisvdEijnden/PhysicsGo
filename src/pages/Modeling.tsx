@@ -6,7 +6,7 @@ import "./modeling.css";
 import TopBar from "../components/TopBar";
 import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
-import PlusIcon14px from "../assets/icons/plus-14px.svg";
+import PlusIcon20px from "../assets/icons/plus-20px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
 import DownloadIcon20px from "../assets/icons/download-20px.svg";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
@@ -610,7 +610,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     }
 
     // Ctrl+Enter runs the model (⌘+Enter on a Mac)
-    const shortcutKeys = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ Enter" : "Ctrl+Enter";
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+    const shortcutKeys = isMac ? "⌘ Enter" : "Ctrl+Enter";
 
     function describeRun(status: RunStatus) {
         const steps = status.steps.toLocaleString(language);
@@ -887,73 +888,73 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         </div>
                     ) : (
                         <>
-                        <div className="insert-menu-anchor" ref={insertMenuRef}>
-                            <button
-                                type="button"
-                                className="insert-media-btn"
-                                onClick={() => setInsertMenuOpen(!insertMenuOpen)}
-                                disabled={panelsFull}
-                                title={panelsFull ? t("modeling.removePanelTooltip") : undefined}
-                                aria-haspopup="menu"
-                                aria-expanded={insertMenuOpen}
-                            >
-                                <img src={PlusIcon14px} alt=""/>
-                                <p>{t("modeling.insertMediaEmbeds")}</p>
-                            </button>
-                            {insertMenuOpen && (
-                                <div className="insert-menu" role="menu">
-                                    <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
-                                        {t("modeling.insertGraph")}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        role="menuitem"
-                                        onClick={insertMediaFile}
-                                        aria-keyshortcuts="Meta+O Control+O"
-                                    >
-                                        {t("modeling.insertMediaFile")}
-                                        <span className="insert-menu-shortcut">⌘O</span>
-                                    </button>
-                                </div>
-                            )}
-                        </div>
                         <input
                             ref={fileInputRef}
                             type="file"
                             onChange={handleFileChange}
                             style={{ display: "none" }}
                         />
-                        {/* Teachers publish projects to their classes; students hand them in */}
                         {/* The icon buttons sit together, like settings and help */}
-                        {project && (
-                            <div className="nav-icon-group">
+                        <div className="nav-icon-group">
+                            <div className="insert-menu-anchor" ref={insertMenuRef}>
+                                <button
+                                    type="button"
+                                    className="nav-icon-btn"
+                                    onClick={() => setInsertMenuOpen(!insertMenuOpen)}
+                                    disabled={panelsFull}
+                                    aria-label={t("modeling.insertMediaEmbeds")}
+                                    title={panelsFull ? t("modeling.removePanelTooltip") : t("modeling.insertMediaEmbeds")}
+                                    aria-haspopup="menu"
+                                    aria-expanded={insertMenuOpen}
+                                >
+                                    <img src={PlusIcon20px} alt=""/>
+                                </button>
+                                {insertMenuOpen && (
+                                    <div className="insert-menu" role="menu">
+                                        <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
+                                            {t("modeling.insertGraph")}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={insertMediaFile}
+                                            aria-keyshortcuts="Meta+O Control+O"
+                                        >
+                                            {t("modeling.insertMediaFile")}
+                                            <span className="insert-menu-shortcut">{isMac ? "⌘O" : "Ctrl+O"}</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {project && (
                                 <button type="button" className="nav-icon-btn" onClick={exportAssignment}
                                         aria-label={t("modeling.export")} title={t("modeling.exportHint")}>
                                     <img src={DownloadIcon20px} alt=""/>
                                 </button>
-                                {isTeacher && (project.mine ? (
-                                    <button
-                                        type="button"
-                                        className="nav-icon-btn"
-                                        onClick={() => navigate(`/projects/${project.id}/edit`)}
-                                        aria-label={t("projectEditor.edit")}
-                                        title={t("projectEditor.edit")}
-                                    >
-                                        <img src={EditIcon20px} alt=""/>
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        className="nav-icon-btn"
-                                        onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
-                                        aria-label={t("projectEditor.duplicate")}
-                                        title={t("projectEditor.duplicateHint")}
-                                    >
-                                        <img src={CopyIcon20px} alt=""/>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
+                            )}
+                            {isTeacher && project && (project.mine ? (
+                                <button
+                                    type="button"
+                                    className="nav-icon-btn"
+                                    onClick={() => navigate(`/projects/${project.id}/edit`)}
+                                    aria-label={t("projectEditor.edit")}
+                                    title={t("projectEditor.edit")}
+                                >
+                                    <img src={EditIcon20px} alt=""/>
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="nav-icon-btn"
+                                    onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
+                                    aria-label={t("projectEditor.duplicate")}
+                                    title={t("projectEditor.duplicateHint")}
+                                >
+                                    <img src={CopyIcon20px} alt=""/>
+                                </button>
+                            ))}
+                        </div>
+                        {/* Teachers publish projects to their classes; students hand them in */}
                         {ownAssignment && (
                             <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
                         )}

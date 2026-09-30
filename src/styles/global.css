@@ -330,6 +330,12 @@ body {
     cursor: pointer;
 }
 
+/* e.g. + when there's no room for another panel */
+.nav-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 /* General */
 
 /* A text on the left and its control (button, switch) on the right; used on Settings and Classes */

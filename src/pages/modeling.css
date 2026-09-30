@@ -687,7 +687,7 @@
     padding: 40px 16px 2px 0;
 }
 
-/* Insert Media & Embeds: small menu under the button */
+/* Insert (the + icon): small menu under the button */
 .insert-menu-anchor {
     position: relative;
 }
@@ -697,7 +697,7 @@
     top: calc(100% + 6px);
     left: 0;
     z-index: 20;
-    min-width: 100%;
+    min-width: max-content;
     display: flex;
     flex-direction: column;
     gap: 2px;
