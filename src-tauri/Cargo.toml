@@ -1,6 +1,6 @@
 [package]
 name = "physicsgo"
-version = "0.1.0"
+version = "1.1.1"
 description = "PhysicsGo: physics modeling for secondary schools"
 authors = ["C.H.M. van den Eijnden", "J.J. van Wegen"]
 edition = "2021"

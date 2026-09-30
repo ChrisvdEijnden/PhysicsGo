@@ -10,6 +10,7 @@ A physics modeling environment for secondary schools: students write numerical m
 ## Prerequisites
 
 - **Node.js 22.18** or newer (Node loads the TypeScript Vite config itself)
+- **pnpm 10** ([pnpm.io](https://pnpm.io/installation), or `corepack enable`, which picks the version from `package.json`)
 - **Rust** ([rustup.rs](https://rustup.rs)) with the WebAssembly target, plus **wasm-pack**:
 
   ```sh
@@ -20,14 +21,15 @@ A physics modeling environment for secondary schools: students write numerical m
 ## Getting started
 
 ```sh
-npm install                 # the web app
-npm install --prefix server # the API
-npm run dev:all             # API on :3001 and the app on http://localhost:1420
+pnpm install   # the web app and the API (one pnpm workspace, one lockfile)
+pnpm dev:all   # API on :3001 and the app on http://localhost:1420
 ```
 
-`npm run dev` and `npm run build` compile the interpreter into `src/wasm` first when it's missing or older than its Rust sources. `npm run build:wasm` forces a rebuild. `src/wasm` is generated and isn't committed.
+`pnpm dev` and `pnpm build` compile the interpreter into `src/wasm` first when it's missing or older than its Rust sources. `pnpm build:wasm` forces a rebuild. `src/wasm` is generated and isn't committed.
 
-The app sends `/api` requests to the API through Vite's proxy, so both have to run. `npm run dev` starts only the app; `npm --prefix server run dev` only the API.
+The app sends `/api` requests to the API through Vite's proxy, so both have to run. `pnpm dev` starts only the app; `pnpm --filter server dev` only the API.
+
+Use pnpm rather than npm: `pnpm-lock.yaml` is the only lockfile.
 
 ### The first teacher account
 
@@ -47,9 +49,9 @@ Other server scripts:
 ## Checks
 
 ```sh
-npx tsc --noEmit                              # type-check the app
+pnpm exec tsc --noEmit                               # type-check the app
 cargo test --manifest-path InterpreterGo/Cargo.toml  # interpreter tests
-npm run build                                 # production build into dist/
+pnpm build                                           # production build into dist/
 ```
 
 ## Server configuration
@@ -71,7 +73,7 @@ The database and media folder hold student data; neither is committed.
 
 ## Desktop app
 
-`npm run tauri dev` starts the Tauri shell around the dev server (its config runs `pnpm dev`, so it needs [pnpm](https://pnpm.io)). The desktop app still needs the API running and reachable at `/api`.
+`pnpm tauri dev` starts the Tauri shell around the dev server. The desktop app still needs the API running and reachable at `/api`. Its version is read from `package.json`.
 
 ## Recommended editor setup
 

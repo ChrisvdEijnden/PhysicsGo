@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+# pnpm is the package manager (pnpm-lock.yaml); npm's lockfile would drift from it
+package-lock.json
 dist-ssr
 *.local
 

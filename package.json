@@ -1,15 +1,16 @@
 {
   "name": "physicsgo",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.1",
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "node scripts/ensure-wasm.mjs && vite --configLoader native",
     "build": "node scripts/ensure-wasm.mjs && tsc && vite build --configLoader native",
     "preview": "vite preview",
     "tauri": "tauri",
     "build:wasm": "wasm-pack build InterpreterGo --target web --out-dir ../src/wasm",
-    "dev:all": "npx --yes concurrently -n api,web \"npm --prefix server run dev\" \"npm run dev\""
+    "dev:all": "pnpm --parallel --recursive --include-workspace-root run dev"
   },
   "dependencies": {
     "@fontsource-variable/figtree": "^5.3.0",
