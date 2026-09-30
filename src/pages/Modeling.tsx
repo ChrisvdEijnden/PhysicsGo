@@ -924,36 +924,39 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             style={{ display: "none" }}
                         />
                         {/* Teachers publish projects to their classes; students hand them in */}
+                        {/* The icon buttons sit together, like settings and help */}
                         {project && (
-                            <button type="button" className="nav-icon-btn" onClick={exportAssignment}
-                                    aria-label={t("modeling.export")} title={t("modeling.exportHint")}>
-                                <img src={DownloadIcon20px} alt=""/>
-                            </button>
+                            <div className="nav-icon-group">
+                                <button type="button" className="nav-icon-btn" onClick={exportAssignment}
+                                        aria-label={t("modeling.export")} title={t("modeling.exportHint")}>
+                                    <img src={DownloadIcon20px} alt=""/>
+                                </button>
+                                {isTeacher && (project.mine ? (
+                                    <button
+                                        type="button"
+                                        className="nav-icon-btn"
+                                        onClick={() => navigate(`/projects/${project.id}/edit`)}
+                                        aria-label={t("projectEditor.edit")}
+                                        title={t("projectEditor.edit")}
+                                    >
+                                        <img src={EditIcon20px} alt=""/>
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        className="nav-icon-btn"
+                                        onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
+                                        aria-label={t("projectEditor.duplicate")}
+                                        title={t("projectEditor.duplicateHint")}
+                                    >
+                                        <img src={CopyIcon20px} alt=""/>
+                                    </button>
+                                ))}
+                            </div>
                         )}
                         {ownAssignment && (
                             <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
                         )}
-                        {isTeacher && project && (project.mine ? (
-                            <button
-                                type="button"
-                                className="nav-icon-btn"
-                                onClick={() => navigate(`/projects/${project.id}/edit`)}
-                                aria-label={t("projectEditor.edit")}
-                                title={t("projectEditor.edit")}
-                            >
-                                <img src={EditIcon20px} alt=""/>
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="nav-icon-btn"
-                                onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
-                                aria-label={t("projectEditor.duplicate")}
-                                title={t("projectEditor.duplicateHint")}
-                            >
-                                <img src={CopyIcon20px} alt=""/>
-                            </button>
-                        ))}
                         {isTeacher && project && (
                             <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/preview`)}>
                                 <p>{t("preview.button")}</p>

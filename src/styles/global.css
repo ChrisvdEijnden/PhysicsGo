@@ -304,7 +304,7 @@ body {
     margin-left: auto;
 }
 
-.right-system-actions {
+.right-system-actions, .nav-icon-group {
     display: flex;
     flex-direction: row;
     align-items: center;
