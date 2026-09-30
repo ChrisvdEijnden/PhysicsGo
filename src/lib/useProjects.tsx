@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import { api, errorOf } from "./api";
 import type { Result } from "./api";
 import { useAuth } from "./useAuth";
+import { useLanguage } from "./useLanguage";
+import { localizeProject } from "../data/Projects";
 import type { Project } from "../data/Projects";
 
 // The modeling page for an assignment; the address can be shared and bookmarked
@@ -27,11 +29,14 @@ interface ProjectsContextValue {
 const ProjectsContext = createContext<ProjectsContextValue | null>(null);
 
 // The projects the signed-in user can open: built-in presets, teachers' own projects and
-// what's published to their classes (the server decides which)
+// what's published to their classes (the server decides which). Built-in assignments come in the
+// interface's language.
 export function ProjectsProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
+    const { language } = useLanguage();
     const userId = user?.id ?? null;
-    const [projects, setProjects] = useState<Project[] | null>(null);
+    const [loaded, setProjects] = useState<Project[] | null>(null);
+    const projects = useMemo(() => loaded?.map((p) => localizeProject(p, language)) ?? null, [loaded, language]);
 
     const load = useCallback(async () => {
         const { ok, data } = await api<{ projects: Project[] }>("/projects");

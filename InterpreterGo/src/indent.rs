@@ -71,7 +71,7 @@ pub fn indent_to_braces(source: &str) -> Result<IndentResult, IndentError> {
             return Err(IndentError {
                 line: line_no,
                 code: "unexpected_indent",
-                message: "unexpected indentation; only lines after `als ...:` or `anders:` are indented".into(),
+                message: "unexpected indentation; only lines after `if ...:` or `else:` are indented".into(),
             });
         } else {
             while indent < *indent_stack.last().unwrap() {

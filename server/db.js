@@ -292,6 +292,22 @@ const MIGRATIONS = [
     DROP TABLE project_media;
     ALTER TABLE project_media_new RENAME TO project_media;
     `,
+    // 17: the built-in assignments in Dutch as well (presets.nl.js): translations holds the texts and
+    // code per language, which the app shows in the chosen one. The English code uses English keywords.
+    (db) => {
+        db.exec("ALTER TABLE projects ADD COLUMN translations TEXT NOT NULL DEFAULT '{}'");
+        const update = db.prepare(`
+            UPDATE projects SET title = @title, explanation = @explanation, start = @start, model = @model,
+                equipment = @equipment, translations = @translations, updated_at = @now
+            WHERE id = @id AND built_in = 1
+        `);
+        for (const p of PRESETS) {
+            update.run({
+                id: p.id, title: p.title, explanation: p.explanation, start: p.start, model: p.model,
+                equipment: JSON.stringify(p.equipment), translations: JSON.stringify({ nl: p.nl }), now: Date.now(),
+            });
+        }
+    },
 ];
 
 const current = db.pragma("user_version", { simple: true });

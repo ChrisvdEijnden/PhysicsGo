@@ -10,6 +10,7 @@ import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
 import Markdown from "../components/Markdown";
 import { useTranslation } from "../lib/useTranslations";
+import { translateCode } from "../lib/modelLanguage";
 import { assignmentPath, useProjects } from "../lib/useProjects";
 import { authErrorKey } from "../lib/authErrors";
 import { addProjectLink, deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
@@ -31,7 +32,7 @@ function ProjectEditor() {
     const navigate = useNavigate();
     const location = useLocation();
     const { projectId } = useParams();
-    const { t } = useTranslation();
+    const { t, language } = useTranslation();
     const { projects, byId, createProject, replaceProject, updateProject, deleteProject } = useProjects();
     const editing = projectId !== undefined;
     const existing = byId(projectId);
@@ -55,10 +56,15 @@ function ProjectEditor() {
             explanation: source?.explanation ?? "",
             estimatedTime: source?.estimatedTime != null ? String(source.estimatedTime) : "",
             equipment: source?.equipment.join("\n") ?? "",
-            start: source?.start ?? "t = 0\ndt = 0.01\n",
-            model: source?.model ?? "stop als t >= 10\n",
+            start: translateCode(source?.start ?? "t = 0\ndt = 0.01\n", language),
+            model: translateCode(source?.model ?? "stop als t >= 10\n", language),
         });
-    }, [projects, form, editing, existing, copyOf, t]);
+    }, [projects, form, editing, existing, copyOf, t, language]);
+
+    // The starter code's keywords follow the interface's language, like on the modeling page
+    useEffect(() => {
+        setForm((f) => f && { ...f, start: translateCode(f.start, language), model: translateCode(f.model, language) });
+    }, [language]);
 
     if (projects === null) return null;
     if (editing && !existing?.mine) return <p className="review-error" role="alert">{t("classes.errNotFound")}</p>;

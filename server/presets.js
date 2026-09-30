@@ -1,9 +1,14 @@
-// The content of the built-in assignments: explanation (Markdown, see src/components/Markdown.tsx),
-// starter code, the graphs a student starts with, equipment and time. Migration 12 in db.js writes it
-// into the projects table; teachers can duplicate an assignment and change it.
-export const PRESETS = [
+// The content of the built-in assignments: title, explanation (Markdown, see src/components/Markdown.tsx),
+// starter code, the graphs a student starts with, equipment and time, in English, with the Dutch
+// version under nl (the app shows the one in the chosen language; variable names are the same in
+// both, so graphs and work carry over). Migrations 12 and 17 in db.js write it into the projects
+// table; teachers can duplicate an assignment and change it.
+import { PRESETS_NL } from "./presets.nl.js";
+
+const PRESETS_EN = [
     {
         id: "standard-freefall",
+        title: "Standard Freefall",
         minutes: 30,
         equipment: ["A small cube", "Measuring tape", "Stopwatch or phone camera"],
         graphs: [{ x: "t", ys: ["h"] }, { x: "t", ys: ["v"] }],
@@ -37,11 +42,12 @@ g = 9.81     // m/s²
         model: `a = -g
 v = v + a * dt
 h = h + v * dt
-stop als h <= 0
+stop if h <= 0
 `,
     },
     {
         id: "harmonic-pendulum-drag",
+        title: "Harmonic Pendulum with Drag",
         minutes: 45,
         equipment: ["String of about 1 m", "A mass of about 200 g", "Stand and clamp", "Stopwatch or phone camera"],
         graphs: [{ x: "t", ys: ["theta"] }, { x: "t", ys: ["x"] }],
@@ -79,11 +85,12 @@ omega = 0     // rad/s
 omega = omega + alpha * dt
 theta = theta + omega * dt
 x = L * sin(theta)    // m, sideways position of the mass
-stop als t >= 20
+stop if t >= 20
 `,
     },
     {
         id: "double-star-orbit",
+        title: "Double Star Orbit Simulation",
         minutes: 60,
         equipment: [],
         graphs: [{ x: "x2", ys: ["y2"] }, { x: "t", ys: ["r"] }],
@@ -139,11 +146,12 @@ x1 = x1 + vx1 * dt
 y1 = y1 + vy1 * dt
 x2 = x2 + vx2 * dt
 y2 = y2 + vy2 * dt
-stop als t >= 8e7
+stop if t >= 8e7
 `,
     },
     {
         id: "ideal-gas-collisions",
+        title: "Ideal Gas Elastic Collisions",
         minutes: 45,
         equipment: [],
         graphs: [{ x: "t", ys: ["x"] }, { x: "t", ys: ["F"] }],
@@ -174,20 +182,21 @@ v = 500        // m/s
 impulse = 0    // N·s, total momentum given to the right-hand wall
 `,
         model: `x = x + v * dt
-als x >= L:
+if x >= L:
     x = L
     v = -v                               // elastic: it bounces back at the same speed
     impulse = impulse + 2 * m * abs(v)
-als x <= 0:
+if x <= 0:
     x = 0
     v = -v
 F = impulse / (t + dt)                   // N, average force on the right-hand wall so far
 p = F / L^2                              // Pa, the pressure this one molecule causes
-stop als t >= 0.02
+stop if t >= 0.02
 `,
     },
     {
         id: "photon-interference",
+        title: "Photon Interference Wavefront",
         minutes: 45,
         equipment: ["Laser pointer (never look into the beam)", "Double slit", "Screen or white wall", "Measuring tape"],
         graphs: [{ x: "y", ys: ["I"] }, { x: "y", ys: ["ds"] }],
@@ -223,11 +232,12 @@ r2 = sqrt(L^2 + (y + d / 2)^2)    // m, distance to slit 2
 ds = r2 - r1                      // m, path difference
 phase = 2 * pi * ds / lambda      // rad, phase difference
 I = cos(phase / 2)^2              // intensity, relative to the brightest spot
-stop als y >= 0.02
+stop if y >= 0.02
 `,
     },
     {
         id: "lorentz-field-trajectory",
+        title: "Lorentz Field Trajectory",
         minutes: 45,
         equipment: [],
         graphs: [{ x: "x", ys: ["y"] }, { x: "t", ys: ["v"] }],
@@ -267,11 +277,12 @@ vy = vy + Fy / m * dt
 x = x + vx * dt
 y = y + vy * dt
 v = sqrt(vx^2 + vy^2)          // m/s, speed
-stop als t >= 2e-5
+stop if t >= 2e-5
 `,
     },
     {
         id: "damped-harmonic-motion",
+        title: "Damped Harmonic Motion",
         minutes: 45,
         equipment: ["A spring", "A mass of about 250 g", "Stand and clamp", "Phone camera"],
         graphs: [{ x: "t", ys: ["x"] }, { x: "t", ys: ["Ek", "Ev", "E"] }],
@@ -307,7 +318,10 @@ x = x + v * dt
 Ek = 0.5 * m * v^2      // J, kinetic energy
 Ev = 0.5 * C * x^2      // J, energy in the spring
 E = Ek + Ev             // J, total
-stop als t >= 10
+stop if t >= 10
 `,
     },
 ];
+
+// Each preset with its Dutch version under nl
+export const PRESETS = PRESETS_EN.map((p) => ({ ...p, nl: PRESETS_NL[p.id] }));

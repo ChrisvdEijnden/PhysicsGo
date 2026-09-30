@@ -27,6 +27,7 @@ import { useProjects } from "../../lib/useProjects";
 import { dueDate, usePublished } from "../../lib/usePublished";
 import { useTranslation } from "../../lib/useTranslations";
 import { useWorkSync } from "../../lib/workSync";
+import { translateCode } from "../../lib/modelLanguage";
 import type { OpenedWork, Submission } from "../../lib/workSync";
 import CodePanel from "./CodePanel";
 import ExplanationPanel from "./ExplanationPanel";
@@ -115,11 +116,17 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     // The handed-in copy of this work, if any (students)
     const [submission, setSubmission] = useState<Submission | null>(opened.submission);
     const [handInOpen, setHandInOpen] = useState(false);
-    // New work starts from the project's starter code
-    const [start, setStart] = useState(
-        savedWork?.start ?? project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds"))
-    );
-    const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_MODEL);
+    // New work starts from the project's starter code. Code is shown with the keywords of the
+    // interface's language (both run), and follows it when the language changes.
+    const [start, setStart] = useState(() => translateCode(
+        savedWork?.start ?? project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds")),
+        language,
+    ));
+    const [model, setModel] = useState(() => translateCode(savedWork?.model ?? project?.model ?? DEFAULT_MODEL, language));
+    useEffect(() => {
+        setStart((code) => translateCode(code, language));
+        setModel((code) => translateCode(code, language));
+    }, [language]);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
     // A new project starts with one empty graph
     const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs

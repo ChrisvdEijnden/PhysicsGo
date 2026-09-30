@@ -1,5 +1,7 @@
 import type { InterpreterError } from "./simulation";
 import type { TranslationKey } from "./Translations";
+import type { Language } from "./useLanguage";
+import { functionName } from "./modelLanguage";
 
 type T = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -37,8 +39,9 @@ const MESSAGES: Record<string, TranslationKey> = {
     invalid_data: "interp.invalidData",
 };
 
-// An interpreter error in the interface's language; codes this version doesn't know fall back to English
-export function describeError(error: InterpreterError, t: T): string {
+// An interpreter error in the interface's language (also the names of functions it mentions); codes
+// this version doesn't know fall back to English
+export function describeError(error: InterpreterError, t: T, language: Language): string {
     const key = MESSAGES[error.code];
     if (!key) return error.message;
     const tokens = (list: string | undefined) =>
@@ -48,5 +51,9 @@ export function describeError(error: InterpreterError, t: T): string {
     // "expected" / "unexpected" list parts of the language by code; other params are shown as they are
     if (error.code === "expected") return t(key, { expected: or(tokens(error.params.expected)) });
     if (error.code === "unexpected") return t(key, { unexpected: or(tokens(error.params.unexpected)) });
+    if (error.code === "unknown_function") {
+        const available = [...new Set((error.params.available ?? "").split(", ").filter(Boolean).map((name) => functionName(name, language)))];
+        return t(key, { ...error.params, available: available.join(", ") });
+    }
     return t(key, error.params);
 }

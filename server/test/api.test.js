@@ -163,8 +163,13 @@ describe("classes, assignments and work", () => {
         const [freefall] = (await student("GET", "/projects")).data.projects;
         assert.equal(freefall.id, "standard-freefall");
         // Built-in assignments come with starter code and the graphs to start with
-        assert.match(freefall.model, /stop als/);
+        assert.match(freefall.model, /stop if h <= 0/);
         assert.deepEqual(freefall.graphs[0], { x: "t", ys: ["h"] });
+        // ... in English and in Dutch, with the same variables
+        assert.equal(freefall.title, "Standard Freefall");
+        assert.equal(freefall.translations.nl.title, "Vrije val");
+        assert.match(freefall.translations.nl.model, /stop als h <= 0/);
+        assert.match(freefall.translations.nl.explanation, /^# Vrije val/);
     });
 
     test("teachers add websites to an assignment's starter media; copies keep them", async () => {

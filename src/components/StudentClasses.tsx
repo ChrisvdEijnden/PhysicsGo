@@ -8,7 +8,7 @@ import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import { formatDueDay } from "../lib/formatDueDate";
 import { useAuth } from "../lib/useAuth";
-import { assignmentPath } from "../lib/useProjects";
+import { assignmentPath, useProjects } from "../lib/useProjects";
 import { useTranslation } from "../lib/useTranslations";
 
 interface StudentClass {
@@ -21,6 +21,8 @@ interface StudentClass {
 // Students: each class they're in, with its teachers; opened, the assignments it has and "Leave class"
 export default function StudentClasses() {
     const { t, language } = useTranslation();
+    // Built-in assignments by their name in the interface's language
+    const { byId } = useProjects();
     const { user, refresh } = useAuth();
     const [classes, setClasses] = useState<StudentClass[] | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export default function StudentClasses() {
                                 <ul className="student-class-assignments">
                                     {c.assignments.map((a) => (
                                         <li key={a.id}>
-                                            <Link to={assignmentPath(a.id)}>{a.title}</Link>
+                                            <Link to={assignmentPath(a.id)}>{byId(a.id)?.title ?? a.title}</Link>
                                             {a.dueAt !== null && <span>{formatDueDay(a.dueAt, language)}</span>}
                                         </li>
                                     ))}

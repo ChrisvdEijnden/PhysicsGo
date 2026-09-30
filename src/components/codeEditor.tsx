@@ -5,6 +5,8 @@ import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 
 import { useTheme } from "../lib/useTheme";
 import type { Theme } from "../lib/useTheme";
+import type { Language } from "../lib/useLanguage";
+import { useTranslation } from "../lib/useTranslations";
 
 interface CodeEditorProps {
     value: string;
@@ -115,17 +117,19 @@ definePhysicsGoThemes();
 document.fonts?.load('13px "JetBrains Mono Variable"').then(() => monaco.editor.remeasureFonts(), () => undefined);
 
 interface LanguageInfo {
-    functions: { name: string; args: string }[];
-    keywords: string[];
+    // English name, Dutch name (often the same) and how many values it takes
+    functions: { name: string; nl: string; args: string }[];
+    keywords: { nl: string; en: string }[];
     constants: string[];
 }
 
 // Highlighting for the modeling language; the keywords, functions and constants come from the
-// interpreter itself, so the editor never disagrees with what actually runs
+// interpreter itself, so the editor never disagrees with what actually runs. Words of both languages
+// are highlighted, since both run.
 function setTokens(info: LanguageInfo) {
     monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, {
-        keywords: info.keywords,
-        builtins: info.functions.map((f) => f.name),
+        keywords: info.keywords.flatMap((k) => [k.nl, k.en]),
+        builtins: info.functions.flatMap((f) => [f.name, f.nl]),
         constants: info.constants,
         tokenizer: {
             root: [
@@ -142,33 +146,41 @@ function setTokens(info: LanguageInfo) {
 }
 
 let languageInfo: LanguageInfo = { functions: [], keywords: [], constants: [] };
+// Suggestions are in the interface's language (set by the editors on the page)
+let codeLanguage: Language = "nl";
 
 function definePhysicsGoLanguage() {
     monaco.languages.register({ id: LANGUAGE_ID });
     setTokens(languageInfo);
 
-    // Suggestions: the language's functions (with their brackets), keywords and constants, and the
-    // variables the code in this editor already uses
+    // Suggestions: the functions (with their brackets), keywords and constants in the interface's
+    // language, and the variables the code in this editor already uses
     monaco.languages.registerCompletionItemProvider(LANGUAGE_ID, {
         provideCompletionItems(model, position) {
             const word = model.getWordUntilPosition(position);
             const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
             const { Function, Keyword, Constant, Variable } = monaco.languages.CompletionItemKind;
             const variables = new Set(model.getValue().replace(/\/\/.*$/gm, "").match(/[A-Za-z_]\w*/g) ?? []);
-            for (const known of [...languageInfo.keywords, ...languageInfo.functions.map((f) => f.name), word.word]) {
-                variables.delete(known);
-            }
+            const known = [
+                ...languageInfo.keywords.flatMap((k) => [k.nl, k.en]),
+                ...languageInfo.functions.flatMap((f) => [f.name, f.nl]),
+                word.word,
+            ];
+            for (const name of known) variables.delete(name);
+            const functionName = (f: LanguageInfo["functions"][number]) => (codeLanguage === "nl" ? f.nl : f.name);
             return {
                 suggestions: [
                     ...languageInfo.functions.map((f) => ({
-                        label: f.name,
+                        label: functionName(f),
                         kind: Function,
-                        detail: `${f.name}(${f.args === "1" ? "x" : f.args === "2" ? "a, b" : "a, b, …"})`,
-                        insertText: `${f.name}($0)`,
+                        detail: `${functionName(f)}(${f.args === "1" ? "x" : f.args === "2" ? "a, b" : "a, b, …"})`,
+                        insertText: `${functionName(f)}($0)`,
                         insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         range,
                     })),
-                    ...languageInfo.keywords.map((k) => ({ label: k, kind: Keyword, insertText: k, range })),
+                    // "stop" is the same in both languages
+                    ...[...new Set(languageInfo.keywords.map((k) => k[codeLanguage]))]
+                        .map((k) => ({ label: k, kind: Keyword, insertText: k, range })),
                     ...languageInfo.constants.map((c) => ({ label: c, kind: Constant, insertText: c, range })),
                     ...[...variables].map((v) => ({ label: v, kind: Variable, insertText: v, range })),
                 ],
@@ -180,7 +192,7 @@ function definePhysicsGoLanguage() {
         comments: { lineComment: "//" },
         brackets: [["(", ")"]],
         autoClosingPairs: [{ open: "(", close: ")" }],
-        // Enter after "als ...:" indents the next line; typing "anders" moves that line back out
+        // Enter after "als ...:" / "if ...:" indents the next line; typing "anders" / "else" moves that line back out
         indentationRules: {
             increaseIndentPattern: /^.*:\s*(\/\/.*)?$/,
             decreaseIndentPattern: /^\s*(anders|else)\b.*$/,
@@ -202,6 +214,10 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     ({ value, onChange, language = LANGUAGE_ID, onRun, readOnly = false }, ref) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
         const { theme } = useTheme();
+        const { language: uiLanguage } = useTranslation();
+        useEffect(() => {
+            codeLanguage = uiLanguage;
+        }, [uiLanguage]);
         const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
         const onChangeRef = useRef(onChange);

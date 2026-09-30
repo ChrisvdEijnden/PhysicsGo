@@ -58,7 +58,7 @@ export function useModelRun() {
             setStatus({ kind: "error", ...ended });
             const inBlock = (block: string): InterpreterError[] => result.errors
                 .filter((e) => e.block === block)
-                .map((e) => ({ line: e.line, column: e.column, message: describeError(e, t) }));
+                .map((e) => ({ line: e.line, column: e.column, message: describeError(e, t, language) }));
             startEditorRef.current?.setErrors(inBlock("start"));
             modelEditorRef.current?.setErrors(inBlock("model"));
             return;

@@ -19,47 +19,49 @@ pub enum Func {
     Sin, Cos, Tan, Asin, Acos, Atan, Atan2, Sqrt, Abs, Exp, Ln, Log, Min, Max, Round, Floor, Ceil, Sign, Hypot,
 }
 
-/// How many values a function takes: exactly `min` when `max` equals it, otherwise at least `min`
+/// How many values a function takes: exactly `min` when `max` equals it, otherwise at least `min`.
+/// Every function has an English name and a Dutch one (often the same); both work in any code.
 pub struct FunctionInfo {
     pub name: &'static str,
+    pub nl: &'static str,
     pub func: Func,
     pub min: usize,
     pub max: Option<usize>,
 }
 
-const fn f(name: &'static str, func: Func, min: usize, max: Option<usize>) -> FunctionInfo {
-    FunctionInfo { name, func, min, max }
+const fn f(name: &'static str, nl: &'static str, func: Func, min: usize, max: Option<usize>) -> FunctionInfo {
+    FunctionInfo { name, nl, func, min, max }
 }
 
-/// The built-in functions. The app's syntax highlighting and autocomplete read this same list.
+/// The built-in functions. The app's syntax highlighting, autocomplete and translation read this same list.
 pub const FUNCTIONS: &[FunctionInfo] = &[
-    f("sin", Func::Sin, 1, Some(1)),
-    f("cos", Func::Cos, 1, Some(1)),
-    f("tan", Func::Tan, 1, Some(1)),
-    f("asin", Func::Asin, 1, Some(1)),
-    f("acos", Func::Acos, 1, Some(1)),
-    f("atan", Func::Atan, 1, Some(1)),
-    f("atan2", Func::Atan2, 2, Some(2)),
-    f("sqrt", Func::Sqrt, 1, Some(1)),
-    f("abs", Func::Abs, 1, Some(1)),
-    f("exp", Func::Exp, 1, Some(1)),
-    f("ln", Func::Ln, 1, Some(1)),
-    f("log", Func::Log, 1, Some(1)),
-    f("min", Func::Min, 1, None),
-    f("max", Func::Max, 1, None),
-    f("round", Func::Round, 1, Some(1)),
-    f("floor", Func::Floor, 1, Some(1)),
-    f("ceil", Func::Ceil, 1, Some(1)),
-    f("sign", Func::Sign, 1, Some(1)),
-    f("hypot", Func::Hypot, 2, Some(2)),
+    f("sin", "sin", Func::Sin, 1, Some(1)),
+    f("cos", "cos", Func::Cos, 1, Some(1)),
+    f("tan", "tan", Func::Tan, 1, Some(1)),
+    f("asin", "arcsin", Func::Asin, 1, Some(1)),
+    f("acos", "arccos", Func::Acos, 1, Some(1)),
+    f("atan", "arctan", Func::Atan, 1, Some(1)),
+    f("atan2", "arctan2", Func::Atan2, 2, Some(2)),
+    f("sqrt", "wortel", Func::Sqrt, 1, Some(1)),
+    f("abs", "abs", Func::Abs, 1, Some(1)),
+    f("exp", "exp", Func::Exp, 1, Some(1)),
+    f("ln", "ln", Func::Ln, 1, Some(1)),
+    f("log", "log", Func::Log, 1, Some(1)),
+    f("min", "min", Func::Min, 1, None),
+    f("max", "max", Func::Max, 1, None),
+    f("round", "afronden", Func::Round, 1, Some(1)),
+    f("floor", "entier", Func::Floor, 1, Some(1)),
+    f("ceil", "plafond", Func::Ceil, 1, Some(1)),
+    f("sign", "teken", Func::Sign, 1, Some(1)),
+    f("hypot", "hypot", Func::Hypot, 2, Some(2)),
 ];
 
 /// Values every model can use without defining them; a model that assigns one of these names
 /// (e.g. `e = 1.6e-19` for the elementary charge) uses its own value instead
 pub const CONSTANTS: &[(&str, f64)] = &[("pi", std::f64::consts::PI), ("e", std::f64::consts::E)];
 
-/// Keywords in both languages, for syntax highlighting
-pub const KEYWORDS: &[&str] = &["als", "anders", "stop", "en", "of", "niet", "if", "else", "and", "or", "not"];
+/// Keywords as (Dutch, English) pairs; the grammar accepts both in any code
+pub const KEYWORDS: &[(&str, &str)] = &[("als", "if"), ("anders", "else"), ("stop", "stop"), ("en", "and"), ("of", "or"), ("niet", "not")];
 
 #[derive(Debug)]
 pub enum Expr {
@@ -328,7 +330,7 @@ fn expr(pair: Pair<Rule>, block: &Block, slots: &mut Slots) -> Result<Expr, RunE
             let name = name_pair.as_str();
             let args = inner.map(|a| expr(a, block, slots)).collect::<Result<Vec<_>, _>>()?;
             let pos = block.pos(&name_pair);
-            let Some(info) = FUNCTIONS.iter().find(|f| f.name == name) else {
+            let Some(info) = FUNCTIONS.iter().find(|f| f.name == name || f.nl == name) else {
                 let available = FUNCTIONS.iter().map(|f| f.name).collect::<Vec<_>>().join(", ");
                 return Err(error(
                     pos,

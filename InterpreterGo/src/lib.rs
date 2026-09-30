@@ -137,19 +137,28 @@ fn to_js(result: &RunResult) -> JsValue {
 
 #[derive(Serialize)]
 struct LanguageFunction {
+    /// The Dutch name, often the same as the English one
+    nl: &'static str,
     name: &'static str,
     /// "1", "2" or "1+" (one or more)
     args: String,
 }
 
 #[derive(Serialize)]
+struct LanguageKeyword {
+    nl: &'static str,
+    en: &'static str,
+}
+
+#[derive(Serialize)]
 struct Language {
     functions: Vec<LanguageFunction>,
-    keywords: &'static [&'static str],
+    keywords: Vec<LanguageKeyword>,
     constants: Vec<&'static str>,
 }
 
-/// The built-in functions, keywords and constants, for the editor's highlighting and autocomplete
+/// The built-in functions, keywords and constants, in Dutch and English, for the editor's
+/// highlighting, autocomplete and for showing code in the chosen language
 #[wasm_bindgen]
 pub fn language() -> JsValue {
     let language = Language {
@@ -157,13 +166,14 @@ pub fn language() -> JsValue {
             .iter()
             .map(|f| LanguageFunction {
                 name: f.name,
+                nl: f.nl,
                 args: match f.max {
                     Some(max) if max == f.min => f.min.to_string(),
                     _ => format!("{}+", f.min),
                 },
             })
             .collect(),
-        keywords: KEYWORDS,
+        keywords: KEYWORDS.iter().map(|&(nl, en)| LanguageKeyword { nl, en }).collect(),
         constants: CONSTANTS.iter().map(|(name, _)| *name).collect(),
     };
     serde_wasm_bindgen::to_value(&language).unwrap()
@@ -334,13 +344,13 @@ fn describe_rule(rule: &Rule) -> (&'static str, &'static str) {
         Rule::assign_op => ("assign", "'=' (or '+=', '-=', '*=', '/=')"),
         Rule::comparison_op => ("comparison", "a comparison (<, >, <=, >=, ==, !=)"),
         Rule::statement | Rule::assignment => ("statement", "a line like 'x = 5'"),
-        Rule::if_stmt | Rule::if_kw => ("if", "'als ...:'"),
-        Rule::stop_stmt | Rule::stop_kw => ("stop", "'stop als ...'"),
-        Rule::else_kw | Rule::else_clause | Rule::else_if_clause => ("else", "'anders:' or 'anders als ...:'"),
+        Rule::if_stmt | Rule::if_kw => ("if", "'if ...:'"),
+        Rule::stop_stmt | Rule::stop_kw => ("stop", "'stop if ...'"),
+        Rule::else_kw | Rule::else_clause | Rule::else_if_clause => ("else", "'else:' or 'else if ...:'"),
         Rule::condition | Rule::or_cond | Rule::and_cond | Rule::not_cond | Rule::comparison => {
             ("condition", "a condition such as 'x <= 0'")
         }
-        Rule::and_kw | Rule::or_kw | Rule::not_kw => ("logic", "'en', 'of' or 'niet'"),
+        Rule::and_kw | Rule::or_kw | Rule::not_kw => ("logic", "'and', 'or' or 'not'"),
         Rule::add | Rule::sub | Rule::mul | Rule::div | Rule::pow_op | Rule::sub_op => ("operator", "an operator (+, -, *, /, ^)"),
         Rule::block => ("block", "an indented block"),
         Rule::EOI => ("end", "the end of the line"),
@@ -543,6 +553,37 @@ mod tests {
         assert_eq!((e.block, e.line, e.column), ("model", 1, 9));
         assert!(e.message.contains("'G'"), "{}", e.message);
         assert_eq!((e.code, e.params["name"].as_str()), ("no_value", "G"));
+    }
+
+    #[test]
+    fn functions_have_dutch_names_too() {
+        let start = "a = wortel(16)\nb = afronden(2.6)\nc = entier(-1.5)\nd = plafond(1.2)\ne2 = teken(-3)\nf = arctan2(1, 1)\n";
+        let state = final_state(start, "stop als 1 == 1", 1);
+        assert_eq!((state["a"], state["b"], state["c"], state["d"], state["e2"]), (4.0, 3.0, -2.0, 2.0, -1.0));
+        assert!((state["f"] - std::f64::consts::FRAC_PI_4).abs() < 1e-12);
+        // English and Dutch names work side by side, in any code
+        assert_eq!(final_state("x = sqrt(9) + wortel(4)\n", "stop if x == 5", 1)["x"], 5.0);
+    }
+
+    #[test]
+    fn every_name_means_one_thing() {
+        let mut names: Vec<&str> = Vec::new();
+        for f in FUNCTIONS {
+            names.push(f.name);
+            if f.nl != f.name {
+                names.push(f.nl);
+            }
+        }
+        for &(nl, en) in KEYWORDS {
+            names.push(nl);
+            if en != nl {
+                names.push(en);
+            }
+        }
+        let mut unique = names.clone();
+        unique.sort();
+        unique.dedup();
+        assert_eq!(unique.len(), names.len(), "a name is used twice: {names:?}");
     }
 
     #[test]

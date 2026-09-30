@@ -1,7 +1,8 @@
 // Newlines end statements, so they're not part of the implicit whitespace.
 // indent.rs has already turned indentation into braces and removed comments;
 // COMMENT stays so the grammar also accepts hand-written braced source.
-// Keywords are Dutch, with English aliases: als/if, anders/else, stop, en/and, of/or, niet/not.
+// Keywords work in Dutch and English, in any code: als/if, anders/else, stop, en/and, of/or, niet/not.
+// The app shows code with the keywords of the chosen language (src/lib/modelLanguage.ts).
 WHITESPACE = _{ " " | "\t" }
 COMMENT    = _{ "//" ~ (!NEWLINE ~ ANY)* }
 

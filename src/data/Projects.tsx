@@ -1,6 +1,7 @@
 import { setStorageScope, storageScope } from "../lib/storageScope";
 import { adoptLegacyMedia } from "../lib/mediaStore";
 import type { FitKind } from "../lib/fit";
+import type { Language } from "../lib/useLanguage";
 
 // A project as the server sends it: a built-in preset or one a teacher wrote
 export interface Project {
@@ -21,6 +22,16 @@ export interface Project {
     // Videos and photos every student starts with
     media: ProjectMedia[];
     updatedAt: number;
+    // Built-in assignments: the same in other languages; the app shows the chosen one (useProjects)
+    translations?: Partial<Record<Language, ProjectTranslation>>;
+}
+
+export type ProjectTranslation = Partial<Pick<Project, "title" | "explanation" | "start" | "model" | "equipment">>;
+
+// A project in `language`: its translation where it has one
+export function localizeProject(project: Project, language: Language): Project {
+    const translation = project.translations?.[language];
+    return translation ? { ...project, ...translation } : project;
 }
 
 export interface ProjectMedia {

@@ -74,6 +74,8 @@ function toProject(row, viewerId) {
         estimatedTime: row.estimated_time,
         equipment: JSON.parse(row.equipment),
         graphs: JSON.parse(row.graphs),
+        // Built-in assignments: their text and code in other languages ({ nl: { title, … } })
+        translations: JSON.parse(row.translations),
         curriculum: Boolean(row.curriculum),
         builtIn: Boolean(row.built_in),
         mine: row.author_id !== null && row.author_id === viewerId,
