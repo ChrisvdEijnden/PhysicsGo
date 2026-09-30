@@ -40,7 +40,8 @@ const app = express();
 const TRUST_PROXY = process.env.TRUST_PROXY;
 if (TRUST_PROXY) app.set("trust proxy", /^\d+$/.test(TRUST_PROXY) ? Number(TRUST_PROXY) : TRUST_PROXY);
 // The app loads nothing from elsewhere: its scripts, styles, fonts, the interpreter (WebAssembly) and
-// its workers all come from this server; photos and videos are shown from blob: URLs
+// its workers all come from this server; photos and videos are shown from blob: URLs.
+// The desktop shell has the same policy in src-tauri/tauri.conf.json; keep the two in step.
 app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: false,
