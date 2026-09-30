@@ -67,7 +67,7 @@ export default function Admin() {
 
     return (
         <div className="page-admin">
-            <TopBar crumbs={[{ label: t("nav.admin") }]}/>
+            <TopBar title={t("nav.admin")}/>
             <div className="content-dashboard admin-page">
                 <div className="left-panel admin-left">
                     <Schools schools={schools} onChange={schoolsChanged}/>

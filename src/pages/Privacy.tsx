@@ -11,7 +11,7 @@ export default function Privacy() {
     const text = PRIVACY[language];
     return (
         <div className="page-settings">
-            <TopBar crumbs={[{ label: t("nav.privacy") }]}/>
+            <TopBar title={t("nav.privacy")}/>
             <div className="content-settings">
                 <article className="privacy">
                     <h1>{text.title}</h1>

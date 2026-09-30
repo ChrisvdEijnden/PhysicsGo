@@ -56,7 +56,7 @@ function Settings() {
 
     return (
         <div className="page-settings">
-            <TopBar crumbs={[{ label: t("nav.settings") }]}/>
+            <TopBar title={t("nav.settings")}/>
 
             <div className="content-settings">
                 {user ? (

@@ -25,7 +25,7 @@ function AllModels() {
     const rows = (projects ?? []).filter((project) => canSeeProject(user, published, project)).sort(byLastEdit);
     return (
         <div className="page-all-models">
-            <TopBar crumbs={[{ label: t("nav.allModels") }]}/>
+            <TopBar title={t("nav.allModels")}/>
 
             <div className="content-allmodels">
                 <div className="panel">

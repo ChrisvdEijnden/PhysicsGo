@@ -135,7 +135,7 @@ function ProjectEditor() {
 
     return (
         <div className="project-editor-page">
-            <TopBar crumbs={[{ label: editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle") }]}/>
+            <TopBar title={editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}/>
 
             <form className="project-editor" onSubmit={save}>
                 <label className="project-field">

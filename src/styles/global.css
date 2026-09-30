@@ -59,7 +59,7 @@ html, body, #root {
     overflow: auto;
 }
 
-.brand-and-breadcrumb, .brand-and-breadcrumb nav {
+.brand-and-breadcrumb {
     min-width: 0;
 }
 
@@ -119,18 +119,8 @@ body {
     color: var(--color-text-secondary);
 }
 
-/* The trail to the current page, each step after a thin divider */
-.breadcrumbs {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    min-width: 0;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.breadcrumbs li {
+/* The page's name, after a thin divider */
+.page-title {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -141,7 +131,7 @@ body {
     white-space: nowrap;
 }
 
-.breadcrumbs li::before {
+.page-title::before {
     content: "";
     flex-shrink: 0;
     width: 1px;
@@ -149,20 +139,9 @@ body {
     background-color: var(--color-border);
 }
 
-.breadcrumbs li > span {
+.page-title > span {
     overflow: hidden;
     text-overflow: ellipsis;
-}
-
-.breadcrumb-link {
-    color: inherit;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.breadcrumb-link:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
 }
 
 /* Signed in: initials (and the name on wide screens), opening profile, settings and sign out */
@@ -500,10 +479,6 @@ body {
 
     .user-menu-button {
         padding: 2px;
-    }
-
-    .breadcrumbs li:not(.current) {
-        display: none;
     }
 
     .system-actions {

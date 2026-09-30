@@ -95,7 +95,7 @@ function Dashboard() {
 
     return (
         <div className="page-dashboard">
-            <TopBar crumbs={[{ label: t("nav.dashboard") }]}/>
+            <TopBar title={t("nav.dashboard")}/>
 
             <div className="content-dashboard">
                 <div className="left-panel">

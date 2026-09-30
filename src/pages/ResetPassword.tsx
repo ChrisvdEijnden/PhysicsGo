@@ -54,7 +54,7 @@ function ResetPassword() {
     return (
         <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <TopBar crumbs={[{ label: t("nav.resetPassword") }]}/>
+            <TopBar title={t("nav.resetPassword")}/>
             <div className="content">
                 <form className="auth-card" onSubmit={handleSubmit}>
                     <div className="header-group">

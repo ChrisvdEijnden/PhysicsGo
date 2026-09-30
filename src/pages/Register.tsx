@@ -67,7 +67,7 @@ function Register() {
     return (
         <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <TopBar crumbs={[{ label: t("nav.register") }]}/>
+            <TopBar title={t("nav.register")}/>
 
             <div className="content">
                 <form className="auth-card" onSubmit={handleSubmit}>

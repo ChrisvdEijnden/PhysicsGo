@@ -1118,8 +1118,16 @@
     color: var(--color-text-primary);
 }
 
-:where(.modeling-page) .insert-media-btn.delete-own.armed {
-    color: #B42318;
+/* Deleting a student's own assignment: armed, the icon becomes a red "Confirm?" */
+:where(.modeling-page) .nav-icon-btn.delete-own.armed {
+    padding: 3px 8px;
+    border-radius: 6px;
+    background-color: rgba(214, 69, 69, 0.1);
+    color: var(--color-danger-text);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* Export menu on graphs and media: a small summary button with a list of downloads under it */

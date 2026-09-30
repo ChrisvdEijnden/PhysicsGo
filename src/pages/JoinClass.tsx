@@ -44,7 +44,7 @@ function JoinClass() {
     return (
         <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <TopBar crumbs={[{ label: t("nav.joinClass") }]}/>
+            <TopBar title={t("nav.joinClass")}/>
             <div className="content">
                 <div className="auth-card">
                     <div className="header-group">

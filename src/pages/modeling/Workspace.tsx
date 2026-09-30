@@ -6,6 +6,7 @@ import arrowIcon14px from "../../assets/icons/arrow-14px.svg";
 import CopyIcon20px from "../../assets/icons/copy-20px.svg";
 import DownloadIcon20px from "../../assets/icons/download-20px.svg";
 import EditIcon20px from "../../assets/icons/edit-20px.svg";
+import TrashIcon20px from "../../assets/icons/trash-20px.svg";
 import ConfirmButton from "../../components/ConfirmButton";
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { formatMark } from "../../components/Feedback";
@@ -242,14 +243,9 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     return (
         <div className="modeling-page">
             <TopBar
-                crumbs={[
-                    ...(review ? [{ label: t("nav.classes"), to: "/classes", state: { classId: review.classId } }] : []),
-                    {
-                        label: ownAssignment && project
-                            ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
-                            : project?.title ?? "",
-                    },
-                ]}
+                title={ownAssignment && project
+                    ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
+                    : project?.title ?? ""}
                 after={project && !noSaving && <SaveIndicator status={sync.status}/>}
             >
                 {review ? (
@@ -288,11 +284,14 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                                     <img src={CopyIcon20px} alt=""/>
                                 </button>
                             ))}
+                            {/* A student's own assignment; the first click asks to confirm */}
+                            {ownAssignment && (
+                                <ConfirmButton className="nav-icon-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}>
+                                    <img src={TrashIcon20px} alt=""/>
+                                </ConfirmButton>
+                            )}
                         </div>
                         {/* Teachers publish projects to their classes; students hand them in */}
-                        {ownAssignment && (
-                            <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
-                        )}
                         {isTeacher && project && (
                             <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/preview`)}>
                                 <p>{t("preview.button")}</p>

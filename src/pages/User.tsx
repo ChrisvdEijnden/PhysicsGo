@@ -73,7 +73,7 @@ function User() {
     return (
         <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <TopBar crumbs={[{ label: t("nav.user") }]}/>
+            <TopBar title={t("nav.user")}/>
 
             <div className="content">
                 <div className="user-card">

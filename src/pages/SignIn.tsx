@@ -34,7 +34,7 @@ function SignIn() {
     return (
         <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <TopBar crumbs={[{ label: t("nav.login") }]}/>
+            <TopBar title={t("nav.login")}/>
 
             <div className="content">
                 <form className="auth-card" onSubmit={handleSubmit}>
