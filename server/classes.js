@@ -208,6 +208,22 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.status(201).json({ class: classDetail(id, req.user.id) });
     });
 
+    // The latest hand-ins in the teacher's active classes, newest first, for the dashboard
+    router.get("/hand-ins", (req, res) => {
+        const handIns = db.prepare(`
+            SELECT sub.user_id AS studentId, u.name AS studentName, sub.project_id AS projectId,
+                   c.id AS classId, c.name AS className, sub.submitted_at AS submittedAt, pc.due_at AS dueAt
+            FROM submissions sub
+            JOIN users u ON u.id = sub.user_id
+            JOIN class_students s ON s.user_id = sub.user_id
+            JOIN classes c ON c.id = s.class_id AND c.archived_at IS NULL
+            JOIN class_teachers t ON t.class_id = c.id AND t.user_id = ?
+            JOIN project_classes pc ON pc.class_id = c.id AND pc.project_id = sub.project_id
+            ORDER BY sub.submitted_at DESC LIMIT 20
+        `).all(req.user.id).map(({ dueAt, ...h }) => ({ ...h, late: dueAt !== null && h.submittedAt > dueAt }));
+        res.json({ handIns });
+    });
+
     router.get("/:classId", (req, res) => {
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
@@ -273,10 +289,12 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.json({ class: classDetail(req.classId, req.user.id) });
     }));
 
-    // Per project published to the class, where each student is: not started, working, or handed in
+    // Per assignment in the class (with its due date), where each student is: not started, working,
+    // or handed in, and whether that was after the due date
     router.get("/:classId/progress", (req, res) => {
         const projects = db.prepare(`
-            SELECT project_id AS projectId FROM project_classes WHERE class_id = ? ORDER BY published_at
+            SELECT project_id AS projectId, opens_at AS opensAt, due_at AS dueAt FROM project_classes
+            WHERE class_id = ? ORDER BY due_at IS NULL, due_at, published_at
         `).all(req.classId);
         const rows = db.prepare(`
             SELECT u.id, u.name, w.updated_at AS updatedAt, sub.submitted_at AS submittedAt,
@@ -287,8 +305,10 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
             WHERE s.class_id = ? ORDER BY u.name COLLATE NOCASE
         `);
         res.json({
-            projects: projects.map(({ projectId }) => ({
+            projects: projects.map(({ projectId, opensAt, dueAt }) => ({
                 projectId,
+                opensAt,
+                dueAt,
                 students: rows.all(projectId, projectId, req.classId).map((r) => ({
                     id: r.id,
                     name: r.name,
@@ -297,6 +317,7 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
                     submittedAt: r.submittedAt,
                     // Worked on after handing in
                     changedSince: Boolean(r.submittedAt && r.version > r.submittedVersion),
+                    late: Boolean(r.submittedAt && dueAt !== null && r.submittedAt > dueAt),
                 })),
             })),
         });

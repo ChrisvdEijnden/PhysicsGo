@@ -20,20 +20,33 @@ const projectMedia = (projectId) => db.prepare(`
     SELECT media_id AS id, name, mime, category FROM project_media WHERE project_id = ? ORDER BY created_at
 `).all(projectId);
 
-// The classes the user belongs to (as teacher or student) that the project is published to.
-// Archived classes are left out; their publications come back if the class is restored.
+// A class's settings for an assignment published to it: instructions for that class, when it opens
+// (students don't see it before) and when it's due; times in ms or null. Null when invalid.
+function assignmentSettings(value) {
+    if (!value || typeof value !== "object") return null;
+    const { instructions = "", opensAt = null, dueAt = null } = value;
+    const time = (v) => v === null || (Number.isSafeInteger(v) && v > 0);
+    if (typeof instructions !== "string" || instructions.length > 5000 || !time(opensAt) || !time(dueAt)) return null;
+    if (opensAt !== null && dueAt !== null && opensAt >= dueAt) return null;
+    return { instructions: instructions.trim(), opensAt, dueAt };
+}
+
+// The classes the user belongs to (as teacher or student) that the project is published to, with each
+// class's instructions, opening time and due date. Archived classes are left out (their publications
+// come back if the class is restored), and students don't see an assignment before it opens.
 function publishedClasses(user) {
-    const table = user.role === "teacher" ? "class_teachers" : "class_students";
+    const teacher = user.role === "teacher";
     const rows = db.prepare(`
-        SELECT pc.project_id AS projectId, c.id, c.name
+        SELECT pc.project_id AS projectId, c.id, c.name, pc.instructions, pc.opens_at AS opensAt, pc.due_at AS dueAt
         FROM project_classes pc
         JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
-        JOIN ${table} m ON m.class_id = c.id AND m.user_id = ?
+        JOIN ${teacher ? "class_teachers" : "class_students"} m ON m.class_id = c.id AND m.user_id = ?
+        WHERE ? OR pc.opens_at IS NULL OR pc.opens_at <= ?
         ORDER BY c.name COLLATE NOCASE
-    `).all(user.id);
+    `).all(user.id, teacher ? 1 : 0, Date.now());
 
     const published = {};
-    for (const { projectId, id, name } of rows) (published[projectId] ??= []).push({ id, name });
+    for (const { projectId, ...publication } of rows) (published[projectId] ??= []).push(publication);
     return published;
 }
 
@@ -72,9 +85,9 @@ function visibleProjects(user) {
                 SELECT 1 FROM project_classes pc
                 JOIN class_students s ON s.class_id = pc.class_id
                 JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
-                WHERE pc.project_id = p.id AND s.user_id = ?)
+                WHERE pc.project_id = p.id AND s.user_id = ? AND (pc.opens_at IS NULL OR pc.opens_at <= ?))
             ORDER BY p.title COLLATE NOCASE
-        `).all(user.id, user.id);
+        `).all(user.id, user.id, Date.now());
     return rows.map((row) => toProject(row, user.id));
 }
 
@@ -258,6 +271,18 @@ export function projectsRouter({ requireAuth }) {
         `).all(req.user.id).map((r) => r.class_id));
         if (!classIds.every((id) => mine.has(id))) return res.status(404).json({ error: "not_found" });
 
+        // Optional per class: { instructions, opensAt, dueAt }; classes left out keep what they have
+        const settings = req.body?.settings ?? {};
+        if (typeof settings !== "object" || Array.isArray(settings)) return res.status(400).json({ error: "bad_request" });
+        const updates = [];
+        for (const [key, value] of Object.entries(settings)) {
+            const classId = Number(key);
+            if (!classIds.includes(classId)) return res.status(400).json({ error: "bad_request" });
+            const valid = assignmentSettings(value);
+            if (!valid) return res.status(400).json({ error: "invalid_assignment" });
+            updates.push([classId, valid]);
+        }
+
         const wanted = new Set(classIds);
         db.transaction(() => {
             const add = db.prepare(`
@@ -265,10 +290,16 @@ export function projectsRouter({ requireAuth }) {
                 VALUES (?, ?, ?, ?)
             `);
             const remove = db.prepare("DELETE FROM project_classes WHERE project_id = ? AND class_id = ?");
+            const update = db.prepare(`
+                UPDATE project_classes SET instructions = ?, opens_at = ?, due_at = ? WHERE project_id = ? AND class_id = ?
+            `);
             const now = Date.now();
             for (const classId of mine) {
                 if (wanted.has(classId)) add.run(projectId, classId, req.user.id, now);
                 else remove.run(projectId, classId);
+            }
+            for (const [classId, { instructions, opensAt, dueAt }] of updates) {
+                update.run(instructions, opensAt, dueAt, projectId, classId);
             }
         })();
 

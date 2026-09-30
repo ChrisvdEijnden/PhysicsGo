@@ -5,8 +5,24 @@ import type { Result } from "./api";
 import { useAuth } from "./useAuth";
 import type { AuthUser, ClassRef } from "./useAuth";
 
+// A class an assignment is published to, with that class's instructions, when it opens (students
+// don't see it before) and when it's due; times in ms
+export interface Publication extends ClassRef {
+    instructions: string;
+    opensAt: number | null;
+    dueAt: number | null;
+}
+
+export type PublicationSettings = Pick<Publication, "instructions" | "opensAt" | "dueAt">;
+
 // For each project id, the user's own classes it's published to
-export type PublishedMap = Record<string, ClassRef[]>;
+export type PublishedMap = Record<string, Publication[]>;
+
+// The earliest due date of the assignment in the user's classes; null when it has none
+export function dueDate(publications: Publication[] | undefined): number | null {
+    const due = (publications ?? []).map((p) => p.dueAt).filter((d) => d !== null);
+    return due.length > 0 ? Math.min(...due) : null;
+}
 
 // Teachers see every project; students those published to one of their classes and their own
 export function canSeeProject(user: AuthUser | null, published: PublishedMap, project: { id: string; mine: boolean }) {
@@ -37,10 +53,12 @@ export function usePublished() {
         };
     }, [user]);
 
-    // Teachers: open the project to exactly these of their classes
-    const setProjectClasses = useCallback(async (projectId: string, classIds: number[]): Promise<Result> => {
-        const { ok, data } = await api<{ classes: ClassRef[] }>(
-            `/projects/${encodeURIComponent(projectId)}/classes`, "PUT", { classIds }
+    // Teachers: open the project to exactly these of their classes, with the given settings per class
+    const setProjectClasses = useCallback(async (
+        projectId: string, classIds: number[], settings: Record<number, PublicationSettings> = {},
+    ): Promise<Result> => {
+        const { ok, data } = await api<{ classes: Publication[] }>(
+            `/projects/${encodeURIComponent(projectId)}/classes`, "PUT", { classIds, settings }
         );
         if (!ok || !data.classes) return { ok: false, error: errorOf(data) };
         const classes = data.classes;

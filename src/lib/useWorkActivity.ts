@@ -33,6 +33,8 @@ export function useWorkActivity() {
     const byLastEdit = (a: Project, b: Project) =>
         (lastEdit(b)?.getTime() ?? 0) - (lastEdit(a)?.getTime() ?? 0) || a.title.localeCompare(b.title);
     const handedIn = (project: Project) => activity[project.id]?.submittedAt != null;
+    // When the user handed the project in; null when they haven't
+    const submittedAt = (project: Project) => activity[project.id]?.submittedAt ?? null;
 
-    return { lastEdit, byLastEdit, handedIn };
+    return { lastEdit, byLastEdit, handedIn, submittedAt };
 }

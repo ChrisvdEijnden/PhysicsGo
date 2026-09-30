@@ -183,6 +183,37 @@ describe("classes, assignments and work", () => {
         assert.equal(seen.data.submission.work.model, "stop als t >= 1\n");
     });
 
+    test("an assignment can open later and have a due date; hand-ins after it are late", async () => {
+        const hour = 60 * 60 * 1000;
+        const later = { instructions: "Work in pairs", opensAt: Date.now() + hour, dueAt: Date.now() + 2 * hour };
+        assert.equal((await teacher("PUT", "/projects/standard-freefall/classes", {
+            classIds: [classId], settings: { [classId]: { ...later, dueAt: later.opensAt } },
+        })).data.error, "invalid_assignment");
+
+        // Not open yet: students don't see it or can't work on it; the teacher sees the settings
+        const saved = await teacher("PUT", "/projects/standard-freefall/classes", { classIds: [classId], settings: { [classId]: later } });
+        assert.deepEqual(saved.data.classes.map(({ instructions, opensAt, dueAt }) => ({ instructions, opensAt, dueAt })), [later]);
+        assert.ok(!(await student("GET", "/projects")).data.projects.some((p) => p.id === "standard-freefall"));
+        assert.equal((await student("POST", "/work/standard-freefall/submit", { version: 1 })).data.error, "not_published");
+
+        // Open, and already past its due date: handing in still works but counts as late
+        const overdue = { instructions: "Work in pairs", opensAt: Date.now() - 2 * hour, dueAt: Date.now() - hour };
+        await teacher("PUT", "/projects/standard-freefall/classes", { classIds: [classId], settings: { [classId]: overdue } });
+        const published = (await student("GET", "/projects/published")).data.published["standard-freefall"];
+        assert.equal(published[0].dueAt, overdue.dueAt);
+        assert.equal(published[0].instructions, "Work in pairs");
+        assert.equal((await student("POST", "/work/standard-freefall/submit", { version: 1 })).status, 200);
+
+        const progress = (await teacher("GET", `/classes/${classId}/progress`)).data.projects;
+        const freefall = progress.find((p) => p.projectId === "standard-freefall");
+        assert.equal(freefall.dueAt, overdue.dueAt);
+        assert.equal(freefall.students.find((s) => s.id === studentId).late, true);
+
+        const handIns = (await teacher("GET", "/classes/hand-ins")).data.handIns;
+        assert.deepEqual(handIns.map((h) => [h.studentId, h.projectId, h.late]), [[studentId, "standard-freefall", true]]);
+        assert.equal((await student("GET", "/classes/hand-ins")).status, 403);
+    });
+
     test("a teacher can delete a student's account from the class, with all their work", async () => {
         const before = await teacher("GET", `/classes/${classId}`);
         const b = before.data.class.students.find((s) => s.email === "b@school.test");

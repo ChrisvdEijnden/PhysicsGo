@@ -2,15 +2,15 @@ import { useState } from "react";
 
 import PublishIcon16px from "../assets/icons/publish-16px.svg";
 import PublishDialog from "./PublishDialog";
-import type { ClassRef } from "../lib/useAuth";
+import type { Publication, PublicationSettings } from "../lib/usePublished";
 import type { Result } from "../lib/api";
 import { useTranslation } from "../lib/useTranslations";
 
 // Icon button on a project row that opens the publish overlay; for teachers only
 export default function PublishButton({ title, classes, onSave }: {
     title: string;
-    classes: ClassRef[] | undefined;
-    onSave: (classIds: number[]) => Promise<Result>;
+    classes: Publication[] | undefined;
+    onSave: (classIds: number[], settings: Record<number, PublicationSettings>) => Promise<Result>;
 }) {
     const { t } = useTranslation();
     const [open, setOpen] = useState(false);

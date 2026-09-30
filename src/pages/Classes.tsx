@@ -13,6 +13,7 @@ import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import ConfirmButton from "../components/ConfirmButton";
 import { useProjects } from "../lib/useProjects";
+import { formatDueDate } from "../lib/formatDueDate";
 
 interface ClassSummary {
     id: number;
@@ -50,6 +51,8 @@ interface ClassDetail {
 // Where each student is on a project published to the class
 interface ProjectProgress {
     projectId: string;
+    opensAt: number | null;
+    dueAt: number | null;
     students: {
         id: number;
         name: string;
@@ -57,6 +60,8 @@ interface ProjectProgress {
         updatedAt: number | null;
         submittedAt: number | null;
         changedSince: boolean;
+        // Handed in after the due date
+        late: boolean;
     }[];
 }
 
@@ -525,6 +530,14 @@ function Classes() {
                                                             working: count("working"),
                                                             notStarted: count("not_started"),
                                                         })}</p>
+                                                        {(p.dueAt !== null || (p.opensAt !== null && p.opensAt > Date.now())) && (
+                                                            <p className="member-sub">
+                                                                {[
+                                                                    p.opensAt !== null && p.opensAt > Date.now() && t("classes.opensAt", { time: formatDueDate(p.opensAt, language) }),
+                                                                    p.dueAt !== null && t("dashboard.due", { time: formatDueDate(p.dueAt, language) }),
+                                                                ].filter(Boolean).join(" · ")}
+                                                            </p>
+                                                        )}
                                                     </div>
                                                     {p.students.length > 0 && (
                                                         <button type="button" className="class-button" aria-expanded={expanded}
@@ -541,7 +554,7 @@ function Classes() {
                                                                     <p className="member-name">{s.name}</p>
                                                                     <p className="member-sub">
                                                                         {s.submittedAt !== null
-                                                                            ? `${formatDate(s.submittedAt)}${s.changedSince ? ` · ${t("classes.changedSince")}` : ""}`
+                                                                            ? `${formatDate(s.submittedAt)}${s.late ? ` · ${t("dashboard.late")}` : ""}${s.changedSince ? ` · ${t("classes.changedSince")}` : ""}`
                                                                             : s.updatedAt !== null ? formatDate(s.updatedAt) : "—"}
                                                                     </p>
                                                                 </div>

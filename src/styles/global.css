@@ -19,6 +19,8 @@
     --color-shadow: #0F172A0D;
 
     --color-warning-text: #92400E;
+    --color-danger-text: #B42318;
+    --color-danger-bg: #FEE4E2;
 }
 
 [data-theme="dark"] {
@@ -41,6 +43,8 @@
     --color-shadow: rgba(0, 0, 0, 0.45);
 
     --color-warning-text: #FBBF24;
+    --color-danger-text: #FCA5A5;
+    --color-danger-bg: rgba(248, 113, 113, 0.16);
 }
 
 html, body, #root {
@@ -147,15 +151,21 @@ body {
     justify-content: center;
 }
 
-.right-system-actions img {
+/* Icon-only buttons in the top bar (settings, help, and the modeling page's export and duplicate) */
+.right-system-actions img, .nav-icon-btn img {
     width: 20px;
     height: 20px;
 }
 
-.right-system-actions button {
+.right-system-actions button, .nav-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 6px;
     background-color: transparent;
     border: none;
     margin: 0;
+    cursor: pointer;
 }
 
 /* General */

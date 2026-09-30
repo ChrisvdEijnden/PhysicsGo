@@ -9,8 +9,8 @@ import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
-import DownloadIcon16px from "../assets/icons/download-16px.svg";
-import CopyIcon16px from "../assets/icons/copy-16px.svg";
+import DownloadIcon20px from "../assets/icons/download-20px.svg";
+import CopyIcon20px from "../assets/icons/copy-20px.svg";
 
 import Graph, { lineColor } from "../components/Graph.tsx";
 import ExportMenu from "../components/ExportMenu";
@@ -39,7 +39,9 @@ import { authErrorKey } from "../lib/authErrors";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
-import { usePublished } from "../lib/usePublished";
+import { dueDate, usePublished } from "../lib/usePublished";
+import type { Publication } from "../lib/usePublished";
+import { formatDueDate } from "../lib/formatDueDate";
 import PublishDialog from "../components/PublishDialog";
 import ErrorBoundary, { NotFound } from "../components/ErrorBoundary";
 import { LoadingScreen } from "../components/RouteGuards";
@@ -275,6 +277,35 @@ export function PreviewProject() {
 
     if (projects === null || !project) return null;
     return <ModelingWorkspace key={project.id} project={project} opened={NO_WORK} onReload={() => undefined} preview/>;
+}
+
+// For a student: when the assignment is due and what their teacher added for their class
+function AssignmentInfo({ publications }: { publications: Publication[] }) {
+    const { t, language } = useTranslation();
+    const shown = publications.filter((p) => p.dueAt !== null || p.instructions);
+    if (shown.length === 0) return null;
+    return (
+        <div className="assignment-info">
+            {shown.map((p) => {
+                const overdue = p.dueAt !== null && p.dueAt < Date.now();
+                return (
+                    <div key={p.id} className="assignment-info-class">
+                        {p.dueAt !== null && (
+                            <p className={`due-label${overdue ? " overdue" : ""}`}>
+                                {t(overdue ? "dashboard.overdue" : "dashboard.due", { time: formatDueDate(p.dueAt, language) })}
+                                {publications.length > 1 && ` · ${p.name}`}
+                            </p>
+                        )}
+                        {p.instructions && (
+                            <p className="assignment-instructions">
+                                <strong>{t("modeling.teacherInstructions")}</strong> {p.instructions}
+                            </p>
+                        )}
+                    </div>
+                );
+            })}
+        </div>
+    );
 }
 
 function ModelingWorkspace({ project, opened, onReload, review, preview = false }: {
@@ -846,9 +877,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         />
                         {/* Teachers publish projects to their classes; students hand them in */}
                         {project && (
-                            <button type="button" className="insert-media-btn icon-only" onClick={exportAssignment}
+                            <button type="button" className="nav-icon-btn" onClick={exportAssignment}
                                     aria-label={t("modeling.export")} title={t("modeling.exportHint")}>
-                                <img src={DownloadIcon16px} alt=""/>
+                                <img src={DownloadIcon20px} alt=""/>
                             </button>
                         )}
                         {ownAssignment && (
@@ -860,12 +891,13 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             </button>
                         ) : (
                             <button
-                                className="insert-media-btn icon-only"
+                                type="button"
+                                className="nav-icon-btn"
                                 onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
                                 aria-label={t("projectEditor.duplicate")}
                                 title={t("projectEditor.duplicateHint")}
                             >
-                                <img src={CopyIcon16px} alt=""/>
+                                <img src={CopyIcon20px} alt=""/>
                             </button>
                         ))}
                         {isTeacher && project && (
@@ -889,6 +921,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                             {t(sync.version > submission.workVersion ? "handIn.chipChanged" : "handIn.handedInAt", {
                                                 time: new Date(submission.submittedAt).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" }),
                                             })}
+                                            {(dueDate(published[project.id]) ?? Infinity) < submission.submittedAt && ` · ${t("dashboard.late")}`}
                                         </span>
                                     )}
                                     <button className="hand-in-btn" onClick={() => setHandInOpen(true)}>
@@ -912,7 +945,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             <PublishDialog
                                 title={project.title}
                                 current={published[project.id] ?? []}
-                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                onSave={(classIds, settings) => setProjectClasses(project.id, classIds, settings)}
                                 onClose={() => setPublishOpen(false)}
                             />
                         )}
@@ -947,6 +980,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
             <div className="content-modeling" ref={contentRef}>
                 <div className="explanation-panel" style={{ flex: `0 0 ${panelWidths[0]}%` }}>
                     <div className="explanation">
+                        {project && !isTeacher && !review && <AssignmentInfo publications={published[project.id] ?? []}/>}
                         {project && <Markdown text={project.explanation}/>}
                     </div>
                     {project && (

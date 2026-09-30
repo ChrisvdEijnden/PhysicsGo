@@ -206,6 +206,13 @@ const MIGRATIONS = [
         PRIMARY KEY (project_id, media_id)
     );
     `,
+    // 10: publishing to a class makes it an assignment there, with optional instructions for that
+    // class, a moment it opens (students don't see it before) and a due date (later hand-ins are late)
+    `
+    ALTER TABLE project_classes ADD COLUMN instructions TEXT NOT NULL DEFAULT '';
+    ALTER TABLE project_classes ADD COLUMN opens_at INTEGER;
+    ALTER TABLE project_classes ADD COLUMN due_at INTEGER;
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

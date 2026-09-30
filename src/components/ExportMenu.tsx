@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import DownloadIcon16px from "../assets/icons/download-16px.svg";
+import DownloadIcon18px from "../assets/icons/download-18px.svg";
 
 export interface ExportItem {
     label: string;
@@ -31,7 +31,7 @@ export default function ExportMenu({ label, items }: { label: string; items: Exp
     return (
         <details className="export-menu" ref={menu} onKeyDown={(e) => e.key === "Escape" && close()}>
             <summary aria-label={label} title={label}>
-                <img src={DownloadIcon16px} alt=""/>
+                <img src={DownloadIcon18px} alt=""/>
             </summary>
             <div className="export-menu-items">
                 {items.map((item) => (

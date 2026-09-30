@@ -23,14 +23,14 @@ export function readSubmission(userId, projectId) {
     return row ? { work: JSON.parse(row.data), workVersion: row.work_version, submittedAt: row.submitted_at } : null;
 }
 
-// Whether the project is published to one of the student's classes (that isn't archived)
+// Whether the project is an assignment in one of the student's classes (not archived, and open by now)
 function publishedToStudent(userId, projectId) {
     return Boolean(db.prepare(`
         SELECT 1 FROM project_classes pc
         JOIN class_students s ON s.class_id = pc.class_id
         JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
-        WHERE pc.project_id = ? AND s.user_id = ?
-    `).get(projectId, userId));
+        WHERE pc.project_id = ? AND s.user_id = ? AND (pc.opens_at IS NULL OR pc.opens_at <= ?)
+    `).get(projectId, userId, Date.now()));
 }
 
 const mediaIdsOf = (work) => new Set((Array.isArray(work?.media) ? work.media : []).map((m) => m?.id));

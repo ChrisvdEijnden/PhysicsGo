@@ -1106,16 +1106,14 @@
 
 .export-menu summary {
     list-style: none;
-    height: 22px;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
-    padding: 0 5px;
-    border-radius: 6px;
-    background-color: var(--color-brand-subtle-bg);
-    color: var(--color-brand-accent);
-    font-family: "Figtree", sans-serif;
-    font-size: 11px;
-    font-weight: 600;
+    justify-content: center;
+    padding: 0;
+    background-color: transparent;
     cursor: pointer;
 }
 
@@ -1192,12 +1190,35 @@
     width: 44px;
 }
 
-/* Top-bar buttons that show only an icon (their name is the tooltip and aria-label) */
-.insert-media-btn.icon-only {
-    padding: 6px 8px;
+/* The export menu's button on graph and media panels matches the panel's remove (X) button */
+.export-menu summary img {
+    width: 18px;
+    height: 18px;
 }
 
-.insert-media-btn.icon-only img, .export-menu summary img {
-    width: 16px;
-    height: 16px;
+/* Above a student's explanation: when the assignment is due and the teacher's instructions for the class */
+.assignment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background-color: var(--color-brand-subtle-bg);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    color: var(--color-text-primary);
+}
+
+.assignment-info p {
+    margin: 0;
+}
+
+.assignment-info .due-label {
+    font-weight: 600;
+}
+
+.assignment-instructions {
+    white-space: pre-wrap;
 }

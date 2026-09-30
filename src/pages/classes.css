@@ -501,6 +501,67 @@
     accent-color: var(--color-brand);
 }
 
+.dialog.publish-dialog {
+    width: 520px;
+}
+
+.publish-class-block {
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+}
+
+.publish-class-block.checked {
+    border: 2px solid var(--color-brand);
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.publish-class-block.checked .publish-class {
+    border: none;
+    background: none;
+}
+
+/* A class's opening time, due date and instructions for the assignment */
+.publish-settings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 12px;
+    padding: 0 12px 12px;
+}
+
+.publish-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.publish-field.wide {
+    grid-column: 1 / -1;
+}
+
+.publish-field .class-input {
+    width: 100%;
+    box-sizing: border-box;
+    font-weight: 400;
+}
+
+.publish-field textarea {
+    resize: vertical;
+    min-height: 60px;
+    font-family: "Figtree", sans-serif;
+}
+
+@media (max-width: 480px) {
+    .publish-settings {
+        grid-template-columns: 1fr;
+    }
+}
+
 .dialog-actions {
     display: flex;
     justify-content: flex-end;
@@ -608,4 +669,27 @@
     font-family: "Figtree", sans-serif;
     font-size: 12px;
     color: var(--color-text-secondary);
+}
+
+/* Handed in after the due date */
+.class-chip.late {
+    margin-left: 6px;
+    flex-shrink: 0;
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
+}
+
+/* "Due Fri 3 Oct, 09:00"; red once the due date has passed */
+.due-label.overdue, .preset-item-text p.due-label.overdue {
+    color: var(--color-danger-text);
+    font-weight: 600;
+}
+
+.dashboard-empty {
+    margin: 0;
+    padding: 16px 8px;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    color: var(--color-text-tertiary);
 }

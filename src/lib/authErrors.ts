@@ -32,6 +32,7 @@ const MAP: Record<string, TranslationKey> = {
     too_many_media: "projectEditor.errTooManyMedia",
     too_many_projects: "auth.errTooManyProjects",
     invalid_assignment_file: "auth.errInvalidAssignmentFile",
+    invalid_assignment: "publish.errInvalid",
     student_not_found: "classes.errNotFound",
     not_found: "classes.errNotFound",
     forbidden: "classes.errForbidden",

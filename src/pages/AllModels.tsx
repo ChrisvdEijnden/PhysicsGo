@@ -70,7 +70,7 @@ function AllModels() {
                                             <PublishButton
                                                 title={project.title}
                                                 classes={published[project.id]}
-                                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                                onSave={(classIds, settings) => setProjectClasses(project.id, classIds, settings)}
                                             />
                                         </div>
                                     )}
