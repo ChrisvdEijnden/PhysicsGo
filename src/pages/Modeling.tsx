@@ -1,4 +1,3 @@
-import init, { run_with_data as runInterpreter } from "../wasm/interpreterGo";
 import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -42,14 +41,13 @@ import { usePublished } from "../lib/usePublished";
 import PublishDialog from "../components/PublishDialog";
 import ErrorBoundary, { NotFound } from "../components/ErrorBoundary";
 import { LoadingScreen } from "../components/RouteGuards";
+import { useSimulation } from "../lib/simulation";
+import { column, valueAt } from "../lib/samples";
+import type { SampleTable } from "../lib/samples";
+import { describeError } from "../lib/interpreterErrors";
 
-// Start values run once; model rules run every step
-const DEFAULT_START = [
-    "// Initialiseer Parameters",
-    "t = 0",
-    "dt = 0.01 // in seconds",
-    "",
-].join("\n");
+// Start values run once; model rules run every step. The comments are in the interface's language.
+const defaultStart = (comment: string, seconds: string) => `// ${comment}\nt = 0\ndt = 0.01 // ${seconds}\n`;
 const DEFAULT_MODEL = "stop als t >= 10\n";
 
 const DEFAULT_STEPS = 100_000;
@@ -67,22 +65,6 @@ function codeVariables(source: string): string[] {
 
 // How the last run ended, for the line under the code
 type RunStatus = { kind: "stopped" | "limit" | "error"; steps: number; t: number | undefined };
-
-// The first variable, step by step, that has no usable value (NaN or ±Infinity). Measured data is
-// skipped: it has no value outside the measured times on purpose.
-function firstNonFinite(history: Map<string, number>[], order: string[], skip: Set<string>) {
-    for (let step = 0; step < history.length; step++) {
-        const state = history[step];
-        const names = [...order, ...[...state.keys()].filter((name) => !order.includes(name))];
-        for (const name of names) {
-            const value = state.get(name);
-            if (value !== undefined && !skip.has(name) && !Number.isFinite(value)) {
-                return { name, step, t: state.get("t") };
-            }
-        }
-    }
-    return null;
-}
 
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
@@ -367,7 +349,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     // Media that couldn't be stored on the server, and why; it's still kept in this browser
     const [mediaError, setMediaError] = useState<{ name: string; error: string } | null>(null);
     // New work starts from the project's starter code
-    const [start, setStart] = useState(savedWork?.start ?? project?.start ?? DEFAULT_START);
+    const [start, setStart] = useState(
+        savedWork?.start ?? project?.start ?? defaultStart(t("modeling.defaultStartComment"), t("modeling.defaultSeconds"))
+    );
     const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_MODEL);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
     // A new project starts with one empty graph
@@ -377,7 +361,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     const mediaLoaded = useRef(!project);
     const startEditorRef = useRef<CodeEditorHandle>(null);
     const modelEditorRef = useRef<CodeEditorHandle>(null);
-    const [wasm, setWasm] = useState<"loading" | "ready" | "failed">("loading");
+    // Models run in a worker: a long run can be stopped and doesn't freeze the page
+    const simulation = useSimulation();
+    const wasm = simulation.state;
     const wasmReady = wasm === "ready";
 
     // Every change to a project is saved with it and counts as an edit
@@ -482,22 +468,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return Math.min(MAX_STEPS, Math.max(1, n));
     }
 
-    // Without the interpreter nothing can run, so a failed load is said rather than leaving Run greyed out
-    useEffect(() => {
-        init().then(() => setWasm("ready"), () => setWasm("failed"));
-    }, []);
-
-    interface RunResult {
-        ok: boolean;
-        // The state after the start values, then one entry per step: every variable's value after that step
-        history: Map<string, number>[];
-        errors: { line: number; column: number; message: string; block: string }[];
-        // A stop condition ended the run, rather than the step limit
-        stopped: boolean;
-    }
-
-    // Results of the last run; the chart stays empty until the model has run
-    const [history, setHistory] = useState<Map<string, number>[] | null>(null);
+    // Results of the last run (the state after the start values, then after every step);
+    // the chart stays empty until the model has run
+    const [history, setHistory] = useState<SampleTable | null>(null);
     const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
     const [nonFinite, setNonFinite] = useState<{ name: string; step: number; t: number | undefined } | null>(null);
 
@@ -507,7 +480,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     // Variables from the code and the measured data, plus any the last run produced that neither shows anymore
     const variables = useMemo(() => {
         const names = codeVariables(`${start}\n${model}`);
-        for (const name of [...measuredData.map((s) => s.name), ...(history?.[0]?.keys() ?? [])]) {
+        for (const name of [...measuredData.map((s) => s.name), ...(history?.names ?? [])]) {
             if (!names.includes(name)) names.push(name);
         }
         return names;
@@ -528,31 +501,37 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return [];
     }, [mediaItems]);
 
-    function runSimulation() {
-        if (!wasmReady) return;
+    async function runSimulation() {
+        if (!wasmReady || simulation.running) return;
         startEditorRef.current?.clearErrors();
         modelEditorRef.current?.clearErrors();
+        setRunStatus(null);
+        setNonFinite(null);
 
-        const result = runInterpreter(start, model, stepCount(), measuredData) as RunResult;
-        const last = result.history[result.history.length - 1];
-        const status = { steps: Math.max(0, result.history.length - 1), t: last?.get("t") };
+        const result = await simulation.run(start, model, stepCount(), measuredData);
+        if (!result) return; // stopped
+        const samples = result.samples;
+        const status = { steps: Math.max(0, samples.length - 1), t: valueAt(samples, "t", samples.length - 1) };
 
         if (!result.ok) {
             setRunStatus({ kind: "error", ...status });
-            setNonFinite(null);
             // Each error's line is counted in its own block, which is its own editor
             const inBlock = (block: string): InterpreterError[] => result.errors
                 .filter((e) => e.block === block)
-                .map((e) => ({ line: e.line, column: e.column, message: e.message }));
+                .map((e) => ({ line: e.line, column: e.column, message: describeError(e, t) }));
             startEditorRef.current?.setErrors(inBlock("start"));
             modelEditorRef.current?.setErrors(inBlock("model"));
             return;
         }
 
-        setHistory(result.history);
+        setHistory(samples);
         setRunStatus({ kind: result.stopped ? "stopped" : "limit", ...status });
-        setNonFinite(firstNonFinite(result.history, codeVariables(`${start}\n${model}`), new Set(measuredData.map((s) => s.name))));
+        const found = result.firstNonFinite;
+        setNonFinite(found && { name: found.name, step: found.step, t: column(samples, "t")?.[found.step] });
     }
+
+    // Ctrl+Enter runs the model (⌘+Enter on a Mac)
+    const shortcutKeys = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘ Enter" : "Ctrl+Enter";
 
     function describeRun(status: RunStatus) {
         const steps = status.steps.toLocaleString(language);
@@ -988,15 +967,22 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button
-                                className="play-btn"
-                                aria-label={t("modeling.runSimulation")}
-                                title={wasm === "loading" ? t("modeling.wasmLoading") : t("modeling.runSimulation")}
-                                onClick={runSimulation}
-                                disabled={!wasmReady}
-                            >
-                                <img src={PlayIcon20px} alt=""/>
-                            </button>
+                            {simulation.running ? (
+                                <button className="play-btn" aria-label={t("modeling.stopRun")} title={t("modeling.stopRun")}
+                                        onClick={simulation.stop}>
+                                    <span className="stop-icon" aria-hidden="true"/>
+                                </button>
+                            ) : (
+                                <button
+                                    className="play-btn"
+                                    aria-label={t("modeling.runSimulation")}
+                                    title={wasm === "loading" ? t("modeling.wasmLoading") : t("modeling.runShortcut", { keys: shortcutKeys })}
+                                    onClick={runSimulation}
+                                    disabled={!wasmReady}
+                                >
+                                    <img src={PlayIcon20px} alt=""/>
+                                </button>
+                            )}
                         </div>
                         {/* Start values run once before the first step; model rules run every step */}
                         <div className="code-block code-block-start">
@@ -1034,6 +1020,11 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         </span>
                         {/* How the last run ended, so "nothing happened" always has an explanation */}
                         {wasm === "failed" && <p className="run-status warning" role="alert">{t("modeling.wasmFailed")}</p>}
+                        {simulation.running && (
+                            <p className="run-status" role="status">
+                                {t("modeling.running", { steps: simulation.progress.toLocaleString(language) })}
+                            </p>
+                        )}
                         {runStatus && (
                             <p className={`run-status${runStatus.kind === "stopped" ? "" : " warning"}`} role="status">
                                 {describeRun(runStatus)}

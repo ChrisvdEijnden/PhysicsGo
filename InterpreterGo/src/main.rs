@@ -30,15 +30,12 @@ stop als t >= 10
         return;
     }
 
+    let column = |name| result.column(name).unwrap_or(&[]);
+    let (t, x, v) = (column("t"), column("x"), column("v"));
     println!("{:>8} {:>10} {:>10}", "t", "x", "v");
-    for stap in &result.history {
-        println!(
-            "{:>8.3} {:>10.4} {:>10.4}",
-            stap.get("t").unwrap_or(&0.0),
-            stap.get("x").unwrap_or(&0.0),
-            stap.get("v").unwrap_or(&0.0)
-        );
+    for step in 0..result.rows() {
+        println!("{:>8.3} {:>10.4} {:>10.4}", t[step], x[step], v[step]);
     }
 
-    println!("\nnumber of timesteps: {}", result.history.len());
+    println!("\nnumber of timesteps: {}", result.rows());
 }

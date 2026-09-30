@@ -14,6 +14,8 @@ export default defineConfig(() => ({
     ],
     // Shown on the sign-in pages, so the version is only kept in package.json
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },
+    // The simulation worker imports the interpreter, so it's built as an ES module
+    worker: { format: "es" as const },
     clearScreen: false,
     server: {
         port: 1420,

@@ -11,6 +11,7 @@ import type { LengthUnit, MediaPoint, SavedMedia } from "../data/Projects.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { realPoints, unitsPerPixel } from "../lib/calibration";
 import ExportMenu from "./ExportMenu";
+import { tableFromRows } from "../lib/samples";
 import { toCsv } from "../lib/csv";
 import type { CsvCell } from "../lib/csv";
 import { downloadFile, fileNameFor } from "../lib/download";
@@ -282,7 +283,7 @@ export default function MediaTile({
 
     // Each plotted point as a sample for the graph (in calibrated units); photos have no time
     const graphSamples = useMemo(
-        () => realPoints(item).map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]])),
+        () => tableFromRows(realPoints(item).map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]]))),
         [item]
     );
 

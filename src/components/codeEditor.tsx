@@ -108,22 +108,65 @@ definePhysicsGoThemes();
 // so the cursor and selections line up with the text
 document.fonts?.load('13px "JetBrains Mono Variable"').then(() => monaco.editor.remeasureFonts(), () => undefined);
 
-function definePhysicsGoLanguage() {
-    monaco.languages.register({ id: LANGUAGE_ID });
+interface LanguageInfo {
+    functions: { name: string; args: string }[];
+    keywords: string[];
+    constants: string[];
+}
 
+// Highlighting for the modeling language; the keywords, functions and constants come from the
+// interpreter itself, so the editor never disagrees with what actually runs
+function setTokens(info: LanguageInfo) {
     monaco.languages.setMonarchTokensProvider(LANGUAGE_ID, {
-        keywords: ["als", "stop"],
-        builtins: ["sin", "cos", "sqrt"],
+        keywords: info.keywords,
+        builtins: info.functions.map((f) => f.name),
+        constants: info.constants,
         tokenizer: {
             root: [
                 [/\/\/.*$/, "comment"],
                 [/[a-zA-Z_]\w*(?=\s*\()/, { cases: { "@builtins": "predefined", "@default": "identifier" } }],
-                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
+                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@constants": "number", "@default": "identifier" } }],
                 [/\d+(\.\d+)?/, "number"],
                 [/<=|>=|==|!=/, "operator"],
                 [/[+\-*/^=<>]/, "operator"],
-                [/[():]/, "delimiter"],
+                [/[(),:]/, "delimiter"],
             ],
+        },
+    });
+}
+
+let languageInfo: LanguageInfo = { functions: [], keywords: [], constants: [] };
+
+function definePhysicsGoLanguage() {
+    monaco.languages.register({ id: LANGUAGE_ID });
+    setTokens(languageInfo);
+
+    // Suggestions: the language's functions (with their brackets), keywords and constants, and the
+    // variables the code in this editor already uses
+    monaco.languages.registerCompletionItemProvider(LANGUAGE_ID, {
+        provideCompletionItems(model, position) {
+            const word = model.getWordUntilPosition(position);
+            const range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+            const { Function, Keyword, Constant, Variable } = monaco.languages.CompletionItemKind;
+            const variables = new Set(model.getValue().replace(/\/\/.*$/gm, "").match(/[A-Za-z_]\w*/g) ?? []);
+            for (const known of [...languageInfo.keywords, ...languageInfo.functions.map((f) => f.name), word.word]) {
+                variables.delete(known);
+            }
+            return {
+                suggestions: [
+                    ...languageInfo.functions.map((f) => ({
+                        label: f.name,
+                        kind: Function,
+                        detail: `${f.name}(${f.args === "1" ? "x" : f.args === "2" ? "a, b" : "a, b, …"})`,
+                        insertText: `${f.name}($0)`,
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        range,
+                    })),
+                    ...languageInfo.keywords.map((k) => ({ label: k, kind: Keyword, insertText: k, range })),
+                    ...languageInfo.constants.map((c) => ({ label: c, kind: Constant, insertText: c, range })),
+                    ...[...variables].map((v) => ({ label: v, kind: Variable, insertText: v, range })),
+                ],
+            };
         },
     });
 
@@ -131,9 +174,23 @@ function definePhysicsGoLanguage() {
         comments: { lineComment: "//" },
         brackets: [["(", ")"]],
         autoClosingPairs: [{ open: "(", close: ")" }],
+        // Enter after "als ...:" indents the next line; typing "anders" moves that line back out
+        indentationRules: {
+            increaseIndentPattern: /^.*:\s*(\/\/.*)?$/,
+            decreaseIndentPattern: /^\s*(anders|else)\b.*$/,
+        },
     });
 }
 definePhysicsGoLanguage();
+
+// The interpreter's built-ins, read once from the WebAssembly module (the models themselves run in a worker)
+import("../wasm/interpreterGo").then(async (wasm) => {
+    await wasm.default();
+    languageInfo = wasm.language() as LanguageInfo;
+    setTokens(languageInfo);
+}).catch(() => {
+    // Without it, code is still editable; only highlighting and suggestions of built-ins are missing
+});
 
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
     ({ value, onChange, language = LANGUAGE_ID, onRun, readOnly = false }, ref) => {

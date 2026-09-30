@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import LineChart, { formatTick } from "./lineChart.tsx";
 import type { ChartLine, ChartMarkers, ChartPoint, ChartRow } from "./lineChart.tsx";
 import type { YLine } from "../data/Projects.tsx";
+import { column } from "../lib/samples";
+import type { SampleTable } from "../lib/samples";
 import { useTranslation } from "../lib/useTranslations";
 
 // Line colours, readable on light and dark backgrounds
@@ -34,7 +36,7 @@ export default function Graph({
     markersFor,
     runPrompt,
 }: {
-    samples: ReadonlyArray<ReadonlyMap<string, number>> | null;
+    samples: SampleTable | null;
     variables: string[];
     x: string;
     ys: YLine[];
@@ -53,13 +55,16 @@ export default function Graph({
 
     const rows = useMemo((): ChartRow[] => {
         if (!samples || !x || ys.length === 0) return [];
+        const xs = column(samples, x);
+        if (!xs) return [];
+        const yColumns = ys.map((y) => column(samples, y.name));
         const stride = Math.ceil(samples.length / MAX_ROWS);
         const result: ChartRow[] = [];
         for (let i = 0; i < samples.length; i += stride) {
-            const xValue = finite(samples[i].get(x));
+            const xValue = finite(xs[i]);
             if (xValue === undefined) continue;
             const row: ChartRow = { x: xValue };
-            ys.forEach((y, j) => { row[`s${j}`] = finite(samples[i].get(y.name)); });
+            yColumns.forEach((values, j) => { row[`s${j}`] = finite(values?.[i]); });
             result.push(row);
         }
         return result;

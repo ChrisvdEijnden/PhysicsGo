@@ -1,6 +1,7 @@
 // Newlines end statements, so they're not part of the implicit whitespace.
 // indent.rs has already turned indentation into braces and removed comments;
 // COMMENT stays so the grammar also accepts hand-written braced source.
+// Keywords are Dutch, with English aliases: als/if, anders/else, stop, en/and, of/or, niet/not.
 WHITESPACE = _{ " " | "\t" }
 COMMENT    = _{ "//" ~ (!NEWLINE ~ ANY)* }
 
@@ -11,14 +12,28 @@ statement = { if_stmt | stop_stmt | assignment }
 assignment = { identifier ~ assign_op ~ expr }
 assign_op  = { "+=" | "-=" | "*=" | "/=" | "=" }
 
-if_stmt = { if_kw ~ condition ~ ":" ~ "{" ~ NEWLINE+ ~ (statement ~ NEWLINE+)* ~ "}" }
-if_kw   = @{ "als" ~ !ident_char }
+// als ...: / anders als ...: / anders:, each followed by an indented block (braces after indent.rs)
+if_stmt      = { if_kw ~ condition ~ ":" ~ block ~ (NEWLINE+ ~ else_if_clause)* ~ (NEWLINE+ ~ else_clause)? }
+else_if_clause = { else_kw ~ if_kw ~ condition ~ ":" ~ block }
+else_clause  = { else_kw ~ ":" ~ block }
+block        = { "{" ~ NEWLINE+ ~ (statement ~ NEWLINE+)* ~ "}" }
 
 stop_stmt = { stop_kw ~ if_kw ~ condition }
-stop_kw   = @{ "stop" ~ !ident_char }
 
-condition     = { expr ~ comparison_op ~ expr }
+// Conditions combine with niet, en and of (in that order of binding) and parentheses
+condition   = { or_cond }
+or_cond     = { and_cond ~ (or_kw ~ and_cond)* }
+and_cond    = { not_cond ~ (and_kw ~ not_cond)* }
+not_cond    = { not_kw ~ not_cond | comparison | "(" ~ condition ~ ")" }
+comparison  = { expr ~ comparison_op ~ expr }
 comparison_op = { "<=" | ">=" | "==" | "!=" | "<" | ">" }
+
+if_kw   = @{ ("als" | "if") ~ !ident_char }
+else_kw = @{ ("anders" | "else") ~ !ident_char }
+stop_kw = @{ "stop" ~ !ident_char }
+and_kw  = @{ ("en" | "and") ~ !ident_char }
+or_kw   = @{ ("of" | "or") ~ !ident_char }
+not_kw  = @{ ("niet" | "not") ~ !ident_char }
 
 expr = { term ~ ((add | sub) ~ term)* }
 add  = { "+" }
@@ -37,7 +52,7 @@ pow_op = { "^" }
 
 atom = { function_call | number | identifier | "(" ~ expr ~ ")" }
 
-function_call = { identifier ~ "(" ~ expr ~ ")" }
+function_call = { identifier ~ "(" ~ (expr ~ ("," ~ expr)*)? ~ ")" }
 
 // 12, 0.5, .5, 3. and scientific notation such as 6.674e-11
 number = @{
@@ -46,5 +61,7 @@ number = @{
 }
 
 identifier = @{ !keyword ~ (ASCII_ALPHA | "_") ~ ident_char* }
-keyword    = _{ ("als" | "stop") ~ !ident_char }
+keyword    = _{
+    ("als" | "if" | "anders" | "else" | "stop" | "en" | "and" | "of" | "or" | "niet" | "not") ~ !ident_char
+}
 ident_char = _{ ASCII_ALPHANUMERIC | "_" }

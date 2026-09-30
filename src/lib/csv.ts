@@ -1,4 +1,5 @@
 import type { Language } from "./useLanguage";
+import type { SampleTable } from "./samples";
 
 export type CsvCell = number | string | null | undefined;
 
@@ -19,10 +20,9 @@ export function toCsv(headers: string[], rows: CsvCell[][], language: Language):
 }
 
 // Every variable of a run at every step, in the given column order (other variables after it)
-export function runCsv(history: ReadonlyArray<ReadonlyMap<string, number>>, order: string[], language: Language): string {
-    const names = [...order.filter((name) => history[0]?.has(name))];
-    for (const state of history) {
-        for (const name of state.keys()) if (!names.includes(name)) names.push(name);
-    }
-    return toCsv(names, history.map((state) => names.map((name) => state.get(name))), language);
+export function runCsv(run: SampleTable, order: string[], language: Language): string {
+    const names = [...order.filter((name) => run.names.includes(name)), ...run.names.filter((name) => !order.includes(name))];
+    const columns = names.map((name) => run.columns[run.names.indexOf(name)]);
+    const rows = Array.from({ length: run.length }, (_, i) => columns.map((values) => values[i]));
+    return toCsv(names, rows, language);
 }

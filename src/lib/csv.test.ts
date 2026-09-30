@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { runCsv, toCsv } from "./csv";
+import { tableFromRows } from "./samples";
 
 describe("toCsv", () => {
     it("uses commas and decimal points in English", () => {
@@ -22,10 +23,10 @@ describe("toCsv", () => {
 
 describe("runCsv", () => {
     it("puts the code's variables first and adds the others the run produced", () => {
-        const history = [
+        const history = tableFromRows([
             new Map([["x", 1], ["t", 0], ["x_video1", NaN]]),
             new Map([["x", 2], ["t", 1], ["x_video1", 5]]),
-        ];
+        ]);
         expect(runCsv(history, ["t", "x"], "en")).toBe("﻿t,x,x_video1\r\n0,1,\r\n1,2,5\r\n");
     });
 });
