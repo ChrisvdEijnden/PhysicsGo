@@ -1,4 +1,7 @@
-.content-modeling {
+/* The modeling page. Every rule is scoped with :where(.modeling-page), which only applies it
+   inside that page and leaves its specificity as it was. */
+
+:where(.modeling-page) .content-modeling {
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -14,7 +17,7 @@
     transition: background-color 0.2s ease;
 }
 
-.hand-in-btn {
+:where(.modeling-page) .hand-in-btn {
     box-sizing: border-box;
     width: fit-content;
     height: 26px;
@@ -31,28 +34,28 @@
     cursor: pointer;
 }
 
-.hand-in-btn img {
+:where(.modeling-page) .hand-in-btn img {
     display: inline-block;
     transition: transform 0.3s ease;
 }
 
-.hand-in-btn:hover img {
+:where(.modeling-page) .hand-in-btn:hover img {
     transform: translateX(4px);
 }
 
-.hand-in-btn p {
+:where(.modeling-page) .hand-in-btn p {
     font-size: 12px;
     font-weight: 600;
     font-family: "Figtree", sans-serif;
     margin: 0;
 }
 
-.hand-in-btn img {
+:where(.modeling-page) .hand-in-btn img {
     width: 14px;
     height: 14px;
 }
 
-.explanation-panel, .code-panel, .analysis-panel {
+:where(.modeling-page) .explanation-panel, :where(.modeling-page) .code-panel, :where(.modeling-page) .analysis-panel {
     display: flex;
     flex-direction: column;
     padding: 12px;
@@ -70,7 +73,7 @@
 /* Draggable boundary between panels. No visible button/handle by default —
    only the cursor changes on hover, plus a faint centered line while the
    pointer is over it or actively dragging, as a light affordance. */
-.panel-divider {
+:where(.modeling-page) .panel-divider {
     flex: 0 0 8px;
     align-self: stretch;
     position: relative;
@@ -79,7 +82,7 @@
     background: transparent;
 }
 
-.panel-divider::after {
+:where(.modeling-page) .panel-divider::after {
     content: "";
     position: absolute;
     top: 12px;
@@ -92,18 +95,18 @@
     transition: background-color 0.15s ease;
 }
 
-.panel-divider:hover::after,
-.panel-divider.dragging::after {
+:where(.modeling-page) .panel-divider:hover::after,
+:where(.modeling-page) .panel-divider.dragging::after {
     background-color: var(--color-brand);
 }
 
 /* Folding the explanation away: a button in its top-right corner; folded, the panel is a narrow
    strip with the button and the word "Uitleg" */
-.explanation-panel {
+:where(.modeling-page) .explanation-panel {
     position: relative;
 }
 
-.panel-toggle {
+:where(.modeling-page) .panel-toggle {
     position: absolute;
     top: 20px;
     right: 20px;
@@ -123,20 +126,20 @@
     cursor: pointer;
 }
 
-.panel-toggle:hover {
+:where(.modeling-page) .panel-toggle:hover {
     background-color: var(--color-brand-subtle-bg);
 }
 
-.panel-toggle img {
+:where(.modeling-page) .panel-toggle img {
     width: 16px;
     height: 16px;
 }
 
-.panel-toggle-label {
+:where(.modeling-page) .panel-toggle-label {
     writing-mode: vertical-rl;
 }
 
-.explanation-panel.collapsed {
+:where(.modeling-page) .explanation-panel.collapsed {
     flex: 0 0 44px;
     /* The same space the drag handle takes when it's open */
     margin-right: 8px;
@@ -144,16 +147,16 @@
     align-items: center;
 }
 
-.explanation-panel.collapsed .panel-toggle {
+:where(.modeling-page) .explanation-panel.collapsed .panel-toggle {
     position: static;
     padding: 8px 4px;
 }
 
-.explanation-panel.collapsed .explanation, .explanation-panel.collapsed .explanation-footer {
+:where(.modeling-page) .explanation-panel.collapsed .explanation, :where(.modeling-page) .explanation-panel.collapsed .explanation-footer {
     display: none;
 }
 
-.explanation {
+:where(.modeling-page) .explanation {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -167,16 +170,20 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.explanation p {
+:where(.modeling-page) .explanation p {
     font-size: 13px;
     font-weight: 400;
     font-family: "Figtree", sans-serif;
     color: var(--color-text-primary);
-    margin: 0;
     line-height: 1.45;
 }
 
-.analysis-stack {
+/* The explanation's own paragraphs sit tight; the Markdown's keep their spacing (markdown.css) */
+:where(.modeling-page) .explanation p:where(:not(.markdown p)) {
+    margin: 0;
+}
+
+:where(.modeling-page) .analysis-stack {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -185,7 +192,7 @@
     min-height: 0;
 }
 
-.analysis {
+:where(.modeling-page) .analysis {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -202,7 +209,7 @@
 /* Draggable boundary between stacked analysis panels (chart + inserted
    media). Same invisible-until-hovered treatment as .panel-divider, just
    rotated onto the vertical axis. */
-.panel-divider-row {
+:where(.modeling-page) .panel-divider-row {
     flex: 0 0 8px;
     align-self: stretch;
     position: relative;
@@ -211,7 +218,7 @@
     background: transparent;
 }
 
-.panel-divider-row::after {
+:where(.modeling-page) .panel-divider-row::after {
     content: "";
     position: absolute;
     left: 12px;
@@ -224,12 +231,12 @@
     transition: background-color 0.15s ease;
 }
 
-.panel-divider-row:hover::after,
-.panel-divider-row.dragging::after {
+:where(.modeling-page) .panel-divider-row:hover::after,
+:where(.modeling-page) .panel-divider-row.dragging::after {
     background-color: var(--color-brand);
 }
 
-.analysis-media {
+:where(.modeling-page) .analysis-media {
     position: relative;
     display: flex;
     flex-direction: column;
@@ -242,7 +249,7 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.analysis-media-actions {
+:where(.modeling-page) .analysis-media-actions {
     position: absolute;
     top: 8px;
     left: 8px;
@@ -256,11 +263,11 @@
     pointer-events: none;
 }
 
-.analysis-media-actions > * {
+:where(.modeling-page) .analysis-media-actions > * {
     pointer-events: auto;
 }
 
-.analysis-media-tag {
+:where(.modeling-page) .analysis-media-tag {
     font-family: "Figtree", sans-serif;
     font-size: 11px;
     font-weight: 600;
@@ -271,7 +278,7 @@
     padding: 2px 8px;
 }
 
-.analysis-media-remove, .analysis-view-toggle {
+:where(.modeling-page) .analysis-media-remove, :where(.modeling-page) .analysis-view-toggle {
     box-sizing: border-box;
     width: 18px;
     height: 18px;
@@ -287,13 +294,13 @@
     cursor: pointer;
 }
 
-.analysis-media-remove img, .analysis-view-toggle img {
+:where(.modeling-page) .analysis-media-remove img, :where(.modeling-page) .analysis-view-toggle img {
     width: 18px;
     height: 18px;
     margin: 0;
 }
 
-.analysis-media-content {
+:where(.modeling-page) .analysis-media-content {
     width: 100%;
     height: 100%;
     flex: 1;
@@ -301,7 +308,7 @@
     object-fit: contain;
 }
 
-.analysis-media-file {
+:where(.modeling-page) .analysis-media-file {
     flex: 1;
     min-height: 0;
     display: flex;
@@ -320,7 +327,7 @@
 
 /* ---------- code-panel ---------- */
 
-.code-panel-actions, .analysis-panel-actions {
+:where(.modeling-page) .code-panel-actions, :where(.modeling-page) .analysis-panel-actions {
     position: absolute;
     top: 8px;
     right: 8px;
@@ -332,7 +339,7 @@
 }
 
 
-.chart-area {
+:where(.modeling-page) .chart-area {
     width: 100%;
     height: 100%;
     flex: 1;
@@ -340,12 +347,12 @@
     touch-action: none;
 }
 
-.play-btn:disabled {
+:where(.modeling-page) .play-btn:disabled {
     opacity: 0.3;
     cursor: default;
 }
 
-.play-btn {
+:where(.modeling-page) .play-btn {
     box-sizing: border-box;
     width: 20px;
     height: 20px;
@@ -358,7 +365,7 @@
     border: none;
 }
 
-.insert-media-btn, .insert-points-btn {
+:where(.modeling-page) .insert-media-btn, :where(.modeling-page) .insert-points-btn {
     box-sizing: border-box;
     height: 26px;
     width: fit-content;
@@ -374,17 +381,17 @@
     transition: background-color 0.2s ease;
 }
 
-.insert-media-btn:disabled, .insert-points-btn:disabled {
+:where(.modeling-page) .insert-media-btn:disabled, :where(.modeling-page) .insert-points-btn:disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-.insert-media-btn img, .insert-points-btn img {
+:where(.modeling-page) .insert-media-btn img, :where(.modeling-page) .insert-points-btn img {
     width: 14px;
     height: 14px;
 }
 
-.insert-media-btn p, .insert-points-btn p {
+:where(.modeling-page) .insert-media-btn p, :where(.modeling-page) .insert-points-btn p {
     margin: 0;
     font-size: 12px;
     font-weight: 500;
@@ -393,7 +400,7 @@
     white-space: nowrap;
 }
 
-.code {
+:where(.modeling-page) .code {
     flex: 1;
     min-height: 0;
     position: relative;
@@ -412,19 +419,13 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.code-editor {
+:where(.modeling-page) .code-editor {
     display: flex;
     flex: 1;
     min-height: 0;
 }
 
-.monaco-container {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-}
-
-.steps-input {
+:where(.modeling-page) .steps-input {
     border-radius: 8px;
     border: 2px solid var(--color-border);
     padding: 2px 3px;
@@ -438,11 +439,11 @@
     background-color: var(--color-bg-surface);
 }
 
-.steps-input:focus {
+:where(.modeling-page) .steps-input:focus {
     border-color: var(--color-brand-accent);
 }
 
-.code-footer, .explanation-footer, .analysis-footer  {
+:where(.modeling-page) .code-footer, :where(.modeling-page) .explanation-footer, :where(.modeling-page) .analysis-footer  {
     flex-shrink: 0;
     display: flex;
     flex-direction: row;
@@ -453,31 +454,31 @@
     color: var(--color-text-secondary);
 }
 
-.analysis-footer {
+:where(.modeling-page) .analysis-footer {
     padding: 8px;
 }
 
-.code-footer {
+:where(.modeling-page) .code-footer {
     flex-wrap: wrap;
 }
 
 /* How the last run ended, next to the steps field */
-.run-status {
+:where(.modeling-page) .run-status {
     flex: 1 1 220px;
     margin: 0;
     line-height: 1.4;
     color: var(--color-text-secondary);
 }
 
-.run-status.warning {
+:where(.modeling-page) .run-status.warning {
     color: var(--color-warning-text);
 }
 
-.code-footer strong, .analysis-footer strong {
+:where(.modeling-page) .code-footer strong, :where(.modeling-page) .analysis-footer strong {
     font-weight: 600;
 }
 
-.analysis-media-play {
+:where(.modeling-page) .analysis-media-play {
     box-sizing: border-box;
     width: 20px;
     height: 20px;
@@ -491,19 +492,19 @@
     cursor: pointer;
 }
 
-.analysis-media-play img {
+:where(.modeling-page) .analysis-media-play img {
     width: 20px;
     height: 20px;
     margin-left: 1px;
 }
 
-.pause-icon {
+:where(.modeling-page) .pause-icon {
     display: inline-flex;
     gap: 4px;
 }
 
-.pause-icon::before,
-.pause-icon::after {
+:where(.modeling-page) .pause-icon::before,
+:where(.modeling-page) .pause-icon::after {
     content: "";
     width: 3px;
     height: 18px;
@@ -511,7 +512,7 @@
     border-radius: 1px;
 }
 
-.right-btns {
+:where(.modeling-page) .right-btns {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -520,13 +521,13 @@
     justify-content: flex-end;
 }
 /* Chart footer: axis pickers on one row, domain and range on the next */
-.chart-footer {
+:where(.modeling-page) .chart-footer {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
 }
 
-.chart-footer-row {
+:where(.modeling-page) .chart-footer-row {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -534,7 +535,7 @@
     min-width: 0;
 }
 
-.axis-picker {
+:where(.modeling-page) .axis-picker {
     flex: 1;
     min-width: 0;
     display: flex;
@@ -543,7 +544,7 @@
     gap: 6px;
 }
 
-.axis-select {
+:where(.modeling-page) .axis-select {
     flex: 1;
     min-width: 0;
     height: 24px;
@@ -558,30 +559,30 @@
     cursor: pointer;
 }
 
-.axis-select:focus {
+:where(.modeling-page) .axis-select:focus {
     outline: none;
     border-color: var(--color-brand);
 }
 
-.chart-area {
+:where(.modeling-page) .chart-area {
     position: relative;
 }
 
 /* Chart lines and labels follow the light/dark theme */
-.chart-area .recharts-cartesian-grid line {
+:where(.modeling-page) .chart-area .recharts-cartesian-grid line {
     stroke: var(--color-border);
 }
 
-.chart-area .recharts-cartesian-axis-line,
-.chart-area .recharts-cartesian-axis-tick-line {
+:where(.modeling-page) .chart-area .recharts-cartesian-axis-line,
+:where(.modeling-page) .chart-area .recharts-cartesian-axis-tick-line {
     stroke: var(--color-text-tertiary);
 }
 
-.chart-area .recharts-cartesian-axis-tick-value {
+:where(.modeling-page) .chart-area .recharts-cartesian-axis-tick-value {
     fill: var(--color-text-secondary);
 }
 
-.chart-empty {
+:where(.modeling-page) .chart-empty {
     position: absolute;
     inset: 0;
     z-index: 1;
@@ -599,14 +600,14 @@
 
 /* Plotting points on media: the SVG covers the media exactly (both use "contain"), so its
    viewBox is the media's own pixels */
-.media-stage {
+:where(.modeling-page) .media-stage {
     position: relative;
     flex: 1;
     min-height: 0;
     display: flex;
 }
 
-.media-points {
+:where(.modeling-page) .media-points {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -614,75 +615,75 @@
     pointer-events: none;
 }
 
-.media-points.plotting {
+:where(.modeling-page) .media-points.plotting {
     pointer-events: auto;
     cursor: crosshair;
     /* Dragging a point on a touch screen mustn't scroll the page */
     touch-action: none;
 }
 
-.media-point {
+:where(.modeling-page) .media-point {
     fill: #F59E0B;
     stroke: #FFFFFF;
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
 }
 
-.media-point.current {
+:where(.modeling-page) .media-point.current {
     fill: var(--color-brand);
 }
 
 /* While plotting, points can be picked up and moved */
-.media-points.plotting .media-point {
+:where(.modeling-page) .media-points.plotting .media-point {
     cursor: grab;
 }
 
-.media-points.plotting .media-point:active {
+:where(.modeling-page) .media-points.plotting .media-point:active {
     cursor: grabbing;
 }
 
-.media-point.selected {
+:where(.modeling-page) .media-point.selected {
     stroke: var(--color-brand);
     stroke-width: 3px;
 }
 
-.media-point:focus {
+:where(.modeling-page) .media-point:focus {
     outline: none;
 }
 
-.media-point:focus-visible {
+:where(.modeling-page) .media-point:focus-visible {
     stroke: var(--color-brand);
     stroke-width: 4px;
 }
 
-.media-points-path {
+:where(.modeling-page) .media-points-path {
     fill: none;
     stroke: #F59E0B;
     stroke-opacity: 0.6;
 }
 
-.insert-points-btn.active {
+:where(.modeling-page) .insert-points-btn.active {
     background-color: var(--color-brand);
 }
 
-.insert-points-btn.active p {
+:where(.modeling-page) .insert-points-btn.active p {
     color: var(--color-on-brand);
 }
 
 /* Footer of a media panel: frame and time on the left, point controls on the right.
    When the panel is too narrow, the controls wrap onto their own line, starting at the left. */
-.media-footer {
+:where(.modeling-page) .media-footer {
     flex-wrap: wrap;
     justify-content: space-between;
     row-gap: 4px;
     column-gap: 12px;
 }
 
-.media-footer-time {
+:where(.modeling-page) .media-footer-time {
     white-space: nowrap;
 }
 
-.points-bar {
+:where(.modeling-page) .points-bar {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -690,14 +691,14 @@
     white-space: nowrap;
 }
 
-.points-step {
+:where(.modeling-page) .points-step {
     display: flex;
     align-items: center;
     gap: 4px;
     margin: 0 4px 0 6px;
 }
 
-.points-step input {
+:where(.modeling-page) .points-step input {
     width: 52px;
     height: 22px;
     padding: 0 6px;
@@ -712,19 +713,19 @@
     -moz-appearance: textfield;
 }
 
-.points-step input::-webkit-outer-spin-button,
-.points-step input::-webkit-inner-spin-button {
+:where(.modeling-page) .points-step input::-webkit-outer-spin-button,
+:where(.modeling-page) .points-step input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-.points-step input:focus {
+:where(.modeling-page) .points-step input:focus {
     outline: none;
     border-color: var(--color-brand);
 }
 
 /* Icon buttons, like the other panel actions: no frame until hovered */
-.points-icon-btn {
+:where(.modeling-page) .points-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -741,27 +742,27 @@
     transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
-.points-icon-btn img {
+:where(.modeling-page) .points-icon-btn img {
     width: 16px;
     height: 16px;
 }
 
-.points-icon-btn:hover:not(:disabled) {
+:where(.modeling-page) .points-icon-btn:hover:not(:disabled) {
     background-color: var(--color-brand-subtle-bg);
 }
 
-.points-icon-btn:disabled {
+:where(.modeling-page) .points-icon-btn:disabled {
     opacity: 0.35;
     cursor: default;
 }
 
 /* Clear, armed: asks for a second click */
-.points-icon-btn.armed {
+:where(.modeling-page) .points-icon-btn.armed {
     color: #d64545;
     background-color: rgba(214, 69, 69, 0.1);
 }
 
-.media-graph {
+:where(.modeling-page) .media-graph {
     flex: 1;
     min-height: 0;
     display: flex;
@@ -770,11 +771,11 @@
 }
 
 /* Insert (the + icon): small menu under the button */
-.insert-menu-anchor {
+:where(.modeling-page) .insert-menu-anchor {
     position: relative;
 }
 
-.insert-menu {
+:where(.modeling-page) .insert-menu {
     position: absolute;
     top: calc(100% + 6px);
     left: 0;
@@ -790,7 +791,7 @@
     box-shadow: 0 8px 24px var(--color-shadow);
 }
 
-.insert-menu button {
+:where(.modeling-page) .insert-menu button {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -808,23 +809,23 @@
     cursor: pointer;
 }
 
-.insert-menu button:hover, .insert-menu button:focus-visible {
+:where(.modeling-page) .insert-menu button:hover, :where(.modeling-page) .insert-menu button:focus-visible {
     outline: none;
     background-color: var(--color-brand-subtle-bg);
 }
 
-.insert-menu-shortcut {
+:where(.modeling-page) .insert-menu-shortcut {
     font-weight: 400;
     color: var(--color-text-tertiary);
 }
 
 /* Y lines: one chip per variable, coloured like its line; doubles as the legend */
-.y-lines {
+:where(.modeling-page) .y-lines {
     flex-wrap: wrap;
     row-gap: 4px;
 }
 
-.y-line {
+:where(.modeling-page) .y-line {
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -835,14 +836,14 @@
     background-color: var(--color-bg-surface);
 }
 
-.y-line-swatch {
+:where(.modeling-page) .y-line-swatch {
     width: 10px;
     height: 3px;
     border-radius: 2px;
     flex-shrink: 0;
 }
 
-.y-line-select {
+:where(.modeling-page) .y-line-select {
     max-width: 100px;
     border: none;
     background: transparent;
@@ -853,11 +854,11 @@
     cursor: pointer;
 }
 
-.y-line-select:focus:not(:focus-visible) {
+:where(.modeling-page) .y-line-select:focus:not(:focus-visible) {
     outline: none;
 }
 
-.y-line-remove {
+:where(.modeling-page) .y-line-remove {
     width: 18px;
     height: 18px;
     padding: 0;
@@ -870,75 +871,65 @@
     cursor: pointer;
 }
 
-.y-line-remove:hover {
+:where(.modeling-page) .y-line-remove:hover {
     color: #d64545;
     background-color: rgba(214, 69, 69, 0.1);
 }
 
-.axis-select.y-line-add {
+:where(.modeling-page) .axis-select.y-line-add {
     flex: 0 1 auto;
     width: auto;
 }
 
-.axis-picker-x {
+:where(.modeling-page) .axis-picker-x {
     flex: 0 1 auto;
     min-width: 50%;
 }
 
 /* Start values (run once) above model rules (run every step), each in its own editor */
-.code-block {
+:where(.modeling-page) .code-block {
     display: flex;
     flex-direction: column;
     min-height: 0;
 }
 
-.code-block-start {
+:where(.modeling-page) .code-block-start {
     flex: 2;
 }
 
-.code-block-model {
+:where(.modeling-page) .code-block-model {
     flex: 3;
     border-top: 1px solid var(--color-border);
 }
 
-.code-block-label {
-    margin: 0;
-    padding: 10px 16px 0;
-    font-family: "Figtree", sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--color-text-secondary);
-}
-
 /* Calibration: the reference line of known length and the chosen origin */
-.media-ruler line {
+:where(.modeling-page) .media-ruler line {
     stroke: var(--color-brand);
     stroke-dasharray: 6 4;
     vector-effect: non-scaling-stroke;
     stroke-width: 2px;
 }
 
-.media-ruler circle {
+:where(.modeling-page) .media-ruler circle {
     fill: var(--color-brand);
     stroke: #FFFFFF;
     stroke-width: 1px;
     vector-effect: non-scaling-stroke;
 }
 
-.media-origin line {
+:where(.modeling-page) .media-origin line {
     stroke: var(--color-brand);
     stroke-width: 2px;
     vector-effect: non-scaling-stroke;
 }
 
-.media-origin text {
+:where(.modeling-page) .media-origin text {
     fill: var(--color-brand);
     font-family: "Figtree", sans-serif;
     font-weight: 700;
 }
 
-.calibration-bar {
+:where(.modeling-page) .calibration-bar {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -946,7 +937,7 @@
     gap: 6px 10px;
 }
 
-.calibration-btn {
+:where(.modeling-page) .calibration-btn {
     height: 24px;
     padding: 0 10px;
     border: 1px solid var(--color-border);
@@ -959,18 +950,18 @@
     cursor: pointer;
 }
 
-.calibration-btn.primary {
+:where(.modeling-page) .calibration-btn.primary {
     border-color: var(--color-brand);
     background-color: var(--color-brand);
     color: var(--color-on-brand);
 }
 
-.calibration-btn:disabled {
+:where(.modeling-page) .calibration-btn:disabled {
     opacity: 0.5;
     cursor: default;
 }
 
-.calibration-unit {
+:where(.modeling-page) .calibration-unit {
     height: 22px;
     margin-left: 4px;
     border: 1px solid var(--color-border);
@@ -981,12 +972,12 @@
     color: var(--color-text-primary);
 }
 
-.media-footer-scale {
+:where(.modeling-page) .media-footer-scale {
     color: var(--color-text-secondary);
 }
 
 /* Whether the latest changes are saved on the server */
-.save-indicator {
+:where(.modeling-page) .save-indicator {
     margin-left: 12px;
     font-family: "Figtree", sans-serif;
     font-size: 12px;
@@ -994,13 +985,13 @@
     white-space: nowrap;
 }
 
-.save-indicator.offline, .save-indicator.error, .save-indicator.conflict {
+:where(.modeling-page) .save-indicator.offline, :where(.modeling-page) .save-indicator.error, :where(.modeling-page) .save-indicator.conflict {
     color: #B45309;
     font-weight: 600;
 }
 
 /* Messages about saving that need a choice or attention */
-.modeling-banner {
+:where(.modeling-page) .modeling-banner {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1013,12 +1004,12 @@
     color: #78350F;
 }
 
-.modeling-banner p {
+:where(.modeling-page) .modeling-banner p {
     flex: 1;
     margin: 0;
 }
 
-.modeling-banner-btn {
+:where(.modeling-page) .modeling-banner-btn {
     flex-shrink: 0;
     padding: 5px 12px;
     border: 1px solid #D97706;
@@ -1031,7 +1022,7 @@
     cursor: pointer;
 }
 
-.modeling-banner-btn.primary {
+:where(.modeling-page) .modeling-banner-btn.primary {
     background: #D97706;
     color: #FFFFFF;
 }
@@ -1049,7 +1040,7 @@
 }
 
 /* When the work was handed in (students) */
-.hand-in-chip {
+:where(.modeling-page) .hand-in-chip {
     padding: 4px 10px;
     border-radius: 999px;
     background-color: var(--color-brand-subtle-bg);
@@ -1061,7 +1052,7 @@
 }
 
 /* A teacher viewing a student's work */
-.review-bar {
+:where(.modeling-page) .review-bar {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -1070,20 +1061,20 @@
     font-size: 13px;
 }
 
-.review-student {
+:where(.modeling-page) .review-student {
     font-weight: 600;
     color: var(--color-text-primary);
     white-space: nowrap;
 }
 
-.review-toggle {
+:where(.modeling-page) .review-toggle {
     display: flex;
     border: 1px solid var(--color-border);
     border-radius: 8px;
     overflow: hidden;
 }
 
-.review-toggle button, .review-back {
+:where(.modeling-page) .review-toggle button, :where(.modeling-page) .review-back {
     padding: 5px 12px;
     border: none;
     background: var(--color-bg-surface);
@@ -1093,70 +1084,19 @@
     cursor: pointer;
 }
 
-.review-toggle button.active {
+:where(.modeling-page) .review-toggle button.active {
     background: var(--color-brand);
     color: var(--color-on-brand);
 }
 
-.review-back {
+:where(.modeling-page) .review-back {
     border: 1px solid var(--color-border);
     border-radius: 8px;
     color: var(--color-text-primary);
 }
 
-.review-error {
-    padding: 24px;
-    font-family: "Figtree", sans-serif;
-    color: #d64545;
-}
-
-/* Project explanations, written in Markdown */
-.markdown {
-    font-family: "Figtree", sans-serif;
-    font-size: 14px;
-    line-height: 1.55;
-    color: var(--color-text-primary);
-    text-align: left;
-}
-
-.markdown > :first-child {
-    margin-top: 0;
-}
-
-.markdown h3, .markdown h4, .markdown h5 {
-    margin: 16px 0 6px;
-    font-weight: 700;
-    color: var(--color-text-primary);
-}
-
-.markdown h3 { font-size: 17px; }
-.markdown h4 { font-size: 15px; }
-.markdown h5 { font-size: 14px; }
-
-.markdown p {
-    margin: 0 0 10px;
-}
-
-.markdown ul, .markdown ol {
-    margin: 0 0 10px;
-    padding-left: 22px;
-}
-
-.markdown code {
-    padding: 1px 5px;
-    border-radius: 5px;
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12.5px;
-}
-
-.markdown a {
-    color: var(--color-brand);
-}
-
 /* A student's own assignment: its name is edited in place in the top bar */
-.title-field {
+:where(.modeling-page) .title-field {
     min-width: 0;
     width: 22ch;
     padding: 4px 8px;
@@ -1168,26 +1108,26 @@
     color: var(--color-text-secondary);
 }
 
-.title-field:hover {
+:where(.modeling-page) .title-field:hover {
     border-color: var(--color-border);
 }
 
-.title-field:focus {
+:where(.modeling-page) .title-field:focus {
     outline: none;
     border-color: var(--color-brand-accent);
     color: var(--color-text-primary);
 }
 
-.insert-media-btn.delete-own.armed {
+:where(.modeling-page) .insert-media-btn.delete-own.armed {
     color: #B42318;
 }
 
 /* Export menu on graphs and media: a small summary button with a list of downloads under it */
-.export-menu {
+:where(.modeling-page) .export-menu {
     position: relative;
 }
 
-.export-menu summary {
+:where(.modeling-page) .export-menu summary {
     list-style: none;
     box-sizing: border-box;
     width: 18px;
@@ -1200,11 +1140,11 @@
     cursor: pointer;
 }
 
-.export-menu summary::-webkit-details-marker {
+:where(.modeling-page) .export-menu summary::-webkit-details-marker {
     display: none;
 }
 
-.export-menu-items {
+:where(.modeling-page) .export-menu-items {
     position: absolute;
     top: calc(100% + 4px);
     right: 0;
@@ -1220,7 +1160,7 @@
     box-shadow: 0 8px 24px var(--color-shadow);
 }
 
-.export-menu-items button {
+:where(.modeling-page) .export-menu-items button {
     padding: 6px 10px;
     border: none;
     border-radius: 6px;
@@ -1232,17 +1172,17 @@
     cursor: pointer;
 }
 
-.export-menu-items button:hover:not(:disabled) {
+:where(.modeling-page) .export-menu-items button:hover:not(:disabled) {
     background-color: var(--color-bg-app);
 }
 
-.export-menu-items button:disabled {
+:where(.modeling-page) .export-menu-items button:disabled {
     color: var(--color-text-tertiary);
     cursor: default;
 }
 
 /* Shown on the run button while a model runs: stops it */
-.stop-icon {
+:where(.modeling-page) .stop-icon {
     display: block;
     width: 14px;
     height: 14px;
@@ -1251,7 +1191,7 @@
 }
 
 /* Video timeline: frame buttons, the slider, speed, frame rate and t = 0 */
-.video-timeline {
+:where(.modeling-page) .video-timeline {
     flex-shrink: 0;
     display: flex;
     flex-wrap: wrap;
@@ -1263,24 +1203,24 @@
     color: var(--color-text-secondary);
 }
 
-.video-slider {
+:where(.modeling-page) .video-slider {
     flex: 1 1 120px;
     min-width: 80px;
     accent-color: var(--color-brand-accent);
 }
 
-.video-timeline .points-step input {
+:where(.modeling-page) .video-timeline .points-step input {
     width: 44px;
 }
 
 /* The export menu's button on graph and media panels matches the panel's remove (X) button */
-.export-menu summary img {
+:where(.modeling-page) .export-menu summary img {
     width: 18px;
     height: 18px;
 }
 
 /* Above a student's explanation: when the assignment is due and the teacher's instructions for the class */
-.assignment-info {
+:where(.modeling-page) .assignment-info {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1294,25 +1234,25 @@
     color: var(--color-text-primary);
 }
 
-.assignment-info p {
+:where(.modeling-page) .assignment-info p {
     margin: 0;
 }
 
-.assignment-info .due-label {
+:where(.modeling-page) .assignment-info .due-label {
     font-weight: 600;
 }
 
-.assignment-instructions {
+:where(.modeling-page) .assignment-instructions {
     white-space: pre-wrap;
 }
 
 /* Narrow screens: Explanation / Code / Analysis as tabs, one panel at the full width */
-.modeling-tabs {
+:where(.modeling-page) .modeling-tabs {
     display: none;
 }
 
 @media (max-width: 1023px) {
-    .modeling-tabs {
+    :where(.modeling-page) .modeling-tabs {
         flex-shrink: 0;
         display: flex;
         gap: 6px;
@@ -1320,7 +1260,7 @@
         background-color: var(--color-bg-app);
     }
 
-    .modeling-tabs button {
+    :where(.modeling-page) .modeling-tabs button {
         flex: 1;
         padding: 8px;
         border-radius: 10px;
@@ -1333,56 +1273,56 @@
         cursor: pointer;
     }
 
-    .modeling-tabs button.active {
+    :where(.modeling-page) .modeling-tabs button.active {
         border-color: var(--color-brand-accent);
         background-color: var(--color-brand-subtle-bg);
         color: var(--color-brand-accent);
         font-weight: 600;
     }
 
-    .content-modeling > .panel-divider {
+    :where(.modeling-page) .content-modeling > .panel-divider {
         display: none;
     }
 
     /* The tabs already show one panel at a time: the explanation isn't folded here */
-    .panel-toggle {
+    :where(.modeling-page) .panel-toggle {
         display: none;
     }
 
-    .explanation-panel.collapsed {
+    :where(.modeling-page) .explanation-panel.collapsed {
         margin-right: 0;
         padding: 12px;
         align-items: stretch;
     }
 
-    .explanation-panel.collapsed .explanation, .explanation-panel.collapsed .explanation-footer {
+    :where(.modeling-page) .explanation-panel.collapsed .explanation, :where(.modeling-page) .explanation-panel.collapsed .explanation-footer {
         display: flex;
     }
 
-    .explanation {
+    :where(.modeling-page) .explanation {
         padding-right: 16px;
     }
 
     /* The widths set by dragging the dividers don't apply here */
-    .content-modeling > .explanation-panel, .content-modeling > .code-panel, .content-modeling > .analysis-panel {
+    :where(.modeling-page) .content-modeling > .explanation-panel, :where(.modeling-page) .content-modeling > .code-panel, :where(.modeling-page) .content-modeling > .analysis-panel {
         flex: 1 1 auto !important;
     }
 
-    .content-modeling:not(.tab-explanation) > .explanation-panel,
-    .content-modeling:not(.tab-code) > .code-panel,
-    .content-modeling:not(.tab-analysis) > .analysis-panel {
+    :where(.modeling-page) .content-modeling:not(.tab-explanation) > .explanation-panel,
+    :where(.modeling-page) .content-modeling:not(.tab-code) > .code-panel,
+    :where(.modeling-page) .content-modeling:not(.tab-analysis) > .analysis-panel {
         display: none;
     }
 }
 
 /* The chip next to "Hand in" once the teacher has reviewed it */
-.hand-in-chip.status-returned {
+:where(.modeling-page) .hand-in-chip.status-returned {
     background-color: var(--color-danger-bg);
     color: var(--color-danger-text);
 }
 
 /* Feedback on a hand-in: the teacher's form in the review view, the student's view of it */
-.feedback-box {
+:where(.modeling-page) .feedback-box {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -1397,21 +1337,21 @@
     color: var(--color-text-primary);
 }
 
-.feedback-box p {
+:where(.modeling-page) .feedback-box p {
     margin: 0;
 }
 
-.feedback-box.view.status-approved {
+:where(.modeling-page) .feedback-box.view.status-approved {
     border-color: var(--color-brand);
     background-color: var(--color-brand-subtle-bg);
 }
 
-.feedback-box.view.status-returned {
+:where(.modeling-page) .feedback-box.view.status-returned {
     border-color: var(--color-danger-text);
     background-color: var(--color-danger-bg);
 }
 
-.feedback-title {
+:where(.modeling-page) .feedback-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1419,27 +1359,27 @@
     font-weight: 600;
 }
 
-.feedback-mark-view {
+:where(.modeling-page) .feedback-mark-view {
     font-size: 18px;
     font-weight: 700;
 }
 
-.feedback-text {
+:where(.modeling-page) .feedback-text {
     white-space: pre-wrap;
 }
 
-.feedback-by {
+:where(.modeling-page) .feedback-by {
     font-size: 12px;
     color: var(--color-text-secondary);
 }
 
-.feedback-status {
+:where(.modeling-page) .feedback-status {
     display: flex;
     flex-wrap: wrap;
     gap: 4px;
 }
 
-.feedback-status button {
+:where(.modeling-page) .feedback-status button {
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--color-border);
@@ -1450,14 +1390,14 @@
     cursor: pointer;
 }
 
-.feedback-status button.active {
+:where(.modeling-page) .feedback-status button.active {
     border-color: var(--color-brand-accent);
     background-color: var(--color-brand-subtle-bg);
     color: var(--color-brand-accent);
     font-weight: 600;
 }
 
-.feedback-field {
+:where(.modeling-page) .feedback-field {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -1466,31 +1406,31 @@
     color: var(--color-text-secondary);
 }
 
-.feedback-field textarea {
+:where(.modeling-page) .feedback-field textarea {
     resize: vertical;
     font-family: "Figtree", sans-serif;
 }
 
-.feedback-mark {
+:where(.modeling-page) .feedback-mark {
     width: 90px;
     flex: none;
 }
 
-.feedback-actions {
+:where(.modeling-page) .feedback-actions {
     display: flex;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.feedback-saved {
+:where(.modeling-page) .feedback-saved {
     font-size: 12px;
     color: var(--color-brand-accent);
 }
 
 /* ---------- graph as a table ---------- */
 
-.value-table-area {
+:where(.modeling-page) .value-table-area {
     position: relative;
     flex: 1;
     min-height: 0;
@@ -1500,12 +1440,12 @@
     border-radius: 8px;
 }
 
-.value-table-area:focus-visible {
+:where(.modeling-page) .value-table-area:focus-visible {
     outline: 2px solid var(--color-brand);
     outline-offset: 2px;
 }
 
-.value-table {
+:where(.modeling-page) .value-table {
     width: 100%;
     border-collapse: collapse;
     font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
@@ -1514,11 +1454,11 @@
     color: var(--color-text-primary);
 }
 
-.value-table + .value-table {
+:where(.modeling-page) .value-table + .value-table {
     margin-top: 16px;
 }
 
-.value-table caption {
+:where(.modeling-page) .value-table caption {
     padding: 0 0 6px;
     text-align: left;
     font-family: "Figtree", sans-serif;
@@ -1527,11 +1467,11 @@
     color: var(--color-text-secondary);
 }
 
-.value-table-note {
+:where(.modeling-page) .value-table-note {
     font-weight: 400;
 }
 
-.value-table th {
+:where(.modeling-page) .value-table th {
     position: sticky;
     top: 0;
     padding: 4px 8px;
@@ -1543,51 +1483,51 @@
     white-space: nowrap;
 }
 
-.value-table th .y-line-swatch {
+:where(.modeling-page) .value-table th .y-line-swatch {
     display: inline-block;
     margin-right: 6px;
     vertical-align: middle;
 }
 
-.value-table td {
+:where(.modeling-page) .value-table td {
     padding: 2px 8px;
     text-align: right;
     border-bottom: 1px solid var(--color-border);
     white-space: nowrap;
 }
 
-.value-table tbody tr:nth-child(even) td {
+:where(.modeling-page) .value-table tbody tr:nth-child(even) td {
     background-color: var(--color-bg-surface);
 }
 
 /* ---------- fits ---------- */
 
-.fit-picker {
+:where(.modeling-page) .fit-picker {
     flex: 0 1 auto;
 }
 
-.fit-picker .axis-select {
+:where(.modeling-page) .fit-picker .axis-select {
     max-width: 180px;
 }
 
-.fit-result {
+:where(.modeling-page) .fit-result {
     flex-wrap: wrap;
     row-gap: 4px;
 }
 
-.fit-target {
+:where(.modeling-page) .fit-target {
     flex: 0 1 auto;
     width: auto;
 }
 
-.fit-swatch {
+:where(.modeling-page) .fit-swatch {
     width: 14px;
     height: 0;
     border-top: 2px dashed;
     flex-shrink: 0;
 }
 
-.fit-formula {
+:where(.modeling-page) .fit-formula {
     font-family: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace;
     font-size: 12px;
     overflow-wrap: anywhere;
@@ -1595,7 +1535,7 @@
 
 /* ---------- PDFs and websites ---------- */
 
-.media-frame {
+:where(.modeling-page) .media-frame {
     display: block;
     /* Below the panel's buttons, which would otherwise cover the page's or viewer's own toolbar */
     margin-top: 32px;
@@ -1605,7 +1545,7 @@
     background-color: #fff;
 }
 
-.embed-footer {
+:where(.modeling-page) .embed-footer {
     justify-content: flex-start;
     column-gap: 6px;
     margin: 0;
@@ -1614,29 +1554,22 @@
     color: var(--color-text-secondary);
 }
 
-.embed-footer a {
+:where(.modeling-page) .embed-footer a {
     color: var(--color-brand-accent);
 }
 
-.media-download {
+:where(.modeling-page) .media-download {
     display: inline-flex;
     align-items: center;
     gap: 6px;
     text-decoration: none;
 }
 
-.media-download img {
+:where(.modeling-page) .media-download img {
     width: 16px;
     height: 16px;
 }
 
-a.analysis-view-toggle {
+:where(.modeling-page) a.analysis-view-toggle {
     text-decoration: none;
-}
-
-.embed-status {
-    min-height: 1.3em;
-    margin: -4px 0 0;
-    text-align: left;
-    overflow-wrap: anywhere;
 }

@@ -55,7 +55,7 @@ function Settings() {
     };
 
     return (
-        <div>
+        <div className="page-settings">
             <TopBar crumbs={[{ label: t("nav.settings") }]}/>
 
             <div className="content-settings">

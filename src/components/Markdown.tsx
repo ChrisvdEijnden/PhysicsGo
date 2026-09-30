@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "./markdown.css";
 
 // The Markdown teachers write explanations in: # headings, paragraphs, - and 1. lists, **bold**,
 // *italic*, `code` and [links](https://…). It becomes React elements, never HTML, so nothing a

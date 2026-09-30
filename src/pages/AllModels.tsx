@@ -23,7 +23,7 @@ function AllModels() {
     const { lastEdit, byLastEdit, handedIn } = useWorkActivity();
     const { projects } = useProjects();
     return (
-        <div>
+        <div className="page-all-models">
             <TopBar crumbs={[{ label: t("nav.allModels") }]}/>
 
             <div className="content-allmodels">

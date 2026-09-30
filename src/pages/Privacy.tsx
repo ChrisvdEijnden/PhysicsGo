@@ -10,7 +10,7 @@ export default function Privacy() {
     const { t, language } = useTranslation();
     const text = PRIVACY[language];
     return (
-        <div>
+        <div className="page-settings">
             <TopBar crumbs={[{ label: t("nav.privacy") }]}/>
             <div className="content-settings">
                 <article className="privacy">

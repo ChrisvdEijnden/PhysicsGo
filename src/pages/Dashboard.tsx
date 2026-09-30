@@ -94,7 +94,7 @@ function Dashboard() {
     const rows = isTeacher ? [...visibleProjects].sort(byLastEdit) : recent;
 
     return (
-        <div>
+        <div className="page-dashboard">
             <TopBar crumbs={[{ label: t("nav.dashboard") }]}/>
 
             <div className="content-dashboard">

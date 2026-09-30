@@ -65,7 +65,7 @@ function Register() {
     };
 
     return (
-        <div>
+        <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
             <TopBar crumbs={[{ label: t("nav.register") }]}/>
 

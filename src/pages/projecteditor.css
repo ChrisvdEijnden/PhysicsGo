@@ -1,3 +1,6 @@
+/* The assignment editor. Every rule is scoped with :where(.project-editor-page), which only
+   applies it inside that page and leaves its specificity as it was. */
+
 /* Writing a project: one scrolling column of fields */
 .project-editor-page {
     display: flex;
@@ -5,7 +8,7 @@
     height: 100%;
 }
 
-.project-editor {
+:where(.project-editor-page) .project-editor {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
@@ -19,7 +22,7 @@
     box-sizing: border-box;
 }
 
-.project-field {
+:where(.project-editor-page) .project-field {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -31,27 +34,27 @@
     color: var(--color-text-primary);
 }
 
-.project-field textarea {
+:where(.project-editor-page) .project-field textarea {
     resize: vertical;
     font-family: "Figtree", sans-serif;
     line-height: 1.5;
 }
 
-.project-field-row {
+:where(.project-editor-page) .project-field-row {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 16px;
 }
 
-.project-code {
+:where(.project-editor-page) .project-code {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 12px;
 }
 
-.project-code-block {
+:where(.project-editor-page) .project-code-block {
     flex: 1 1 320px;
     display: flex;
     flex-direction: column;
@@ -62,7 +65,7 @@
     overflow: hidden;
 }
 
-.project-actions {
+:where(.project-editor-page) .project-actions {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -70,7 +73,7 @@
     gap: 8px;
 }
 
-.project-delete {
+:where(.project-editor-page) .project-delete {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -78,12 +81,12 @@
     margin-right: auto;
 }
 
-.project-code-block .monaco-container {
+:where(.project-editor-page) .project-code-block .monaco-container {
     flex: 1;
     min-height: 0;
 }
 
-.project-code-block .code-block-label {
+:where(.project-editor-page) .project-code-block .code-block-label {
     margin: 0;
     padding: 10px 16px 0;
     font-size: 12px;
@@ -91,7 +94,7 @@
     color: var(--color-text-secondary);
 }
 
-.project-explanation-preview {
+:where(.project-editor-page) .project-explanation-preview {
     padding: 16px;
     border: 1px dashed var(--color-border);
     border-radius: 12px;
@@ -99,17 +102,17 @@
     font-weight: 400;
 }
 
-.project-add-media {
+:where(.project-editor-page) .project-add-media {
     align-self: flex-start;
     font-weight: 500;
 }
 
-.project-media-actions {
+:where(.project-editor-page) .project-media-actions {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
-.project-media-actions .project-add-media {
+:where(.project-editor-page) .project-media-actions .project-add-media {
     align-self: auto;
 }

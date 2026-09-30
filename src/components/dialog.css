@@ -25,3 +25,11 @@ dialog.modal > .dialog {
     flex-direction: column;
     gap: 16px;
 }
+
+/* Under a field: what's wrong, or what it will do (the website dialog) */
+.embed-status {
+    min-height: 1.3em;
+    margin: -4px 0 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+}

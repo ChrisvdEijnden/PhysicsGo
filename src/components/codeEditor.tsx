@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import * as monaco from "monaco-editor";
+import "./codeEditor.css";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 
 import { useTheme } from "../lib/useTheme";

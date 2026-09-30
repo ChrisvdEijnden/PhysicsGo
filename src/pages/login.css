@@ -1,5 +1,8 @@
+/* Sign in, join, register, reset password, profile and join a class. Every rule is scoped with
+   :where(.page-auth), which only applies it inside that page and leaves its specificity as it was. */
+
 /* Centred in the page (.content), and scrolled with it when the window is too small */
-.auth-card, .user-card {
+:where(.page-auth) .auth-card, :where(.page-auth) .user-card {
     position: relative;
     z-index: 1;
     margin: auto;
@@ -19,7 +22,7 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.header-group {
+:where(.page-auth) .header-group {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -30,7 +33,7 @@
     max-width: 100%;
 }
 
-.header-group h3 {
+:where(.page-auth) .header-group h3 {
     font-size: 14px;
     font-weight: 400;
     font-family: "Figtree", sans-serif;
@@ -39,7 +42,7 @@
     color: var(--color-text-secondary);
 }
 
-.full-brand {
+:where(.page-auth) .full-brand {
     display: flex;
     flex-direction: row;
     gap: 20px;
@@ -48,7 +51,7 @@
     width: fit-content;
 }
 
-.full-brand h1 {
+:where(.page-auth) .full-brand h1 {
     font-size: 40px;
     font-weight: bolder;
     font-family: "Figtree", sans-serif;
@@ -56,7 +59,7 @@
     color: var(--color-text-primary);
 }
 
-.full-brand .brand {
+:where(.page-auth) .full-brand .brand {
     width: 40px;
     height: 40px;
     background-color: var(--color-brand);
@@ -64,14 +67,14 @@
     justify-content: center;
     border-radius: 10px;
 }
-.full-brand .brand img {
+:where(.page-auth) .full-brand .brand img {
     width: 35px;
     height: 35px;
     color: #fff;
 }
 
 /* The class code or teacher invitation: one field, grouped as XXXX-XXXX-XXXX */
-.code-input {
+:where(.page-auth) .code-input {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -79,7 +82,7 @@
     width: 100%;
 }
 
-.code-field {
+:where(.page-auth) .code-field {
     width: 100%;
     max-width: 320px;
     padding: 10px 12px;
@@ -97,32 +100,32 @@
     transition: border-color 0.2s ease;
 }
 
-.code-field::placeholder {
+:where(.page-auth) .code-field::placeholder {
     color: var(--color-text-tertiary);
     opacity: 0.6;
 }
 
-.code-field:focus {
+:where(.page-auth) .code-field:focus {
     border-color: var(--color-brand-accent);
 }
 
-.code-field.invalid {
+:where(.page-auth) .code-field.invalid {
     border-color: var(--color-danger-text);
 }
 
-.code-hint {
+:where(.page-auth) .code-hint {
     margin: 0;
     font-family: "Figtree", sans-serif;
     font-size: 12px;
     color: var(--color-text-tertiary);
 }
 
-.code-hint.warn {
+:where(.page-auth) .code-hint.warn {
     color: var(--color-warning-text);
     font-weight: 600;
 }
 
-.footer-context {
+:where(.page-auth) .footer-context {
     margin: 0;
     width: fit-content;
     font-size: 11px;
@@ -131,7 +134,7 @@
     color: var(--color-text-tertiary);
 }
 
-.background-logo {
+:where(.page-auth) .background-logo {
     position: fixed;
     pointer-events: none;
     left: 66%;
@@ -144,18 +147,18 @@
 
 /* The logo is drawn in white, which barely shows on the light background; on the dark one it's
    faded to a shade just above the background, so it blends in the same way */
-[data-theme="dark"] .background-logo {
+[data-theme="dark"] :where(.page-auth) .background-logo {
     opacity: 0.07;
 }
 
-.info {
+:where(.page-auth) .info {
     width: 80%;
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.info-row {
+:where(.page-auth) .info-row {
     display: flex;
     justify-content: flex-start;
     align-items: center;
@@ -168,11 +171,11 @@
     transition: border-color 0.2s ease;
 }
 
-.info-row:focus-within {
+:where(.page-auth) .info-row:focus-within {
     border-color: var(--color-brand);
 }
 
-.info-input {
+:where(.page-auth) .info-input {
     flex: 1;
     min-width: 0;
     margin: 0;
@@ -187,11 +190,11 @@
     color: var(--color-text-secondary);
 }
 
-.info-input:focus {
+:where(.page-auth) .info-input:focus {
     color: var(--color-text-primary);
 }
 
-.info-label {
+:where(.page-auth) .info-label {
     flex-shrink: 0;
     display: flex;
     flex-direction: row;
@@ -203,7 +206,7 @@
     margin: 0;
 }
 
-.info-value {
+:where(.page-auth) .info-value {
     font-weight: 600;
     font-family: "Figtree", sans-serif;
     font-size: 14px;
@@ -213,11 +216,11 @@
     width: fit-content;
 }
 
-.info-wide .info-label {
+:where(.page-auth) .info-wide .info-label {
     width: 104px;
 }
 
-.auth-actions {
+:where(.page-auth) .auth-actions {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -225,7 +228,7 @@
     width: 80%;
 }
 
-.auth-button {
+:where(.page-auth) .auth-button {
     width: 100%;
     padding: 10px 16px;
     border: none;
@@ -239,16 +242,16 @@
     transition: opacity 0.2s ease;
 }
 
-.auth-button:hover {
+:where(.page-auth) .auth-button:hover {
     opacity: 0.9;
 }
 
-.auth-button:disabled {
+:where(.page-auth) .auth-button:disabled {
     opacity: 0.5;
     cursor: default;
 }
 
-.auth-error {
+:where(.page-auth) .auth-error {
     margin: 0;
     width: 100%;
     font-family: "Figtree", sans-serif;
@@ -257,7 +260,7 @@
     color: #d64545;
 }
 
-.auth-link {
+:where(.page-auth) .auth-link {
     padding: 0;
     background: none;
     border: none;
@@ -268,18 +271,18 @@
     cursor: pointer;
 }
 
-.auth-link:hover {
+:where(.page-auth) .auth-link:hover {
     color: var(--color-text-primary);
 }
 /* Confirming a new email address on the account page */
-.info-hint {
+:where(.page-auth) .info-hint {
     margin: -4px 0 0;
     font-family: "Figtree", sans-serif;
     font-size: 12px;
     color: var(--color-text-secondary);
 }
 
-.info-actions {
+:where(.page-auth) .info-actions {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -287,33 +290,33 @@
     gap: 16px;
 }
 
-.info-actions .auth-button {
+:where(.page-auth) .info-actions .auth-button {
     width: auto;
 }
 
-.reset-help {
+:where(.page-auth) .reset-help {
     width: 80%;
     margin: 0;
     text-align: center;
 }
 
 @media (max-width: 600px) {
-    .auth-card, .user-card {
+    :where(.page-auth) .auth-card, :where(.page-auth) .user-card {
         padding: 24px 16px;
         gap: 24px;
     }
 
-    .info {
+    :where(.page-auth) .info {
         width: 100%;
     }
 
-    .background-logo {
+    :where(.page-auth) .background-logo {
         display: none;
     }
 }
 
 /* Under the registration form: what's stored, with a link to the privacy statement */
-.privacy-notice {
+:where(.page-auth) .privacy-notice {
     margin: 0;
     font-family: "Figtree", sans-serif;
     font-size: 12px;
@@ -321,6 +324,6 @@
     color: var(--color-text-secondary);
 }
 
-.privacy-notice a, .footer-context a {
+:where(.page-auth) .privacy-notice a, :where(.page-auth) .footer-context a {
     color: inherit;
 }

@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./classes.css";
-import "./modeling.css";
 import "./projecteditor.css";
 
 import TopBar from "../components/TopBar";

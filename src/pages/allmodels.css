@@ -1,4 +1,7 @@
-.content-allmodels {
+/* All assignments. Every rule is scoped with :where(.page-all-models), which only applies it
+   inside that page and leaves its specificity as it was. */
+
+:where(.page-all-models) .content-allmodels {
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -14,7 +17,7 @@
     transition: background-color 0.2s ease;
 }
 
-.panel {
+:where(.page-all-models) .panel {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -30,7 +33,7 @@
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.panel h2 {
+:where(.page-all-models) .panel h2 {
     text-align: left;
     font-size: 18px;
     font-weight: 600;
@@ -39,11 +42,11 @@
     color: var(--color-text-primary);
 }
 
-.header-row {
+:where(.page-all-models) .header-row {
     justify-content: space-between;
 }
 
-.recent-item {
+:where(.page-all-models) .recent-item {
     justify-content: space-between;
     width: 100%;
 }

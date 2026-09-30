@@ -1,4 +1,7 @@
-.setting-row-text h3, .user-name, .user-class {
+/* Settings and the privacy statement. Every rule is scoped with :where(.page-settings), which only
+   applies it inside that page and leaves its specificity as it was. */
+
+:where(.page-settings) .setting-row-text h3, :where(.page-settings) .user-name, :where(.page-settings) .user-class {
     margin: 0;
     font-size: 14px;
     font-weight: 500;
@@ -6,11 +9,11 @@
     color: var(--color-text-primary);
 }
 
-.user-class {
+:where(.page-settings) .user-class {
     color: var(--color-text-secondary);
 }
 
-.setting-row-text p, .user-email {
+:where(.page-settings) .setting-row-text p, :where(.page-settings) .user-email {
     margin: 4px 0 0;
     font-size: 12px;
     font-weight: 400;
@@ -18,7 +21,7 @@
     color: var(--color-text-tertiary);
 }
 
-.theme-toggle {
+:where(.page-settings) .theme-toggle {
     position: relative;
     display: flex;
     justify-content: space-between;
@@ -34,7 +37,7 @@
     box-sizing: border-box;
 }
 
-.theme-toggle-icon {
+:where(.page-settings) .theme-toggle-icon {
     display: flex;
     justify-content: center;
     align-items: center;
@@ -44,13 +47,13 @@
     z-index: 1;
 }
 
-.theme-toggle-icon img {
+:where(.page-settings) .theme-toggle-icon img {
     width: 16px;
     height: 16px;
     display: block;
 }
 
-.theme-toggle-thumb {
+:where(.page-settings) .theme-toggle-thumb {
     position: absolute;
     top: 2px;
     left: 2px;
@@ -62,12 +65,12 @@
     transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.theme-toggle[aria-checked="true"] .theme-toggle-thumb {
+:where(.page-settings) .theme-toggle[aria-checked="true"] .theme-toggle-thumb {
     transform: translateX(24px);
 }
 
 /* Language toggle switch */
-.language-toggle {
+:where(.page-settings) .language-toggle {
     position: relative;
     display: flex;
     width: 80px;
@@ -79,7 +82,7 @@
     box-sizing: border-box;
 }
 
-.language-toggle-option {
+:where(.page-settings) .language-toggle-option {
     position: relative;
     z-index: 1;
     flex: 1;
@@ -98,11 +101,11 @@
     transition: color 0.2s ease;
 }
 
-.language-toggle-option[aria-checked="true"] {
+:where(.page-settings) .language-toggle-option[aria-checked="true"] {
     color: var(--color-text-on-brand, #ffffff);
 }
 
-.language-toggle-thumb {
+:where(.page-settings) .language-toggle-thumb {
     position: absolute;
     top: 2px;
     left: 2px;
@@ -114,22 +117,22 @@
     transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.language-toggle[data-active="en"] .language-toggle-thumb {
+:where(.page-settings) .language-toggle[data-active="en"] .language-toggle-thumb {
     transform: translateX(100%);
 }
 
-.user {
+:where(.page-settings) .user {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
 
 /* Same 16px padding as the other cards; drop the default heading/paragraph margins */
-.user h3, .user p {
+:where(.page-settings) .user h3, :where(.page-settings) .user p {
     margin: 0;
 }
 
-.user-top-row {
+:where(.page-settings) .user-top-row {
     display: flex;
     flex-direction: row;
     align-items: baseline;
@@ -137,14 +140,14 @@
     gap: 6px;
 }
 
-.user-title {
+:where(.page-settings) .user-title {
     display: flex;
     flex-direction: row;
     align-items: flex-start;
     justify-content: center;
 }
 
-.logout-button {
+:where(.page-settings) .logout-button {
     flex-shrink: 0;
     white-space: nowrap;
     padding: 8px 16px;
@@ -158,28 +161,28 @@
     cursor: pointer;
 }
 
-.logout-button:hover {
+:where(.page-settings) .logout-button:hover {
     background: rgba(214, 69, 69, 0.1);
 }
 
 /* Signing in from Settings when signed out: the same shape, in the brand colour */
-.logout-button.sign-in {
+:where(.page-settings) .logout-button.sign-in {
     color: var(--color-brand-accent);
 }
 
-.logout-button.sign-in:hover {
+:where(.page-settings) .logout-button.sign-in:hover {
     background: var(--color-brand-subtle-bg);
 }
 
 /* Errors and the secondary (cancel) buttons in the password and delete-account forms */
-.session-error {
+:where(.page-settings) .session-error {
     margin: 0;
     font-family: "Figtree", sans-serif;
     font-size: 13px;
     color: #d64545;
 }
 
-.session-signout {
+:where(.page-settings) .session-signout {
     flex-shrink: 0;
     padding: 6px 12px;
     border-radius: 8px;
@@ -191,26 +194,26 @@
     cursor: pointer;
 }
 
-.session-signout:hover {
+:where(.page-settings) .session-signout:hover {
     border-color: #d64545;
     color: #d64545;
 }
 
 /* Changing the password */
-.password {
+:where(.page-settings) .password {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.password-form {
+:where(.page-settings) .password-form {
     display: flex;
     flex-direction: column;
     gap: 10px;
     max-width: 420px;
 }
 
-.password-field {
+:where(.page-settings) .password-field {
     display: flex;
     flex-direction: column;
     gap: 4px;
@@ -219,7 +222,7 @@
     color: var(--color-text-secondary);
 }
 
-.password-field input {
+:where(.page-settings) .password-field input {
     padding: 8px 12px;
     border: 1px solid var(--color-border);
     border-radius: 8px;
@@ -229,19 +232,19 @@
     font-size: 14px;
 }
 
-.password-field input:focus {
+:where(.page-settings) .password-field input:focus {
     outline: none;
     border-color: var(--color-brand-accent);
 }
 
-.password-actions {
+:where(.page-settings) .password-actions {
     display: flex;
     justify-content: flex-end;
     gap: 8px;
 }
 
 /* Privacy statement */
-.privacy {
+:where(.page-settings) .privacy {
     width: 100%;
     max-width: 720px;
     margin: 0 auto;
@@ -256,25 +259,25 @@
     text-align: left;
 }
 
-.privacy h1 {
+:where(.page-settings) .privacy h1 {
     margin: 0;
     font-size: 24px;
 }
 
-.privacy h2 {
+:where(.page-settings) .privacy h2 {
     margin: 24px 0 8px;
     font-size: 16px;
 }
 
-.privacy p, .privacy ul {
+:where(.page-settings) .privacy p, :where(.page-settings) .privacy ul {
     margin: 8px 0;
 }
 
-.privacy li {
+:where(.page-settings) .privacy li {
     margin: 4px 0;
 }
 
-.privacy-updated {
+:where(.page-settings) .privacy-updated {
     color: var(--color-text-tertiary);
     font-size: 12px;
 }

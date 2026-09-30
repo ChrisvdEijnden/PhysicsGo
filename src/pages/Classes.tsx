@@ -303,7 +303,7 @@ function Classes() {
     );
 
     return (
-        <div>
+        <div className="page-classes">
             <TopBar crumbs={[{ label: t("nav.classes") }]}/>
 
             <div className="content-dashboard">

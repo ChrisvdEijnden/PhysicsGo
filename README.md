@@ -58,6 +58,10 @@ pnpm build                                           # production build into dis
 
 The API tests start their own server on a temporary database, so they don't touch yours. GitHub Actions runs all of these on every push to `main` and on pull requests (`.github/workflows/ci.yml`).
 
+## Styles
+
+A page's stylesheet only applies on that page: its root element has a page class (`page-auth`, `page-settings`, `page-admin`, `page-all-models`, `project-editor-page`, `modeling-page`) and every rule starts with `:where(.that-class)`, which keeps the rule's specificity as it was. Styles shared between pages live in `src/styles/global.css`, `src/pages/dashboard.css` (the dashboard-style layout), `src/pages/classes.css` (buttons, fields, lists, dialogs) and next to shared components (`src/components/*.css`). Dialogs are drawn outside the page, so their styles must be shared ones.
+
 ## Server configuration
 
 Set these environment variables for the API (all optional):

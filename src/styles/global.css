@@ -510,3 +510,10 @@ body {
         gap: 8px 12px;
     }
 }
+
+/* A page that couldn't be shown, e.g. an assignment that isn't there */
+.review-error {
+    padding: 24px;
+    font-family: "Figtree", sans-serif;
+    color: #d64545;
+}

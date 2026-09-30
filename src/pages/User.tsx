@@ -71,7 +71,7 @@ function User() {
     if (!user) return null;
 
     return (
-        <div>
+        <div className="page-auth">
             <img className="background-logo" src={LogoIcon750px} alt="" />
             <TopBar crumbs={[{ label: t("nav.user") }]}/>
 
