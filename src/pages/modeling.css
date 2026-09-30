@@ -959,6 +959,7 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
 }
 
 .modeling-page > .nav {
@@ -1221,4 +1222,54 @@
 
 .assignment-instructions {
     white-space: pre-wrap;
+}
+
+/* Narrow screens: Explanation / Code / Analysis as tabs, one panel at the full width */
+.modeling-tabs {
+    display: none;
+}
+
+@media (max-width: 1023px) {
+    .modeling-tabs {
+        flex-shrink: 0;
+        display: flex;
+        gap: 6px;
+        padding: 8px 8px 4px;
+        background-color: var(--color-bg-app);
+    }
+
+    .modeling-tabs button {
+        flex: 1;
+        padding: 8px;
+        border-radius: 10px;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-bg-surface);
+        font-family: "Figtree", sans-serif;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+    }
+
+    .modeling-tabs button.active {
+        border-color: var(--color-brand-accent);
+        background-color: var(--color-brand-subtle-bg);
+        color: var(--color-brand-accent);
+        font-weight: 600;
+    }
+
+    .content-modeling > .panel-divider {
+        display: none;
+    }
+
+    /* The widths set by dragging the dividers don't apply here */
+    .content-modeling > .explanation-panel, .content-modeling > .code-panel, .content-modeling > .analysis-panel {
+        flex: 1 1 auto !important;
+    }
+
+    .content-modeling:not(.tab-explanation) > .explanation-panel,
+    .content-modeling:not(.tab-code) > .code-panel,
+    .content-modeling:not(.tab-analysis) > .analysis-panel {
+        display: none;
+    }
 }

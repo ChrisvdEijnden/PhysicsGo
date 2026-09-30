@@ -5,8 +5,7 @@ import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import FolderOpen24px from "../assets/icons/folderopen-24px.svg";
 import NewFile24px from "../assets/icons/newfile-24px.svg";
 import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
@@ -92,14 +91,7 @@ function Dashboard() {
 
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.dashboard")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.dashboard") }]}/>
 
             <div className="content-dashboard">
                 <div className="left-panel">
@@ -214,7 +206,7 @@ function Dashboard() {
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
                         <p className="other-filters">{t("table.colClass")}</p>
-                        <p className="other-filters">{isTeacher ? t("table.colDue") : t("table.colLastEdit")}</p>
+                        <p className="other-filters col-when">{isTeacher ? t("table.colDue") : t("table.colLastEdit")}</p>
                         {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
@@ -234,7 +226,7 @@ function Dashboard() {
                                 <div className="other-filters">
                                     <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
                                 </div>
-                                <div className="other-filters">
+                                <div className="other-filters col-when">
                                     <p className="recent-last-edit">
                                         {isTeacher
                                             ? (due(project) !== null ? formatDueDay(due(project)!, language) : "—")

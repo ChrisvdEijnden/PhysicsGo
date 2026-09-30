@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./classes.css";
 import "./modeling.css";
 import "./projecteditor.css";
 
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
 import Markdown from "../components/Markdown";
@@ -120,16 +119,7 @@ function ProjectEditor() {
 
     return (
         <div className="project-editor-page">
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2><Link className="breadcrumb-link" to="/dashboard">{t("nav.dashboard")}</Link></h2>
-                    <div className="spacer"></div>
-                    <h2>{editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle") }]}/>
 
             <form className="project-editor" onSubmit={save}>
                 <label className="project-field">

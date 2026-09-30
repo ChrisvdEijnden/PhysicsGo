@@ -1,12 +1,11 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
@@ -303,16 +302,7 @@ function Classes() {
 
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2><Link className="breadcrumb-link" to="/dashboard">{t("nav.dashboard")}</Link></h2>
-                    <div className="spacer"></div>
-                    <h2>{t("nav.classes")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.classes") }]}/>
 
             <div className="content-dashboard">
                 <div className="left-panel classes-left">
@@ -371,7 +361,8 @@ function Classes() {
                     </div>
                 </div>
 
-                <div className="right-panel class-detail">
+                {/* Nothing to show until there's a class */}
+                {(detail || detailError || (classes && classes.length > 0)) && <div className="right-panel class-detail">
                     {!detail && (
                         detailError
                             ? <p className="auth-error class-error" role="alert">{t(authErrorKey(detailError))}</p>
@@ -687,7 +678,7 @@ function Classes() {
                             </section>}
                         </>
                     )}
-                </div>
+                </div>}
             </div>
         </div>
     );

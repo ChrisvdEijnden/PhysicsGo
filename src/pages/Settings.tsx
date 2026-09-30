@@ -2,8 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./settings.css";
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import ConfirmButton from "../components/ConfirmButton";
 import SunIcon14px from "../assets/icons/sun-14px.svg";
 import MoonIcon14px from "../assets/icons/moon-14px.svg";
@@ -107,14 +106,7 @@ function Settings() {
 
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.settings")}</h2>
-                </div>
-                <NavActions settings={false}/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.settings") }]}/>
 
             <div className="content-settings">
                 {user ? (

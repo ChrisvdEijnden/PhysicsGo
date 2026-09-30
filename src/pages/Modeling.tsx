@@ -3,8 +3,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useNavigate, useParams } from "react-router-dom";
 import "./modeling.css";
 
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
@@ -277,6 +276,47 @@ export function PreviewProject() {
 
     if (projects === null || !project) return null;
     return <ModelingWorkspace key={project.id} project={project} opened={NO_WORK} onReload={() => undefined} preview/>;
+}
+
+type PanelTab = "explanation" | "code" | "analysis";
+const PANEL_TABS: PanelTab[] = ["explanation", "code", "analysis"];
+
+// On narrow screens (modeling.css shows them there): one panel at a time
+function PanelTabs({ tab, onChange }: { tab: PanelTab; onChange: (tab: PanelTab) => void }) {
+    const { t } = useTranslation();
+    const labels: Record<PanelTab, string> = {
+        explanation: t("modeling.tabExplanation"),
+        code: t("modeling.tabCode"),
+        analysis: t("modeling.tabAnalysis"),
+    };
+    // Arrow keys move between the tabs, as in any tab list
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const next = PANEL_TABS[(PANEL_TABS.indexOf(tab) + step + PANEL_TABS.length) % PANEL_TABS.length];
+        onChange(next);
+        document.getElementById(`tab-${next}`)?.focus();
+    };
+    return (
+        <div className="modeling-tabs" role="tablist" aria-label={t("modeling.panels")} onKeyDown={onKeyDown}>
+            {PANEL_TABS.map((name) => (
+                <button
+                    key={name}
+                    type="button"
+                    role="tab"
+                    id={`tab-${name}`}
+                    aria-selected={tab === name}
+                    aria-controls={`panel-${name}`}
+                    tabIndex={tab === name ? 0 : -1}
+                    className={tab === name ? "active" : undefined}
+                    onClick={() => onChange(name)}
+                >
+                    {labels[name]}
+                </button>
+            ))}
+        </div>
+    );
 }
 
 // For a student: when the assignment is due and what their teacher added for their class
@@ -720,6 +760,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
 
     // Insert Media & Embeds opens a small menu: a new graph, or a file from this computer
     const [insertMenuOpen, setInsertMenuOpen] = useState(false);
+    // Below about 1024px wide the three columns show one at a time (modeling.css)
+    const [tab, setTab] = useState<PanelTab>("explanation");
     const insertMenuRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -819,17 +861,17 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
 
     return (
         <div className="modeling-page">
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    {ownAssignment && project
-                        ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
-                        : <h2>{ project?.title }</h2>}
-                    {project && !noSaving && <SaveIndicator status={sync.status}/>}
-                </div>
-
-                <div className="system-actions">
+            <TopBar
+                crumbs={[
+                    ...(review ? [{ label: t("nav.classes"), to: "/classes", state: { classId: review.classId } }] : []),
+                    {
+                        label: ownAssignment && project
+                            ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
+                            : project?.title ?? "",
+                    },
+                ]}
+                after={project && !noSaving && <SaveIndicator status={sync.status}/>}
+            >
                     {review ? (
                         <ReviewBar review={review}/>
                     ) : preview ? (
@@ -951,9 +993,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         )}
                         </>
                     )}
-                    <NavActions/>
-                </div>
-            </div>
+            </TopBar>
 
             {sync.conflict && (
                 <div className="modeling-banner" role="alert">
@@ -977,8 +1017,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     </button>
                 </div>
             )}
-            <div className="content-modeling" ref={contentRef}>
-                <div className="explanation-panel" style={{ flex: `0 0 ${panelWidths[0]}%` }}>
+            <PanelTabs tab={tab} onChange={setTab}/>
+            <div className={`content-modeling tab-${tab}`} ref={contentRef}>
+                <div className="explanation-panel" id="panel-explanation" style={{ flex: `0 1 ${panelWidths[0]}%` }}>
                     <div className="explanation">
                         {project && !isTeacher && !review && <AssignmentInfo publications={published[project.id] ?? []}/>}
                         {project && <Markdown text={project.explanation}/>}
@@ -1005,7 +1046,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     aria-label={t("modeling.resizeExplanationCode")}
                 />
 
-                <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
+                <div className="code-panel" id="panel-code" style={{ flex: `0 1 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
                             {simulation.running ? (
@@ -1081,12 +1122,12 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                     aria-label={t("modeling.resizeCodeAnalysis")}
                 />
 
-                <div className="analysis-panel" style={{ flex: `0 0 ${panelWidths[2]}%` }}>
+                <div className="analysis-panel" id="panel-analysis" style={{ flex: `0 1 ${panelWidths[2]}%` }}>
                     <div className="analysis-stack" ref={analysisStackRef}>
                         {rows.map((row, index) => {
                             const key = row.kind === "graph" ? row.graph.id : row.item.id;
                             const rowStyle: React.CSSProperties = {
-                                flex: `0 0 ${rowHeights[index] ?? 100 / rows.length}%`,
+                                flex: `0 1 ${rowHeights[index] ?? 100 / rows.length}%`,
                             };
                             return (
                                 <Fragment key={key}>

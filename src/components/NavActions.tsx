@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import { useTranslation } from "../lib/useTranslations";
+import UserMenu from "./UserMenu";
 
-// Settings and help in the top-right of every page. The icons are decorative; the buttons carry the name.
+// Settings, help and the user menu in the top-right of every page. The icons are decorative; the buttons carry the name.
 function NavActions({ settings = true }: { settings?: boolean }) {
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -20,6 +21,7 @@ function NavActions({ settings = true }: { settings?: boolean }) {
             <button type="button" aria-label={t("nav.help")} title={t("nav.help")} onClick={() => navigate("/")}>
                 <img src={HelpIcon21px} alt=""/>
             </button>
+            <UserMenu/>
         </div>
     );
 }

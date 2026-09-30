@@ -1,9 +1,8 @@
 import "../styles/global.css";
 import "./login.css";
 
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import Credits from "../components/Credits";
-import NavActions from "../components/NavActions";
 import {useTranslation} from "../lib/useTranslations.ts";
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/useAuth";
@@ -74,14 +73,7 @@ function User() {
     return (
         <div>
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.user")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.user") }]}/>
 
             <div className="content">
                 <div className="user-card">

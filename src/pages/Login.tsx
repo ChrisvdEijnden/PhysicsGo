@@ -4,9 +4,8 @@ import { useState } from "react";
 import "../styles/global.css";
 import "./login.css";
 
-import NavBrand from "../components/NavBrand";
+import TopBar from "../components/TopBar";
 import Credits from "../components/Credits";
-import NavActions from "../components/NavActions";
 import LogoIcon35px from "../assets/icons/logo-35px.svg";
 import LogoIcon750px from "../assets/icons/logo-750px.svg";
 import { useTranslation } from "../lib/useTranslations";
@@ -33,14 +32,7 @@ function Login() {
     return (
         <div>
             <img className="background-logo" src={LogoIcon750px} alt="" />
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.login")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.login") }]}/>
             <div className="content">
                 <div className="auth-card">
                     <div className="header-group">

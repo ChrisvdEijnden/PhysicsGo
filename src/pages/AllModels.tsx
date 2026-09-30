@@ -4,8 +4,7 @@ import "./allmodels.css";
 import "./dashboard.css";
 import "./classes.css";
 
-import NavBrand from "../components/NavBrand";
-import NavActions from "../components/NavActions";
+import TopBar from "../components/TopBar";
 import { assignmentPath, useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { useAuth } from "../lib/useAuth";
@@ -25,14 +24,7 @@ function AllModels() {
     const { projects } = useProjects();
     return (
         <div>
-            <div className="nav">
-                <div className="brand-and-breadcrumb">
-                    <NavBrand />
-                    <div className="spacer"></div>
-                    <h2>{t("nav.allModels")}</h2>
-                </div>
-                <NavActions/>
-            </div>
+            <TopBar crumbs={[{ label: t("nav.allModels") }]}/>
 
             <div className="content-allmodels">
                 <div className="panel">
@@ -43,7 +35,7 @@ function AllModels() {
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
                         <p className="other-filters">{t("table.colClass")}</p>
-                        <p className="other-filters">{t("table.colLastEdit")}</p>
+                        <p className="other-filters col-when">{t("table.colLastEdit")}</p>
                         {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
@@ -62,7 +54,7 @@ function AllModels() {
                                     <div className="other-filters">
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
                                     </div>
-                                    <div className="other-filters">
+                                    <div className="other-filters col-when">
                                         <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>
                                     </div>
                                     {isTeacher && (

@@ -52,7 +52,15 @@ html, body, #root {
     width: 100%;
     margin: 0;
     padding: 0;
-    overflow: hidden;
+}
+
+/* Pages scroll when they don't fit (the modeling page keeps its own panels in view instead) */
+#root {
+    overflow: auto;
+}
+
+.brand-and-breadcrumb, .brand-and-breadcrumb nav {
+    min-width: 0;
 }
 
 body {
@@ -70,19 +78,20 @@ body {
     box-sizing: border-box;
 }
 
-/* Nav bar */
+/* Nav bar: one row of 56px; when the page's actions don't fit next to the trail, they wrap to a
+   second row instead of overlapping it */
 .nav {
     box-sizing: border-box;
     width: 100%;
-    height: 56px;
+    min-height: 56px;
     background-color: var(--color-bg-surface);
     border-bottom: 1px solid var(--color-border);
-    padding-left: 24px;
-    padding-right: 24px;
+    padding: 8px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
+    gap: 8px 16px;
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
@@ -108,6 +117,157 @@ body {
     font-weight: normal;
     font-family: "Figtree", sans-serif;
     color: var(--color-text-secondary);
+}
+
+/* The trail to the current page, each step after a thin divider */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.breadcrumbs li {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-width: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+.breadcrumbs li::before {
+    content: "";
+    flex-shrink: 0;
+    width: 1px;
+    height: 16px;
+    background-color: var(--color-border);
+}
+
+.breadcrumbs li > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.breadcrumb-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.breadcrumb-link:hover {
+    color: var(--color-text-primary);
+    text-decoration: underline;
+}
+
+/* Signed in: initials (and the name on wide screens), opening profile, settings and sign out */
+.user-menu {
+    position: relative;
+    margin-left: 6px;
+}
+
+.user-menu-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 200px;
+    padding: 2px 8px 2px 2px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.user-menu-button:hover {
+    background-color: var(--color-bg-app);
+}
+
+.user-avatar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: var(--color-brand);
+    color: var(--color-on-brand);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.user-menu-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-menu-items {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 220px;
+    padding: 6px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.user-menu-who {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    padding: 6px 10px 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--color-border);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.user-menu-who strong {
+    font-size: 14px;
+    color: var(--color-text-primary);
+}
+
+.user-menu-who .class-chip {
+    margin-top: 4px;
+}
+
+.user-menu-items button {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    text-align: left;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.user-menu-items button:hover {
+    background-color: var(--color-bg-app);
+}
+
+.user-menu-items .sign-out {
+    color: var(--color-danger-text);
 }
 
 .brand {
@@ -137,17 +297,19 @@ body {
     flex-direction: row;
     height: fit-content;
     width: fit-content;
-    align-content: center;
-    justify-content: center;
-    gap: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px 24px;
+    margin-left: auto;
 }
 
 .right-system-actions {
     display: flex;
     flex-direction: row;
+    align-items: center;
     height: fit-content;
     width: fit-content;
-    align-content: center;
     justify-content: center;
 }
 
@@ -157,7 +319,7 @@ body {
     height: 20px;
 }
 
-.right-system-actions button, .nav-icon-btn {
+.right-system-actions > button, .nav-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -175,7 +337,7 @@ body {
     align-items: stretch;
     justify-content: center;
     width: 100%;
-    height: calc(100vh - 56px);
+    min-height: calc(100vh - 56px);
     padding: 16px;
     background-color: var(--color-bg-app);
     box-sizing: border-box;
@@ -307,4 +469,27 @@ body {
 
 .panel-error p {
     margin: 0;
+}
+
+/* Smaller screens: the top bar keeps the logo, the current page and the icons */
+@media (max-width: 900px) {
+    .nav {
+        padding: 8px 16px;
+    }
+
+    .nav-home h1, .user-menu-name {
+        display: none;
+    }
+
+    .user-menu-button {
+        padding: 2px;
+    }
+
+    .breadcrumbs li:not(.current) {
+        display: none;
+    }
+
+    .system-actions {
+        gap: 8px 12px;
+    }
 }

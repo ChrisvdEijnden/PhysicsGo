@@ -1,20 +1,9 @@
-.breadcrumb-link {
-    color: inherit;
-    text-decoration: none;
-    cursor: pointer;
-}
-
-.breadcrumb-link:hover {
-    color: var(--color-text-primary);
-    text-decoration: underline;
-}
-
 .classes-left {
     width: 320px;
     flex-shrink: 0;
 }
 
-.classes-list-card {
+.classes-left .classes-list-card {
     justify-content: flex-start;
     align-items: stretch;
     min-height: 0;
@@ -692,4 +681,10 @@
     font-size: 13px;
     text-align: left;
     color: var(--color-text-tertiary);
+}
+
+@media (max-width: 900px) {
+    .classes-left {
+        width: 100%;
+    }
 }

@@ -1,8 +1,9 @@
+/* Centred in the page (.content), and scrolled with it when the window is too small */
 .auth-card, .user-card {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    position: relative;
+    z-index: 1;
+    margin: auto;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -26,6 +27,7 @@
     justify-content: center;
     height: fit-content;
     width: 452px;
+    max-width: 100%;
 }
 
 .header-group h3 {
@@ -134,7 +136,8 @@
 }
 
 .background-logo {
-    position: absolute;
+    position: fixed;
+    pointer-events: none;
     left: 66%;
     top: 30%;
     overflow: hidden;
@@ -289,4 +292,19 @@
     width: 80%;
     margin: 0;
     text-align: center;
+}
+
+@media (max-width: 600px) {
+    .auth-card, .user-card {
+        padding: 24px 16px;
+        gap: 24px;
+    }
+
+    .info {
+        width: 100%;
+    }
+
+    .background-logo {
+        display: none;
+    }
 }
