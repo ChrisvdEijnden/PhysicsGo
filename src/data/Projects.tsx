@@ -109,6 +109,10 @@ export interface SavedMedia {
     graphYs: YLine[];
     // Scale and origin that turn the pixel positions into real distances; none means pixels
     calibration?: Calibration | null;
+    // Videos: frames per second of the recording (30 when not set), to number frames and step one at a time
+    fps?: number;
+    // Videos: the time in the recording that counts as t = 0 for its points (0 when not set)
+    timeZero?: number;
     // "project": starter media from the project, whose file is the project's, not the student's
     source?: "project";
 }

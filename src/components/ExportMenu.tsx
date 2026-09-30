@@ -1,13 +1,16 @@
 import { useEffect, useRef } from "react";
 
+import DownloadIcon16px from "../assets/icons/download-16px.svg";
+
 export interface ExportItem {
     label: string;
     onSelect: () => void;
     disabled?: boolean;
 }
 
-// A small "Export" menu of downloads. It's a <details>, so it opens with the keyboard and screen
-// readers announce it; it closes after a choice, on Escape and when clicking elsewhere.
+// A small "Export" menu of downloads behind a download icon (`label` is its name for screen readers
+// and its tooltip). It's a <details>, so it opens with the keyboard and screen readers announce it;
+// it closes after a choice, on Escape and when clicking elsewhere.
 export default function ExportMenu({ label, items }: { label: string; items: ExportItem[] }) {
     const menu = useRef<HTMLDetailsElement | null>(null);
 
@@ -27,7 +30,9 @@ export default function ExportMenu({ label, items }: { label: string; items: Exp
 
     return (
         <details className="export-menu" ref={menu} onKeyDown={(e) => e.key === "Escape" && close()}>
-            <summary>{label}</summary>
+            <summary aria-label={label} title={label}>
+                <img src={DownloadIcon16px} alt=""/>
+            </summary>
             <div className="export-menu-items">
                 {items.map((item) => (
                     <button key={item.label} type="button" disabled={item.disabled} onClick={() => {

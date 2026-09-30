@@ -9,6 +9,8 @@ import arrowIcon14px from "../assets/icons/arrow-14px.svg";
 import PlayIcon20px from "../assets/icons/play-20px.svg";
 import PlusIcon14px from "../assets/icons/plus-14px.svg";
 import CloseIcon20px from "../assets/icons/close-20px.svg";
+import DownloadIcon16px from "../assets/icons/download-16px.svg";
+import CopyIcon16px from "../assets/icons/copy-16px.svg";
 
 import Graph, { lineColor } from "../components/Graph.tsx";
 import ExportMenu from "../components/ExportMenu";
@@ -844,23 +846,28 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         />
                         {/* Teachers publish projects to their classes; students hand them in */}
                         {project && (
-                            <button type="button" className="insert-media-btn" onClick={exportAssignment} title={t("modeling.exportHint")}>
-                                <p>{t("modeling.export")}</p>
+                            <button type="button" className="insert-media-btn icon-only" onClick={exportAssignment}
+                                    aria-label={t("modeling.export")} title={t("modeling.exportHint")}>
+                                <img src={DownloadIcon16px} alt=""/>
                             </button>
                         )}
                         {ownAssignment && (
                             <ConfirmButton className="insert-media-btn delete-own" label={t("modeling.deleteOwn")} onConfirm={deleteOwnAssignment}/>
                         )}
-                        {isTeacher && project && (
-                            <button
-                                className="insert-media-btn"
-                                onClick={() => navigate(project.mine ? `/projects/${project.id}/edit` : "/projects/new", {
-                                    state: project.mine ? undefined : { copyOf: project.id },
-                                })}
-                            >
-                                <p>{project.mine ? t("projectEditor.edit") : t("projectEditor.duplicate")}</p>
+                        {isTeacher && project && (project.mine ? (
+                            <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/edit`)}>
+                                <p>{t("projectEditor.edit")}</p>
                             </button>
-                        )}
+                        ) : (
+                            <button
+                                className="insert-media-btn icon-only"
+                                onClick={() => navigate("/projects/new", { state: { copyOf: project.id } })}
+                                aria-label={t("projectEditor.duplicate")}
+                                title={t("projectEditor.duplicateHint")}
+                            >
+                                <img src={CopyIcon16px} alt=""/>
+                            </button>
+                        ))}
                         {isTeacher && project && (
                             <button className="insert-media-btn" onClick={() => navigate(`/projects/${project.id}/preview`)}>
                                 <p>{t("preview.button")}</p>

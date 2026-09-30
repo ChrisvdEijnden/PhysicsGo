@@ -22,6 +22,9 @@ export interface MediaItem extends SavedMedia {
 }
 
 export const DEFAULT_POINT_STEP = 1 / 30;
+// Frame rate assumed for a video until the student sets it; browsers don't report it
+const DEFAULT_FPS = 30;
+const SPEEDS = [0.25, 0.5, 1];
 
 // Axes a media's points can be plotted on: photos have no time
 export const pointAxes = (item: SavedMedia) => (item.category === "photo" ? ["x", "y"] : ["t", "x", "y"]);
@@ -95,9 +98,19 @@ export default function MediaTile({
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [frame, setFrame] = useState(0);
+    // Position in the recording, in seconds, and its length (0 until known)
     const [timeSec, setTimeSec] = useState(0);
-    const fallbackFpsRef = useRef(30);
+    const [duration, setDuration] = useState(0);
+    // Frame numbers come from the time and the recording's frame rate, which the student can correct;
+    // while playing, the rate the browser actually shows frames at is measured as a suggestion
+    const fps = item.fps ?? DEFAULT_FPS;
+    const frameAt = (time: number) => Math.floor(time * fps + 1e-6);
+    const frame = frameAt(timeSec);
+    // The time of the frame on screen, counted from t = 0: the same time a point plotted now gets
+    const frameTime = frame / fps - (item.timeZero ?? 0);
+    const [measuredFps, setMeasuredFps] = useState<number | null>(null);
+    const [fpsDraft, setFpsDraft] = useState(String(fps));
+    useEffect(() => setFpsDraft(String(fps)), [fps]);
 
     const [pointMode, setPointMode] = useState(false);
     const [showGraph, setShowGraph] = useState(false);
@@ -117,28 +130,84 @@ export default function MediaTile({
         const video = videoRef.current as VideoWithFrameCallback | null;
         if (!video) return;
 
-        const supportsRVFC = typeof video.requestVideoFrameCallback === "function";
-        let rvfcId: number | null = null;
+        const update = () => setTimeSec(video.currentTime);
+        // Recordings made in a browser (WebM) often don't say how long they are. Seeking far past the
+        // end makes the browser find out; then it goes back to the start.
+        let findingLength = false;
+        const onMetadata = () => {
+            if (video.duration === Infinity && !findingLength) {
+                findingLength = true;
+                video.currentTime = 1e9;
+                return;
+            }
+            if (findingLength && Number.isFinite(video.duration)) {
+                findingLength = false;
+                video.currentTime = 0;
+            }
+            setDuration(Number.isFinite(video.duration) ? video.duration : 0);
+            update();
+        };
+        video.addEventListener("seeked", update);
+        video.addEventListener("timeupdate", update);
+        video.addEventListener("loadedmetadata", onMetadata);
+        video.addEventListener("durationchange", onMetadata);
+        onMetadata();
 
-        if (supportsRVFC) {
-            const onVideoFrame = (_now: number, metadata: { presentedFrames?: number }) => {
-                setFrame(metadata.presentedFrames ?? Math.round(video.currentTime * fallbackFpsRef.current));
-                setTimeSec(Math.round(video.currentTime * 100) / 100);
+        // Each shown frame updates the position; the gaps between frames while playing give the frame rate
+        let rvfcId: number | null = null;
+        const gaps: number[] = [];
+        let lastMediaTime: number | null = null;
+        if (typeof video.requestVideoFrameCallback === "function") {
+            const onVideoFrame = (_now: number, metadata: { mediaTime?: number }) => {
+                update();
+                const mediaTime = metadata.mediaTime;
+                if (mediaTime !== undefined && !video.paused && video.playbackRate === 1) {
+                    if (lastMediaTime !== null && mediaTime > lastMediaTime) gaps.push(mediaTime - lastMediaTime);
+                    lastMediaTime = mediaTime;
+                    if (gaps.length === 20) {
+                        const median = [...gaps].sort((a, b) => a - b)[10];
+                        setMeasuredFps(Math.round(10 / median) / 10);
+                    }
+                } else {
+                    lastMediaTime = null;
+                }
                 rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
             };
             rvfcId = video.requestVideoFrameCallback!(onVideoFrame);
-            return () => {
-                if (rvfcId !== null) video.cancelVideoFrameCallback?.(rvfcId);
-            };
         }
-
-        const onTimeUpdate = () => {
-            setFrame(Math.round(video.currentTime * fallbackFpsRef.current));
-            setTimeSec(Math.ceil(video.currentTime * 100) / 100);
+        return () => {
+            video.removeEventListener("seeked", update);
+            video.removeEventListener("timeupdate", update);
+            video.removeEventListener("loadedmetadata", onMetadata);
+            video.removeEventListener("durationchange", onMetadata);
+            if (rvfcId !== null) video.cancelVideoFrameCallback?.(rvfcId);
         };
-        video.addEventListener("timeupdate", onTimeUpdate);
-        return () => video.removeEventListener("timeupdate", onTimeUpdate);
     }, [isVideo, showGraph]);
+
+    // Frame n is shown from n / fps until the next one; seeking to its middle avoids landing on the
+    // previous frame through rounding
+    function seekToFrame(n: number) {
+        const video = videoRef.current;
+        if (!video) return;
+        video.pause();
+        const last = duration > 0 ? frameAt(duration) : Infinity;
+        const target = (Math.min(Math.max(n, 0), last) + 0.5) / fps;
+        video.currentTime = duration > 0 ? Math.min(target, duration) : target;
+    }
+
+    // From the position just asked for, so quick key presses add up even before the seek has finished
+    const stepFrames = (count: number) => seekToFrame(frameAt(videoRef.current?.currentTime ?? timeSec) + count);
+
+    function commitFps(value: string) {
+        const next = Number(value.replace(",", "."));
+        if (next >= 1 && next <= 1000) onChange({ ...item, fps: round(next, 3) });
+        else setFpsDraft(String(fps));
+    }
+
+    // The current frame becomes t = 0 for the points (and the variables made from them)
+    function setTimeZero() {
+        onChange({ ...item, timeZero: round(frame / fps, 4) });
+    }
 
     function togglePlay() {
         const video = videoRef.current;
@@ -217,16 +286,17 @@ export default function MediaTile({
         if (calibrating === "origin") return finishCalibration(x, y);
 
         if (isVideo && video) {
-            const time = round(video.currentTime, 4);
-            // One point per moment: plotting again at the same frame replaces that point
+            // A point belongs to the frame on screen, at that frame's time
+            const current = frameAt(video.currentTime);
+            const time = round(current / fps, 4);
+            // One point per frame: plotting again on the same frame replaces that point
             const points = item.points
-                .filter((p) => Math.abs((p.t ?? 0) - time) >= item.step / 2)
+                .filter((p) => frameAt(p.t ?? 0) !== current)
                 .concat({ t: time, x, y })
                 .sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
             onChange({ ...item, points });
-            // Some recordings (e.g. WebM) report no duration; seeking still works for them
-            const next = time + item.step;
-            video.currentTime = Number.isFinite(video.duration) ? Math.min(video.duration, next) : next;
+            // On to the next frame to measure: the step, in whole frames
+            seekToFrame(current + Math.max(1, Math.round(item.step * fps)));
         } else {
             const point: MediaPoint = { t: item.category === "animation" ? item.points.length : null, x, y };
             onChange({ ...item, points: [...item.points, point] });
@@ -441,7 +511,21 @@ export default function MediaTile({
                 </div>
             ) : isVideo ? (
                 <>
-                    <div className="media-stage">
+                    {/* Focusable, so ← and → step through the frames and space plays or pauses */}
+                    <div
+                        className="media-stage"
+                        tabIndex={fileMissing ? undefined : 0}
+                        aria-label={t("modeling.videoStage", { name: item.name })}
+                        onKeyDown={(e) => {
+                            if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+                                e.preventDefault();
+                                stepFrames(e.key === "ArrowLeft" ? -1 : 1);
+                            } else if (e.key === " ") {
+                                e.preventDefault();
+                                togglePlay();
+                            }
+                        }}
+                    >
                         <video
                             ref={videoRef}
                             className="analysis-media-content"
@@ -461,6 +545,71 @@ export default function MediaTile({
                 <div className="analysis-media-file">
                     <DocumentGlyph/>
                     <span>{item.name}</span>
+                </div>
+            )}
+
+            {/* Going through a video frame by frame: buttons, a slider (whose arrow keys step one frame),
+                playback speed, the frame rate, and which frame is t = 0 */}
+            {isVideo && !showGraph && !fileMissing && (
+                <div className="video-timeline">
+                    <button type="button" className="points-icon-btn" onClick={() => stepFrames(-1)}
+                            aria-label={t("modeling.previousFrame")} title={t("modeling.previousFrame")}>
+                        ◀
+                    </button>
+                    <input
+                        type="range"
+                        className="video-slider"
+                        min={0}
+                        max={duration > 0 ? frameAt(duration) : 0}
+                        step={1}
+                        value={frame}
+                        onChange={(e) => seekToFrame(Number(e.target.value))}
+                        aria-label={t("modeling.videoPosition")}
+                        aria-valuetext={t("modeling.videoPositionValue", { frame, time: frameTime.toFixed(3) })}
+                    />
+                    <button type="button" className="points-icon-btn" onClick={() => stepFrames(1)}
+                            aria-label={t("modeling.nextFrame")} title={t("modeling.nextFrame")}>
+                        ▶
+                    </button>
+                    <select
+                        className="calibration-unit"
+                        aria-label={t("modeling.playbackSpeed")}
+                        title={t("modeling.playbackSpeed")}
+                        defaultValue="1"
+                        onChange={(e) => {
+                            if (videoRef.current) videoRef.current.playbackRate = Number(e.target.value);
+                        }}
+                    >
+                        {SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}
+                    </select>
+                    <label className="points-step" title={t("modeling.fpsHint")}>
+                        <input
+                            type="text"
+                            inputMode="decimal"
+                            value={fpsDraft}
+                            disabled={readOnly}
+                            onChange={(e) => setFpsDraft(e.target.value)}
+                            onBlur={(e) => commitFps(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                        />
+                        fps
+                    </label>
+                    {!readOnly && measuredFps !== null && Math.abs(measuredFps - fps) > 0.5 && (
+                        <button type="button" className="calibration-btn" onClick={() => onChange({ ...item, fps: measuredFps })}>
+                            {t("modeling.useMeasuredFps", { fps: measuredFps })}
+                        </button>
+                    )}
+                    {!readOnly && (
+                        <button type="button" className="calibration-btn" onClick={setTimeZero}
+                                title={t("modeling.setTimeZeroHint")}>
+                            {t("modeling.setTimeZero")}
+                        </button>
+                    )}
+                    {!readOnly && (item.timeZero ?? 0) !== 0 && (
+                        <button type="button" className="calibration-btn" onClick={() => onChange({ ...item, timeZero: 0 })}>
+                            {t("modeling.resetTimeZero", { frame: frameAt(item.timeZero ?? 0) })}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -527,7 +676,7 @@ export default function MediaTile({
                         <span className="media-footer-time">
                             {t("modeling.frame")} <strong>{frame}</strong>
                             <span className="code-footer-dot"> · </span>
-                            {t("modeling.time")} <strong>{timeSec.toFixed(2)}s</strong>
+                            {t("modeling.time")} <strong>{frameTime.toFixed(3)} s</strong>
                         </span>
                     )}
                     {pointMode && (
