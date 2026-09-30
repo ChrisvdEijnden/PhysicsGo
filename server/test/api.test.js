@@ -236,6 +236,29 @@ describe("classes, assignments and work", () => {
         assert.equal((await student("GET", "/classes/hand-ins")).status, 403);
     });
 
+    test("teachers return, approve and mark hand-ins; students see it and can't take a reviewed hand-in back", async () => {
+        const url = `/classes/${classId}/students/${studentId}/work/standard-freefall/feedback`;
+        assert.equal((await teacher("PUT", url, { status: "approved", mark: 11 })).status, 400);
+        assert.equal((await student("PUT", url, { status: "approved" })).status, 403);
+
+        const returned = await teacher("PUT", url, { status: "returned", feedback: "Check your units", mark: 7.46 });
+        assert.equal(returned.status, 200);
+        const seen = (await student("GET", "/work/standard-freefall")).data.submission;
+        assert.deepEqual([seen.status, seen.feedback, seen.mark, seen.reviewedBy], ["returned", "Check your units", 7.5, "Teacher Three"]);
+        assert.equal((await student("DELETE", "/work/standard-freefall/submission")).data.error, "already_reviewed");
+        assert.equal((await student("GET", "/work")).data.work.find((w) => w.projectId === "standard-freefall").status, "returned");
+
+        // Handing in again puts it back to "handed in"; the comment stays until the teacher changes it
+        const version = (await student("GET", "/work/standard-freefall")).data.version;
+        const again = await student("POST", "/work/standard-freefall/submit", { version });
+        assert.deepEqual([again.data.submission.status, again.data.submission.feedback], ["handed_in", "Check your units"]);
+
+        await teacher("PUT", url, { status: "approved", feedback: "Well done", mark: 8 });
+        const progress = (await teacher("GET", `/classes/${classId}/progress`)).data.projects;
+        const row = progress.find((p) => p.projectId === "standard-freefall").students.find((s) => s.id === studentId);
+        assert.deepEqual([row.status, row.mark], ["approved", 8]);
+    });
+
     test("a teacher can delete a student's account from the class, with all their work", async () => {
         const before = await teacher("GET", `/classes/${classId}`);
         const b = before.data.class.students.find((s) => s.email === "b@school.test");

@@ -639,6 +639,18 @@
     color: var(--color-text-primary);
 }
 
+.class-badge.status-approved {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+.class-badge.status-returned {
+    border-color: var(--color-danger-text);
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
+}
+
 /* A labelled field in a dialog, e.g. signing in again after the session ended */
 .dialog-field {
     display: flex;

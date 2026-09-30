@@ -215,7 +215,8 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
     router.get("/hand-ins", (req, res) => {
         const handIns = db.prepare(`
             SELECT sub.user_id AS studentId, u.name AS studentName, sub.project_id AS projectId,
-                   c.id AS classId, c.name AS className, sub.submitted_at AS submittedAt, pc.due_at AS dueAt
+                   c.id AS classId, c.name AS className, sub.submitted_at AS submittedAt, pc.due_at AS dueAt,
+                   sub.status AS status, sub.mark AS mark
             FROM submissions sub
             JOIN users u ON u.id = sub.user_id
             JOIN class_students s ON s.user_id = sub.user_id
@@ -301,7 +302,7 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         `).all(req.classId);
         const rows = db.prepare(`
             SELECT u.id, u.name, w.updated_at AS updatedAt, sub.submitted_at AS submittedAt,
-                   w.version AS version, sub.work_version AS submittedVersion
+                   w.version AS version, sub.work_version AS submittedVersion, sub.status AS reviewStatus, sub.mark AS mark
             FROM class_students s JOIN users u ON u.id = s.user_id
             LEFT JOIN project_work w ON w.user_id = u.id AND w.project_id = ?
             LEFT JOIN submissions sub ON sub.user_id = u.id AND sub.project_id = ?
@@ -315,7 +316,9 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
                 students: rows.all(projectId, projectId, req.classId).map((r) => ({
                     id: r.id,
                     name: r.name,
-                    status: r.submittedAt ? "handed_in" : r.updatedAt ? "working" : "not_started",
+                    // handed_in, returned (for revision) or approved once handed in
+                    status: r.submittedAt ? r.reviewStatus : r.updatedAt ? "working" : "not_started",
+                    mark: r.mark,
                     updatedAt: r.updatedAt,
                     submittedAt: r.submittedAt,
                     // Worked on after handing in
@@ -341,6 +344,29 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
             ...readWork(userId, projectId),
             submission: readSubmission(userId, projectId),
         });
+    });
+
+    // The teacher's feedback on a hand-in: status (handed_in, returned for revision, approved), a comment
+    // and an optional mark from 1.0 to 10.0. The student sees it with their assignment.
+    router.put("/:classId/students/:userId/work/:projectId/feedback", active, (req, res) => {
+        const userId = Number(req.params.userId);
+        const { projectId } = req.params;
+        const inClass = db.prepare(`
+            SELECT 1 FROM class_students s JOIN project_classes pc ON pc.class_id = s.class_id AND pc.project_id = ?
+            WHERE s.class_id = ? AND s.user_id = ?
+        `).get(projectId, req.classId, userId);
+        if (!inClass || !readSubmission(userId, projectId)) return res.status(404).json({ error: "not_found" });
+
+        const { status, feedback = "", mark = null } = req.body ?? {};
+        if (!["handed_in", "returned", "approved"].includes(status) || typeof feedback !== "string" || feedback.length > 5000
+            || (mark !== null && !(typeof mark === "number" && mark >= 1 && mark <= 10))) {
+            return res.status(400).json({ error: "bad_request" });
+        }
+        db.prepare(`
+            UPDATE submissions SET status = ?, feedback = ?, mark = ?, reviewed_at = ?, reviewed_by = ?
+            WHERE user_id = ? AND project_id = ?
+        `).run(status, feedback.trim(), mark === null ? null : Math.round(mark * 10) / 10, Date.now(), req.user.id, userId, projectId);
+        res.json({ submission: readSubmission(userId, projectId) });
     });
 
     // Co-teachers are invited by email and join by accepting. The answer is the same whether or

@@ -31,7 +31,8 @@ import { downloadFile, fileNameFor } from "../lib/download";
 import ConfirmButton from "../components/ConfirmButton";
 import type { GraphConfig, MediaCategory, Project, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
 import { openWork, useWorkSync } from "../lib/workSync";
-import type { OpenedWork, SaveStatus, Submission } from "../lib/workSync";
+import type { Feedback, OpenedWork, SaveStatus, Submission } from "../lib/workSync";
+import { FeedbackForm, FeedbackView, formatMark } from "../components/Feedback";
 import { api, errorOf } from "../lib/api";
 import type { Result } from "../lib/api";
 import HandInDialog from "../components/HandInDialog";
@@ -212,11 +213,17 @@ function Modeling() {
 }
 
 // A teacher looking at a student's work: read-only, either the handed-in copy or the current work
+type ReviewedSubmission = Feedback & { work: unknown; submittedAt: number };
+
 interface Review {
     classId: number;
     studentId: number;
     studentName: string;
     submittedAt: number | null;
+    // The hand-in's feedback, which the teacher edits in the explanation column
+    feedback: Feedback | null;
+    feedbackUrl: string;
+    onFeedback: (feedback: Feedback) => void;
     showing: "submission" | "work";
     hasWork: boolean;
     onShow: (which: "submission" | "work") => void;
@@ -231,13 +238,13 @@ export function ReviewWork() {
     const studentId = Number(params.userId);
     const { projects, byId } = useProjects();
     const project = byId(params.projectId);
-    const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null } | null>(null);
+    const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showing, setShowing] = useState<"submission" | "work">("submission");
 
     useEffect(() => {
         if (user?.role !== "teacher" || !project) return;
-        api<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null }>(
+        api<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null }>(
             `/classes/${classId}/students/${studentId}/work/${project.id}`
         ).then(({ ok, data }) => {
             if (!ok || !data.student) return setError(errorOf(data));
@@ -264,6 +271,9 @@ export function ReviewWork() {
                 studentId,
                 studentName: data.student.name,
                 submittedAt: data.submission?.submittedAt ?? null,
+                feedback: data.submission,
+                feedbackUrl: `/classes/${classId}/students/${studentId}/work/${project.id}/feedback`,
+                onFeedback: (feedback) => setData((d) => d && d.submission ? { ...d, submission: { ...d.submission, ...feedback } } : d),
                 showing,
                 hasWork: data.work !== null,
                 onShow: setShowing,
@@ -995,11 +1005,15 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             project && (published[project.id]?.length ?? 0) > 0 && (
                                 <>
                                     {submission && (
-                                        <span className="hand-in-chip">
-                                            {t(sync.version > submission.workVersion ? "handIn.chipChanged" : "handIn.handedInAt", {
-                                                time: new Date(submission.submittedAt).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" }),
-                                            })}
-                                            {(dueDate(published[project.id]) ?? Infinity) < submission.submittedAt && ` · ${t("dashboard.late")}`}
+                                        <span className={`hand-in-chip status-${submission.status}`}>
+                                            {submission.status === "returned" ? t("feedback.chipReturned")
+                                                : submission.status === "approved" ? t("feedback.approved")
+                                                    + (submission.mark !== null ? ` · ${formatMark(submission.mark, language)}` : "")
+                                                : t(sync.version > submission.workVersion ? "handIn.chipChanged" : "handIn.handedInAt", {
+                                                    time: new Date(submission.submittedAt).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" }),
+                                                })}
+                                            {submission.status === "handed_in" && (dueDate(published[project.id]) ?? Infinity) < submission.submittedAt
+                                                && ` · ${t("dashboard.late")}`}
                                         </span>
                                     )}
                                     <button className="hand-in-btn" onClick={() => setHandInOpen(true)}>
@@ -1078,6 +1092,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                         {explanationCollapsed && <span className="panel-toggle-label">{t("modeling.tabExplanation")}</span>}
                     </button>
                     <div className="explanation" id="explanation-content">
+                        {review?.feedback && <FeedbackForm url={review.feedbackUrl} initial={review.feedback} onSaved={review.onFeedback}/>}
+                        {project && !isTeacher && !review && submission && <FeedbackView feedback={submission}/>}
                         {project && !isTeacher && !review && <AssignmentInfo publications={published[project.id] ?? []}/>}
                         {project && <Markdown text={project.explanation}/>}
                     </div>

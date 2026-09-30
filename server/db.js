@@ -243,6 +243,15 @@ const MIGRATIONS = [
     `
     UPDATE classes SET join_open = 1;
     `,
+    // 14: a teacher's feedback on a hand-in: a status (handed_in, returned for revision, approved),
+    // a comment and an optional mark (1.0-10.0), and who gave it when
+    `
+    ALTER TABLE submissions ADD COLUMN status TEXT NOT NULL DEFAULT 'handed_in';
+    ALTER TABLE submissions ADD COLUMN feedback TEXT NOT NULL DEFAULT '';
+    ALTER TABLE submissions ADD COLUMN mark REAL;
+    ALTER TABLE submissions ADD COLUMN reviewed_at INTEGER;
+    ALTER TABLE submissions ADD COLUMN reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

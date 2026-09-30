@@ -1349,3 +1349,116 @@
         display: none;
     }
 }
+
+/* The chip next to "Hand in" once the teacher has reviewed it */
+.hand-in-chip.status-returned {
+    background-color: var(--color-danger-bg);
+    color: var(--color-danger-text);
+}
+
+/* Feedback on a hand-in: the teacher's form in the review view, the student's view of it */
+.feedback-box {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    color: var(--color-text-primary);
+}
+
+.feedback-box p {
+    margin: 0;
+}
+
+.feedback-box.view.status-approved {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.feedback-box.view.status-returned {
+    border-color: var(--color-danger-text);
+    background-color: var(--color-danger-bg);
+}
+
+.feedback-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.feedback-mark-view {
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.feedback-text {
+    white-space: pre-wrap;
+}
+
+.feedback-by {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.feedback-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.feedback-status button {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.feedback-status button.active {
+    border-color: var(--color-brand-accent);
+    background-color: var(--color-brand-subtle-bg);
+    color: var(--color-brand-accent);
+    font-weight: 600;
+}
+
+.feedback-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.feedback-field textarea {
+    resize: vertical;
+    font-family: "Figtree", sans-serif;
+}
+
+.feedback-mark {
+    width: 90px;
+    flex: none;
+}
+
+.feedback-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.feedback-saved {
+    font-size: 12px;
+    color: var(--color-brand-accent);
+}

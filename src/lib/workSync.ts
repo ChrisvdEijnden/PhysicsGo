@@ -12,7 +12,20 @@ import type { ProjectWork, SavedMedia } from "../data/Projects";
 export type SaveStatus = "saved" | "saving" | "offline" | "error" | "conflict";
 
 // A hand-in: which saved version the teacher sees, and when it was handed in
-export interface Submission {
+export type ReviewStatus = "handed_in" | "returned" | "approved";
+
+// What the teacher said about a hand-in; reviewedAt is null until they have
+export interface Feedback {
+    status: ReviewStatus;
+    feedback: string;
+    // 1.0-10.0, or none
+    mark: number | null;
+    reviewedAt: number | null;
+    // The teacher's name
+    reviewedBy: string | null;
+}
+
+export interface Submission extends Feedback {
     workVersion: number;
     submittedAt: number;
 }

@@ -57,7 +57,8 @@ export default function HandInDialog({ title, submission, changedSince, onHandIn
                 {error && <p className="auth-error class-error" role="alert">{t(authErrorKey(error))}</p>}
 
                 <div className="dialog-actions">
-                    {submission && (
+                    {/* Once the teacher has given feedback, the hand-in stays (taking it back would remove the feedback) */}
+                    {submission && submission.reviewedAt === null && (
                         <button type="button" className="class-button danger" disabled={busy} onClick={() => run(onRetract)}>
                             {t("handIn.retract")}
                         </button>

@@ -14,6 +14,7 @@ import ConfirmButton from "../components/ConfirmButton";
 import { useProjects } from "../lib/useProjects";
 import { formatDueDate } from "../lib/formatDueDate";
 import { formatCode } from "../components/CodeInput";
+import { formatMark } from "../components/Feedback";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
 import CheckIcon20px from "../assets/icons/check-20px.svg";
 
@@ -58,7 +59,8 @@ interface ProjectProgress {
     students: {
         id: number;
         name: string;
-        status: "not_started" | "working" | "handed_in";
+        status: "not_started" | "working" | "handed_in" | "returned" | "approved";
+        mark: number | null;
         updatedAt: number | null;
         submittedAt: number | null;
         changedSince: boolean;
@@ -497,7 +499,7 @@ function Classes() {
                                                             {byId(p.projectId)?.title ?? p.projectId}
                                                         </p>
                                                         <p className="member-sub">{t("classes.progressSummary", {
-                                                            handedIn: count("handed_in"),
+                                                            handedIn: p.students.filter((s) => s.submittedAt !== null).length,
                                                             working: count("working"),
                                                             notStarted: count("not_started"),
                                                         })}</p>
@@ -531,6 +533,9 @@ function Classes() {
                                                                 </div>
                                                                 <span className={`class-badge status-${s.status}`}>
                                                                     {s.status === "handed_in" ? t("classes.statusHandedIn")
+                                                                        : s.status === "returned" ? t("feedback.returnedShort")
+                                                                        : s.status === "approved" ? t("feedback.approved")
+                                                                            + (s.mark !== null ? ` · ${formatMark(s.mark, language)}` : "")
                                                                         : s.status === "working" ? t("classes.statusWorking")
                                                                         : t("classes.statusNotStarted")}
                                                                 </span>

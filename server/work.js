@@ -18,9 +18,22 @@ export function readWork(userId, projectId) {
 
 // The work a student handed in for a project, or null
 export function readSubmission(userId, projectId) {
-    const row = db.prepare("SELECT data, work_version, submitted_at FROM submissions WHERE user_id = ? AND project_id = ?")
-        .get(userId, projectId);
-    return row ? { work: JSON.parse(row.data), workVersion: row.work_version, submittedAt: row.submitted_at } : null;
+    const row = db.prepare(`
+        SELECT s.*, u.name AS reviewer FROM submissions s LEFT JOIN users u ON u.id = s.reviewed_by
+        WHERE s.user_id = ? AND s.project_id = ?
+    `).get(userId, projectId);
+    return row ? { work: JSON.parse(row.data), workVersion: row.work_version, submittedAt: row.submitted_at, ...feedbackOf(row) } : null;
+}
+
+// What a teacher said about a hand-in (see migration 14)
+export function feedbackOf(row) {
+    return {
+        status: row.status,
+        feedback: row.feedback,
+        mark: row.mark,
+        reviewedAt: row.reviewed_at,
+        reviewedBy: row.reviewer ?? null,
+    };
 }
 
 // Whether the project is an assignment in one of the student's classes (not archived, and open by now)
@@ -56,7 +69,8 @@ export function workRouter({ requireAuth }) {
     // Projects the user has saved work for, most recently changed first
     router.get("/", (req, res) => {
         const work = db.prepare(`
-            SELECT w.project_id AS projectId, w.updated_at AS updatedAt, s.submitted_at AS submittedAt
+            SELECT w.project_id AS projectId, w.updated_at AS updatedAt, s.submitted_at AS submittedAt,
+                   s.status AS status, s.mark AS mark
             FROM project_work w
             LEFT JOIN submissions s ON s.user_id = w.user_id AND s.project_id = w.project_id
             WHERE w.user_id = ? ORDER BY w.updated_at DESC
@@ -71,12 +85,13 @@ export function workRouter({ requireAuth }) {
         const submission = readSubmission(req.user.id, req.params.projectId);
         res.json({
             ...readWork(req.user.id, req.params.projectId),
-            submission: submission && { workVersion: submission.workVersion, submittedAt: submission.submittedAt },
+            submission: submission && { ...submission, work: undefined },
         });
     });
 
     // Hands in the work as saved at `version` (the browser saves first). Handing in again replaces
-    // the earlier copy; the student keeps working on their own copy either way.
+    // the earlier copy and puts it back to "handed in" (the teacher's comment and mark stay until they
+    // change them); the student keeps working on their own copy either way.
     router.post("/:projectId/submit", express.json({ limit: "10kb" }), wrap(async (req, res) => {
         const { projectId } = req.params;
         if (req.user.role !== "student") return res.status(403).json({ error: "forbidden" });
@@ -90,17 +105,21 @@ export function workRouter({ requireAuth }) {
             db.prepare(`
                 INSERT INTO submissions (user_id, project_id, data, work_version, submitted_at) VALUES (?, ?, ?, ?, ?)
                 ON CONFLICT (user_id, project_id)
-                DO UPDATE SET data = excluded.data, work_version = excluded.work_version, submitted_at = excluded.submitted_at
+                DO UPDATE SET data = excluded.data, work_version = excluded.work_version, submitted_at = excluded.submitted_at,
+                              status = 'handed_in'
             `).run(req.user.id, projectId, JSON.stringify(current.work), current.version, now);
-            return { workVersion: current.version, submittedAt: now };
+            return {};
         })();
         if (result.error) return res.status(result.error === "conflict" ? 409 : 400).json({ error: result.error });
         await pruneMedia(req.user.id, projectId);
-        res.json({ submission: result });
+        res.json({ submission: { ...readSubmission(req.user.id, projectId), work: undefined } });
     }));
 
-    // Takes the hand-in back
+    // Takes the hand-in back, as long as the teacher hasn't given feedback on it (that would go with it)
     router.delete("/:projectId/submission", wrap(async (req, res) => {
+        const reviewed = db.prepare("SELECT reviewed_at FROM submissions WHERE user_id = ? AND project_id = ?")
+            .get(req.user.id, req.params.projectId)?.reviewed_at;
+        if (reviewed) return res.status(409).json({ error: "already_reviewed" });
         db.prepare("DELETE FROM submissions WHERE user_id = ? AND project_id = ?").run(req.user.id, req.params.projectId);
         await pruneMedia(req.user.id, req.params.projectId);
         res.json({ submission: null });

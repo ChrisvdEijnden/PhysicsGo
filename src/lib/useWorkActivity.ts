@@ -3,11 +3,15 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { useAuth } from "./useAuth";
 import type { Project } from "../data/Projects";
+import type { ReviewStatus } from "./workSync";
 
-// When the signed-in user last saved work on each project, and when they handed it in
+// When the signed-in user last saved work on each project, when they handed it in, and what the
+// teacher made of it
 export interface WorkActivity {
     updatedAt: number;
     submittedAt: number | null;
+    status: ReviewStatus | null;
+    mark: number | null;
 }
 
 export function useWorkActivity() {
@@ -35,6 +39,11 @@ export function useWorkActivity() {
     const handedIn = (project: Project) => activity[project.id]?.submittedAt != null;
     // When the user handed the project in; null when they haven't
     const submittedAt = (project: Project) => activity[project.id]?.submittedAt ?? null;
+    // handed_in, returned (for revision) or approved; null when not handed in
+    const reviewOf = (project: Project) => {
+        const a = activity[project.id];
+        return a?.submittedAt != null && a.status ? { status: a.status, mark: a.mark } : null;
+    };
 
-    return { lastEdit, byLastEdit, handedIn, submittedAt };
+    return { lastEdit, byLastEdit, handedIn, submittedAt, reviewOf };
 }

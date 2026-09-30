@@ -24,6 +24,8 @@ import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { canSeeProject, dueDate, usePublished } from "../lib/usePublished";
 import { formatDueDate, formatDueDay } from "../lib/formatDueDate";
+import { formatMark } from "../components/Feedback";
+import type { ReviewStatus } from "../lib/workSync";
 import ProjectClasses from "../components/ProjectClasses";
 import PublishButton from "../components/PublishButton";
 
@@ -33,7 +35,7 @@ function Dashboard() {
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, loaded: publishedLoaded, setProjectClasses } = usePublished();
-    const { lastEdit, byLastEdit, handedIn, submittedAt } = useWorkActivity();
+    const { lastEdit, byLastEdit, handedIn, submittedAt, reviewOf } = useWorkActivity();
     const handIns = useRecentHandIns(isTeacher);
     const { projects, createProject } = useProjects();
     const [busy, setBusy] = useState(false);
@@ -82,7 +84,8 @@ function Dashboard() {
 
     // Students: what's assigned to them and not handed in yet, soonest due first (no due date last)
     const todo = visibleProjects
-        .filter((project) => (published[project.id]?.length ?? 0) > 0 && !handedIn(project))
+        // Returned for revision counts as to do again
+        .filter((project) => (published[project.id]?.length ?? 0) > 0 && (!handedIn(project) || reviewOf(project)?.status === "returned"))
         .sort((a, b) => (due(a) ?? Infinity) - (due(b) ?? Infinity) || a.title.localeCompare(b.title));
     // Students: what they've worked on (or started themselves), most recent first
     const recent = visibleProjects.filter((project) => lastEdit(project) !== null || project.mine).sort(byLastEdit);
@@ -118,9 +121,13 @@ function Dashboard() {
                                                             : t(overdue ? "dashboard.overdue" : "dashboard.due", { time: formatDueDate(dueAt, language) })}
                                                     </p>
                                                 </div>
-                                                <span className={`class-chip${lastEdit(project) ? "" : " muted"}`}>
-                                                    {lastEdit(project) ? t("classes.statusWorking") : t("classes.statusNotStarted")}
-                                                </span>
+                                                {reviewOf(project)?.status === "returned"
+                                                    ? <span className="class-chip late">{t("feedback.returnedShort")}</span>
+                                                    : (
+                                                        <span className={`class-chip${lastEdit(project) ? "" : " muted"}`}>
+                                                            {lastEdit(project) ? t("classes.statusWorking") : t("classes.statusNotStarted")}
+                                                        </span>
+                                                    )}
                                                 <img src={AscewArrow67px} alt=""/>
                                             </div>
                                         );
@@ -189,7 +196,9 @@ function Dashboard() {
                                                 </h3>
                                                 <p>{`${titleOf(h.projectId)} · ${h.className} · ${formatRelativeDate(new Date(h.submittedAt), language)}`}</p>
                                             </div>
-                                            {h.late && <span className="class-chip late">{t("dashboard.late")}</span>}
+                                            {h.status !== "handed_in"
+                                                ? <ReviewChip review={{ status: h.status, mark: h.mark }}/>
+                                                : h.late && <span className="class-chip late">{t("dashboard.late")}</span>}
                                             <img src={AscewArrow67px} alt=""/>
                                         </div>
                                     ))}
@@ -219,8 +228,8 @@ function Dashboard() {
                                     <img src={FileCode18px} alt="" />
                                     <div className="project-recent-name">
                                         <p className="recent-name"><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></p>
-                                        {!isTeacher && handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
-                                        {!isTeacher && late(project) && <span className="class-chip late">{t("dashboard.late")}</span>}
+                                        {!isTeacher && <ReviewChip review={reviewOf(project)}/>}
+                                        {!isTeacher && reviewOf(project)?.status === "handed_in" && late(project) && <span className="class-chip late">{t("dashboard.late")}</span>}
                                     </div>
                                 </div>
                                 <div className="other-filters">
@@ -259,6 +268,23 @@ interface HandIn {
     className: string;
     submittedAt: number;
     late: boolean;
+    status: ReviewStatus;
+    mark: number | null;
+}
+
+// Handed in, returned for revision, or approved (with the mark)
+function ReviewChip({ review }: { review: { status: ReviewStatus; mark: number | null } | null }) {
+    const { t, language } = useTranslation();
+    if (!review) return null;
+    if (review.status === "returned") return <span className="class-chip late">{t("feedback.returnedShort")}</span>;
+    if (review.status === "approved") {
+        return (
+            <span className="class-chip handed-in">
+                {t("feedback.approved")}{review.mark !== null && ` · ${formatMark(review.mark, language)}`}
+            </span>
+        );
+    }
+    return <span className="class-chip handed-in">{t("handIn.done")}</span>;
 }
 
 // Teachers: the latest hand-ins in their classes; null while loading
