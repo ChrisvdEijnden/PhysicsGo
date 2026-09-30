@@ -102,6 +102,15 @@ export async function uploadMissingMedia(projectId: string, media: SavedMedia[])
     }
 }
 
+// Signed in again after the session ended: open workspaces send what's waiting right away, and so
+// does every other project with changes the server hasn't got
+const RESUME_EVENT = "physicsgo:resume-saving";
+
+export function resumeSaving() {
+    window.dispatchEvent(new Event(RESUME_EVENT));
+    syncLocalWork();
+}
+
 const SAVE_DELAY_MS = 800;
 const RETRY_MS = 10_000;
 
@@ -204,11 +213,13 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         sync.current.pending = null;
     }, [projectId, conflict]);
 
-    // Back online: send what's waiting. Leaving the page: send it now rather than after the pause.
+    // Back online or signed in again: send what's waiting. Leaving the page: send it now rather than after the pause.
     useEffect(() => {
         window.addEventListener("online", flush);
+        window.addEventListener(RESUME_EVENT, flush);
         return () => {
             window.removeEventListener("online", flush);
+            window.removeEventListener(RESUME_EVENT, flush);
             flush();
         };
     }, [flush]);

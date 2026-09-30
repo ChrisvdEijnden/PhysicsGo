@@ -17,6 +17,8 @@
     --color-text-on-brand: #FFFFFF;
 
     --color-shadow: #0F172A0D;
+
+    --color-warning-text: #92400E;
 }
 
 [data-theme="dark"] {
@@ -37,6 +39,8 @@
     --color-on-brand-muted: #CCFBF1;
 
     --color-shadow: rgba(0, 0, 0, 0.45);
+
+    --color-warning-text: #FBBF24;
 }
 
 html, body, #root {

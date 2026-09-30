@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import "../styles/global.css";
 import "./classes.css";
@@ -12,7 +12,7 @@ import CodeEditor from "../components/codeEditor.tsx";
 import ConfirmButton from "../components/ConfirmButton";
 import Markdown from "../components/Markdown";
 import { useTranslation } from "../lib/useTranslations";
-import { useProjects } from "../lib/useProjects";
+import { assignmentPath, useProjects } from "../lib/useProjects";
 import { authErrorKey } from "../lib/authErrors";
 import { deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
 import type { MediaCategory, Project } from "../data/Projects";
@@ -83,7 +83,7 @@ function ProjectEditor() {
         setBusy(false);
         if (!res.ok) return setError(res.error);
         // Opens the project the way students will see it, where it can be published
-        navigate("/modeling", { state: { presetId: res.project.id }, replace: true });
+        navigate(assignmentPath(res.project.id), { replace: true });
     };
 
     // Starter media is saved straight away, so it can only be added to a project that exists
@@ -124,7 +124,7 @@ function ProjectEditor() {
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
-                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
+                    <h2><Link className="breadcrumb-link" to="/dashboard">{t("nav.dashboard")}</Link></h2>
                     <div className="spacer"></div>
                     <h2>{editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}</h2>
                 </div>

@@ -1,7 +1,7 @@
 import init, { run_with_data as runInterpreter } from "../wasm/interpreterGo";
 import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import "./modeling.css";
 
 import NavBrand from "../components/NavBrand";
@@ -16,6 +16,7 @@ import MediaTile, { DEFAULT_POINT_STEP, pointSeries } from "../components/MediaT
 import type { MediaItem } from "../components/MediaTile.tsx";
 import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/mediaStore";
 import { realPoints } from "../lib/calibration";
+import { formatTick } from "../components/lineChart.tsx";
 import type { ChartPoint } from "../components/lineChart.tsx";
 import { newGraph, normalizeWork } from "../data/Projects.tsx";
 import { useProjects } from "../lib/useProjects";
@@ -33,7 +34,8 @@ import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { usePublished } from "../lib/usePublished";
 import PublishDialog from "../components/PublishDialog";
-import ErrorBoundary from "../components/ErrorBoundary";
+import ErrorBoundary, { NotFound } from "../components/ErrorBoundary";
+import { LoadingScreen } from "../components/RouteGuards";
 
 // Start values run once; model rules run every step
 const DEFAULT_START = [
@@ -57,8 +59,48 @@ function codeVariables(source: string): string[] {
     return [...names];
 }
 
+// How the last run ended, for the line under the code
+type RunStatus = { kind: "stopped" | "limit" | "error"; steps: number; t: number | undefined };
+
+// The first variable, step by step, that has no usable value (NaN or ±Infinity). Measured data is
+// skipped: it has no value outside the measured times on purpose.
+function firstNonFinite(history: Map<string, number>[], order: string[], skip: Set<string>) {
+    for (let step = 0; step < history.length; step++) {
+        const state = history[step];
+        const names = [...order, ...[...state.keys()].filter((name) => !order.includes(name))];
+        for (const name of names) {
+            const value = state.get(name);
+            if (value !== undefined && !skip.has(name) && !Number.isFinite(value)) {
+                return { name, step, t: state.get("t") };
+            }
+        }
+    }
+    return null;
+}
+
 const MIN_PANEL_WIDTH_PERCENT = 15;
 const MIN_ROW_HEIGHT_PERCENT = 15;
+
+// Moves the divider after panel `index` by `delta` percent, keeping both panels next to it at least `min`
+function resizePair<T extends number[]>(sizes: T, index: number, delta: number, min: number): T {
+    const total = sizes[index] + sizes[index + 1];
+    const first = Math.min(Math.max(sizes[index] + delta, min), total - min);
+    const next = [...sizes] as T;
+    next[index] = first;
+    next[index + 1] = total - first;
+    return next;
+}
+
+// Dividers move with the arrow keys along their direction, 2% at a time; Home and End move them all the way
+const DIVIDER_KEY_STEP = 2;
+function dividerKeyDelta(key: string, orientation: "vertical" | "horizontal"): number | null {
+    const [back, forward] = orientation === "vertical" ? ["ArrowLeft", "ArrowRight"] : ["ArrowUp", "ArrowDown"];
+    if (key === back) return -DIVIDER_KEY_STEP;
+    if (key === forward) return DIVIDER_KEY_STEP;
+    if (key === "Home") return -100;
+    if (key === "End") return 100;
+    return null;
+}
 
 type DragState = {
     dividerIndex: number;
@@ -125,37 +167,47 @@ function starterMedia(project: Project | undefined): SavedMedia[] {
 
 const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced: false, offline: false, conflictWith: null };
 
-// Work is saved per account, so the workspace only opens once it's known who is signed in and
-// their work has loaded; a different account gets a fresh workspace, not the previous one's state
+// The assignment comes from the address (/modeling/<id>), so it can be linked, bookmarked and opened in a
+// new tab; /modeling alone is an empty workspace. Work is saved per account, so the workspace only opens
+// once it's known who is signed in and their work has loaded; a different account gets a fresh workspace.
 function Modeling() {
-    const location = useLocation();
+    const { projectId } = useParams();
     const { user } = useAuth();
-    const presetId = (location.state as { presetId?: string } | null)?.presetId;
     const { projects, byId } = useProjects();
-    const project = byId(presetId);
-    const [opened, setOpened] = useState<OpenedWork | null>(null);
+    // Only assignments this account may open are loaded, so anything else isn't found
+    const project = byId(projectId);
+    // The loaded work and the assignment it belongs to: switching assignments never opens one with another's work
+    const [opened, setOpened] = useState<{ projectId: string | null; work: OpenedWork } | null>(null);
     // Bumped to load the work again, e.g. after choosing another device's version
     const [reloads, setReloads] = useState(0);
+    // Only another account reopens the work. The same person signing in again after their session
+    // ended keeps the open workspace, which then sends what couldn't be saved (reopening at that
+    // moment would race with that save and look like a conflict).
+    const userId = user?.id ?? null;
 
     useEffect(() => {
-        if (!user || projects === null) return;
-        if (!project) return setOpened(NO_WORK);
+        if (userId === null || projects === null) return;
+        if (!project) return setOpened({ projectId: null, work: NO_WORK });
         let cancelled = false;
         setOpened(null);
         openWork(project.id).then((work) => {
-            if (!cancelled) setOpened(work);
+            if (!cancelled) setOpened({ projectId: project.id, work });
         });
         return () => {
             cancelled = true;
         };
-    }, [user, projects, project, reloads]);
+    }, [userId, projects, project, reloads]);
 
-    if (!user || !opened) return null;
+    if (!user || projects === null) return <LoadingScreen/>;
+    if (projectId !== undefined && !project) {
+        return <NotFound title="modeling.notFoundTitle" description="modeling.notFoundDescription"/>;
+    }
+    if (!opened || opened.projectId !== (project?.id ?? null)) return <LoadingScreen/>;
     return (
         <ModelingWorkspace
-            key={`${user.id}-${reloads}`}
+            key={`${user.id}-${opened.projectId}-${reloads}`}
             project={project}
-            opened={opened}
+            opened={opened.work}
             onReload={() => setReloads((n) => n + 1)}
         />
     );
@@ -263,25 +315,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
 
         const containerWidth = container.getBoundingClientRect().width;
         const deltaPercent = ((e.clientX - drag.startX) / containerWidth) * 100;
-
-        const { dividerIndex, startWidths } = drag;
-        const pairTotal = startWidths[dividerIndex] + startWidths[dividerIndex + 1];
-
-        let left = startWidths[dividerIndex] + deltaPercent;
-        let right = pairTotal - left;
-
-        if (left < MIN_PANEL_WIDTH_PERCENT) {
-            left = MIN_PANEL_WIDTH_PERCENT;
-            right = pairTotal - left;
-        } else if (right < MIN_PANEL_WIDTH_PERCENT) {
-            right = MIN_PANEL_WIDTH_PERCENT;
-            left = pairTotal - right;
-        }
-
-        const next: [number, number, number] = [...startWidths];
-        next[dividerIndex] = left;
-        next[dividerIndex + 1] = right;
-        setPanelWidths(next);
+        setPanelWidths(resizePair(drag.startWidths, drag.dividerIndex, deltaPercent, MIN_PANEL_WIDTH_PERCENT));
     }, []);
 
     const handlePointerUp = useCallback(() => {
@@ -331,7 +365,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     const mediaLoaded = useRef(!project);
     const startEditorRef = useRef<CodeEditorHandle>(null);
     const modelEditorRef = useRef<CodeEditorHandle>(null);
-    const [wasmReady, setWasmReady] = useState(false);
+    const [wasm, setWasm] = useState<"loading" | "ready" | "failed">("loading");
+    const wasmReady = wasm === "ready";
 
     // Every change to a project is saved with it and counts as an edit
     function saveWork(changes: Partial<ProjectWork>) {
@@ -401,19 +436,24 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         return Math.min(MAX_STEPS, Math.max(1, n));
     }
 
+    // Without the interpreter nothing can run, so a failed load is said rather than leaving Run greyed out
     useEffect(() => {
-        init().then(() => setWasmReady(true));
+        init().then(() => setWasm("ready"), () => setWasm("failed"));
     }, []);
 
     interface RunResult {
         ok: boolean;
-        // One entry per step: every variable's value after that step
+        // The state after the start values, then one entry per step: every variable's value after that step
         history: Map<string, number>[];
         errors: { line: number; column: number; message: string; block: string }[];
+        // A stop condition ended the run, rather than the step limit
+        stopped: boolean;
     }
 
     // Results of the last run; the chart stays empty until the model has run
     const [history, setHistory] = useState<Map<string, number>[] | null>(null);
+    const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
+    const [nonFinite, setNonFinite] = useState<{ name: string; step: number; t: number | undefined } | null>(null);
 
     // Points plotted on videos, as variables the code can read at the current t
     const measuredData = useMemo(() => mediaItems.flatMap(pointSeries), [mediaItems]);
@@ -448,8 +488,12 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         modelEditorRef.current?.clearErrors();
 
         const result = runInterpreter(start, model, stepCount(), measuredData) as RunResult;
+        const last = result.history[result.history.length - 1];
+        const status = { steps: Math.max(0, result.history.length - 1), t: last?.get("t") };
 
         if (!result.ok) {
+            setRunStatus({ kind: "error", ...status });
+            setNonFinite(null);
             // Each error's line is counted in its own block, which is its own editor
             const inBlock = (block: string): InterpreterError[] => result.errors
                 .filter((e) => e.block === block)
@@ -460,6 +504,22 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         }
 
         setHistory(result.history);
+        setRunStatus({ kind: result.stopped ? "stopped" : "limit", ...status });
+        setNonFinite(firstNonFinite(result.history, codeVariables(`${start}\n${model}`), new Set(measuredData.map((s) => s.name))));
+    }
+
+    function describeRun(status: RunStatus) {
+        const steps = status.steps.toLocaleString(language);
+        if (status.kind === "error") return t("modeling.runError");
+        if (status.t === undefined) return t(status.kind === "stopped" ? "modeling.runStoppedNoT" : "modeling.runLimitNoT", { steps });
+        return t(status.kind === "stopped" ? "modeling.runStopped" : "modeling.runLimit", { steps, t: formatTick(status.t) });
+    }
+
+    function describeNonFinite(found: NonNullable<typeof nonFinite>) {
+        const step = found.step.toLocaleString(language);
+        return found.t === undefined || !Number.isFinite(found.t)
+            ? t("modeling.nonFiniteNoT", { name: found.name, step })
+            : t("modeling.nonFinite", { name: found.name, step, t: formatTick(found.t) });
     }
 
     // ---------- Insert Media & Embeds ----------
@@ -648,25 +708,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
 
         const containerHeight = container.getBoundingClientRect().height;
         const deltaPercent = ((e.clientY - drag.startY) / containerHeight) * 100;
-
-        const { dividerIndex, startHeights } = drag;
-        const pairTotal = startHeights[dividerIndex] + startHeights[dividerIndex + 1];
-
-        let top = startHeights[dividerIndex] + deltaPercent;
-        let bottom = pairTotal - top;
-
-        if (top < MIN_ROW_HEIGHT_PERCENT) {
-            top = MIN_ROW_HEIGHT_PERCENT;
-            bottom = pairTotal - top;
-        } else if (bottom < MIN_ROW_HEIGHT_PERCENT) {
-            bottom = MIN_ROW_HEIGHT_PERCENT;
-            top = pairTotal - bottom;
-        }
-
-        const next = [...startHeights];
-        next[dividerIndex] = top;
-        next[dividerIndex + 1] = bottom;
-        setRowHeights(next);
+        setRowHeights(resizePair(drag.startHeights, drag.dividerIndex, deltaPercent, MIN_ROW_HEIGHT_PERCENT));
     }, []);
 
     const handleRowPointerUp = useCallback(() => {
@@ -690,6 +732,32 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         },
         [rowHeights, handleRowPointerMove, handleRowPointerUp]
     );
+
+    // Dividers are focusable separators that report the size of the panel before them and move with keys
+    const dividerProps = (
+        orientation: "vertical" | "horizontal",
+        sizes: number[],
+        index: number,
+        min: number,
+        onMove: (delta: number) => void,
+    ) => ({
+        role: "separator",
+        tabIndex: 0,
+        "aria-orientation": orientation,
+        "aria-valuenow": Math.round(sizes[index] ?? 0),
+        "aria-valuemin": min,
+        "aria-valuemax": Math.round((sizes[index] ?? 0) + (sizes[index + 1] ?? 0) - min),
+        onKeyDown: (e: React.KeyboardEvent) => {
+            const delta = dividerKeyDelta(e.key, orientation);
+            if (delta === null) return;
+            e.preventDefault();
+            onMove(delta);
+        },
+    });
+    const columnDividerProps = (index: number) => dividerProps("vertical", panelWidths, index, MIN_PANEL_WIDTH_PERCENT,
+        (delta) => setPanelWidths((widths) => resizePair(widths, index, delta, MIN_PANEL_WIDTH_PERCENT)));
+    const rowDividerProps = (index: number) => dividerProps("horizontal", rowHeights, index, MIN_ROW_HEIGHT_PERCENT,
+        (delta) => setRowHeights((heights) => resizePair(heights, index, delta, MIN_ROW_HEIGHT_PERCENT)));
 
     return (
         <div className="modeling-page">
@@ -857,15 +925,20 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                 <div
                     className={`panel-divider${draggingDivider === 0 ? " dragging" : ""}`}
                     onPointerDown={handleDividerPointerDown(0)}
-                    role="separator"
-                    aria-orientation="vertical"
+                    {...columnDividerProps(0)}
                     aria-label={t("modeling.resizeExplanationCode")}
                 />
 
                 <div className="code-panel" style={{ flex: `0 0 ${panelWidths[1]}%` }}>
                     <div className="code">
                         <div className="code-panel-actions">
-                            <button className="play-btn" aria-label={t("modeling.runSimulation")} onClick={runSimulation} disabled={!wasmReady}>
+                            <button
+                                className="play-btn"
+                                aria-label={t("modeling.runSimulation")}
+                                title={wasm === "loading" ? t("modeling.wasmLoading") : t("modeling.runSimulation")}
+                                onClick={runSimulation}
+                                disabled={!wasmReady}
+                            >
                                 <img src={PlayIcon20px} alt=""/>
                             </button>
                         </div>
@@ -903,13 +976,20 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                 onKeyDown={(e) => e.key === "Enter" && runSimulation()}
                             />
                         </span>
+                        {/* How the last run ended, so "nothing happened" always has an explanation */}
+                        {wasm === "failed" && <p className="run-status warning" role="alert">{t("modeling.wasmFailed")}</p>}
+                        {runStatus && (
+                            <p className={`run-status${runStatus.kind === "stopped" ? "" : " warning"}`} role="status">
+                                {describeRun(runStatus)}
+                            </p>
+                        )}
+                        {nonFinite && <p className="run-status warning" role="status">{describeNonFinite(nonFinite)}</p>}
                     </div>
                 </div>
                 <div
                     className={`panel-divider${draggingDivider === 1 ? " dragging" : ""}`}
                     onPointerDown={handleDividerPointerDown(1)}
-                    role="separator"
-                    aria-orientation="vertical"
+                    {...columnDividerProps(1)}
                     aria-label={t("modeling.resizeCodeAnalysis")}
                 />
 
@@ -926,8 +1006,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                         <div
                                             className={`panel-divider-row${draggingRowDivider === index - 1 ? " dragging" : ""}`}
                                             onPointerDown={handleRowDividerPointerDown(index - 1)}
-                                            role="separator"
-                                            aria-orientation="horizontal"
+                                            {...rowDividerProps(index - 1)}
                                             aria-label={t("modeling.resizeAnalysisPanels")}
                                         />
                                     )}

@@ -1,4 +1,6 @@
 .breadcrumb-link {
+    color: inherit;
+    text-decoration: none;
     cursor: pointer;
 }
 
@@ -596,4 +598,14 @@
 
 .class-badge.status-working {
     color: var(--color-text-primary);
+}
+
+/* A labelled field in a dialog, e.g. signing in again after the session ended */
+.dialog-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
 }

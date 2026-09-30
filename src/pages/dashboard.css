@@ -60,6 +60,7 @@
 
 }
 
+/* The two cards are buttons, without the browser's button look */
 .action-open, .action-new {
     display: flex;
     flex-direction: column;
@@ -69,10 +70,15 @@
     justify-content: center;
     border-radius: 12px;
     margin: 0;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
 }
 
 .action-new {
     background-color: var(--color-brand);
+    border: none;
 }
 
 .action-open {
@@ -93,26 +99,26 @@
     flex-direction: column;
 }
 
-.action-text h3, .curriculum-card h2 {
+.action-title, .curriculum-card h2 {
     font-size: 14px;
     font-weight: 500;
     font-family: "Figtree", sans-serif;
     margin: 0;
 }
 
-.action-text p {
+.action-description {
     font-size: 11px;
     font-weight: 400;
     font-family: "Figtree", sans-serif;
     margin: 0;
 }
 
-.action-new .action-text h3 {color: var(--color-on-brand);}
-.action-new .action-text p {color: var(--color-on-brand-muted);}
+.action-new .action-title {color: var(--color-on-brand);}
+.action-new .action-description {color: var(--color-on-brand-muted);}
 .action-new img {color: var(--color-on-brand);}
 
-.action-open .action-text h3 {color: var(--color-text-primary);}
-.action-open .action-text p {color: var(--color-text-tertiary);}
+.action-open .action-title {color: var(--color-text-primary);}
+.action-open .action-description {color: var(--color-text-tertiary);}
 
 .curriculum-card h2 {
     color: var(--color-text-secondary);
@@ -133,6 +139,7 @@
     font-family: "Figtree", sans-serif;
     margin: 0;
     color: var(--color-brand-accent);
+    text-decoration: none;
 }
 
 .top-row a:hover {
@@ -193,6 +200,44 @@
 .preset-item img {
     width: fit-content;
     height: fit-content;
+}
+
+/* A row that is a link as a whole (the classes card) */
+a.preset-item {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* An assignment row opens through the link on its title, which covers the whole row, so it works
+   with a keyboard and screen readers; the publish button sits above that link */
+.preset-item, .recent-item {
+    position: relative;
+}
+
+.row-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.row-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+}
+
+.row-link:focus-visible {
+    outline: none;
+}
+
+.row-link:focus-visible::after {
+    outline: 2px solid var(--color-brand-accent);
+    outline-offset: -2px;
+}
+
+.preset-item .publish-btn, .recent-item .publish-btn {
+    position: relative;
+    z-index: 1;
 }
 
 .preset-item-text {

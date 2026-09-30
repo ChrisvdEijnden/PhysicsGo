@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./login.css";
@@ -47,7 +47,7 @@ function JoinClass() {
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
-                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
+                    <h2><Link className="breadcrumb-link" to="/dashboard">{t("nav.dashboard")}</Link></h2>
                     <div className="spacer"></div>
                     <h2>{t("nav.joinClass")}</h2>
                 </div>

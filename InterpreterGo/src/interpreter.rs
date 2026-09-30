@@ -220,9 +220,15 @@ fn assigns(program: &Pairs<Rule>, name: &str) -> bool {
         .any(|p| p.as_rule() == Rule::assignment && p.into_inner().next().unwrap().as_str() == name)
 }
 
+/// The state after the start block and after every step; on a runtime error, the states up to
+/// that point plus the error. `stopped` says whether a stop condition ended the run.
+pub struct Simulation {
+    pub history: Vec<Env>,
+    pub error: Option<RunError>,
+    pub stopped: bool,
+}
+
 /// Runs the start block once, then the model block up to `max_steps` times.
-/// Returns the state after the start block and after every step; on a runtime
-/// error, the states up to that point plus the error.
 pub fn run_simulation(
     start_program: Pairs<Rule>,
     model_program: Pairs<Rule>,
@@ -230,12 +236,12 @@ pub fn run_simulation(
     data: &[DataSeries],
     start_block: &Block,
     model_block: &Block,
-) -> (Vec<Env>, Option<RunError>) {
+) -> Simulation {
     let mut env: Env = Env::new();
     let mut geschiedenis: Vec<Env> = Vec::new();
 
     if let Err(e) = run_statements(start_program, &mut env, start_block) {
-        return (geschiedenis, Some(e));
+        return Simulation { history: geschiedenis, error: Some(e), stopped: false };
     }
     // Measured data follows t: it's refreshed before every step and recorded with it
     set_data(&mut env, data);
@@ -248,7 +254,7 @@ pub fn run_simulation(
     for _ in 0..max_steps {
         let result = match run_statements(model_program.clone(), &mut env, model_block) {
             Ok(result) => result,
-            Err(e) => return (geschiedenis, Some(e)),
+            Err(e) => return Simulation { history: geschiedenis, error: Some(e), stopped: false },
         };
 
         // Every step, including the one that stops, moves the whole state one dt ahead,
@@ -263,9 +269,9 @@ pub fn run_simulation(
         geschiedenis.push(env.clone());
 
         if let StepResult::Stop = result {
-            break;
+            return Simulation { history: geschiedenis, error: None, stopped: true };
         }
     }
 
-    (geschiedenis, None)
+    Simulation { history: geschiedenis, error: None, stopped: false }
 }

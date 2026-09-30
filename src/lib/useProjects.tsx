@@ -6,6 +6,9 @@ import type { Result } from "./api";
 import { useAuth } from "./useAuth";
 import type { Project } from "../data/Projects";
 
+// The modeling page for an assignment; the address can be shared and bookmarked
+export const assignmentPath = (projectId: string) => `/modeling/${encodeURIComponent(projectId)}`;
+
 // What a teacher fills in for a project
 export type ProjectFields = Pick<Project, "title" | "explanation" | "start" | "model" | "estimatedTime" | "equipment">;
 

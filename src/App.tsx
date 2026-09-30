@@ -1,25 +1,34 @@
+import { lazy, Suspense } from "react";
 import { HashRouter, Routes, Route, useLocation } from "react-router-dom";
 
-import Login from "./pages/Login";
-import User from "./pages/User";
-import Dashboard from "./pages/Dashboard";
-import Modeling, { PreviewProject, ReviewWork } from "./pages/Modeling";
-import Settings from "./pages/Settings";
-import AllModels from "./pages/AllModels";
-import SignIn from "./pages/SignIn";
-import Register from "./pages/Register.tsx";
-import Classes from "./pages/Classes";
-import JoinClass from "./pages/JoinClass";
-import ResetPassword from "./pages/ResetPassword";
-import ProjectEditor from "./pages/ProjectEditor";
-import { PublicOnly, RequireAuth, WaitForSession } from "./components/RouteGuards";
+import { LoadingScreen, PublicOnly, RequireAuth, WaitForSession } from "./components/RouteGuards";
 import ErrorBoundary, { NotFound } from "./components/ErrorBoundary";
+import SessionEndedDialog from "./components/SessionEndedDialog";
+
+// Each page loads when it's first opened, so the sign-in page doesn't wait for the code editor,
+// the charts and the interpreter that only the modeling pages use
+const Login = lazy(() => import("./pages/Login"));
+const User = lazy(() => import("./pages/User"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Modeling = lazy(() => import("./pages/Modeling"));
+const PreviewProject = lazy(() => import("./pages/Modeling").then((m) => ({ default: m.PreviewProject })));
+const ReviewWork = lazy(() => import("./pages/Modeling").then((m) => ({ default: m.ReviewWork })));
+const Settings = lazy(() => import("./pages/Settings"));
+const AllModels = lazy(() => import("./pages/AllModels"));
+const SignIn = lazy(() => import("./pages/SignIn"));
+const Register = lazy(() => import("./pages/Register"));
+const Classes = lazy(() => import("./pages/Classes"));
+const JoinClass = lazy(() => import("./pages/JoinClass"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const ProjectEditor = lazy(() => import("./pages/ProjectEditor"));
 
 // Who may open which page is decided here, once, instead of by each page
 function AppRoutes() {
     const location = useLocation();
     return (
         <ErrorBoundary resetKey={location.pathname}>
+            {/* A page that can't load (offline, or a new version was deployed) ends up in the boundary */}
+            <Suspense fallback={<LoadingScreen/>}>
             <Routes>
                 <Route element={<PublicOnly/>}>
                     <Route path="/" element={<SignIn />} />
@@ -36,6 +45,7 @@ function AppRoutes() {
                     <Route path="/user" element={<User />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/modeling" element={<Modeling />} />
+                    <Route path="/modeling/:projectId" element={<Modeling />} />
                     <Route path="/all-models" element={<AllModels />} />
                 </Route>
                 <Route element={<RequireAuth role="student"/>}>
@@ -50,6 +60,9 @@ function AppRoutes() {
                 </Route>
                 <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
+            {/* Over whatever page is open, so an ended session doesn't take the page away */}
+            <SessionEndedDialog/>
         </ErrorBoundary>
     );
 }

@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import "./allmodels.css";
 import "./dashboard.css";
@@ -6,7 +6,7 @@ import "./classes.css";
 
 import NavBrand from "../components/NavBrand";
 import NavActions from "../components/NavActions";
-import { useProjects } from "../lib/useProjects";
+import { assignmentPath, useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { useAuth } from "../lib/useAuth";
 import { canSeeProject, usePublished } from "../lib/usePublished";
@@ -17,7 +17,6 @@ import {formatRelativeDate} from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
 
 function AllModels() {
-    const navigate = useNavigate();
     const { t, language } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
@@ -39,7 +38,7 @@ function AllModels() {
                 <div className="panel">
                     <div className="top-row">
                         <h2>{t("allModels.allYourProjects")}</h2>
-                        <a onClick={() => navigate("/dashboard")}>{t("allModels.backToDashboard")}</a>
+                        <Link to="/dashboard">{t("allModels.backToDashboard")}</Link>
                     </div>
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
@@ -52,17 +51,11 @@ function AllModels() {
                             .filter((project) => canSeeProject(user, published, project.id))
                             .sort(byLastEdit)
                             .map((project) => (
-                                <div
-                                    key={project.id}
-                                    className="recent-item"
-                                    onClick={() => navigate(
-                                        "/modeling",
-                                        { state: { presetId: project.id } })}
-                                >
+                                <div key={project.id} className="recent-item">
                                     <div className="left-side">
                                         <img src={FileCode18px} alt="" />
                                         <div className="project-recent-name">
-                                            <p className="recent-name">{project.title}</p>
+                                            <p className="recent-name"><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></p>
                                             {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
                                         </div>
                                     </div>

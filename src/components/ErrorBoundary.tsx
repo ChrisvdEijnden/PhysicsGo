@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useTranslation } from "../lib/useTranslations";
+import type { TranslationKey } from "../lib/Translations";
 
 // A rendering error shows a way back instead of a blank page. `resetKey` clears the error when it
 // changes (the route, for the app-wide boundary), so navigating away recovers.
@@ -66,14 +67,17 @@ function PanelError({ onRetry }: { onRetry: () => void }) {
     );
 }
 
-// An address that isn't a page
-export function NotFound() {
+// An address that isn't a page, or (with its own text) a page for something that isn't there
+export function NotFound({ title = "notFound.title", description = "notFound.description" }: {
+    title?: TranslationKey;
+    description?: TranslationKey;
+}) {
     const { t } = useTranslation();
     const navigate = useNavigate();
     return (
         <div className="app-message">
-            <h1>{t("notFound.title")}</h1>
-            <p>{t("notFound.description")}</p>
+            <h1>{t(title)}</h1>
+            <p>{t(description)}</p>
             <div className="app-message-actions">
                 <button type="button" className="app-message-button primary" onClick={() => navigate("/dashboard")}>
                     {t("error.toDashboard")}

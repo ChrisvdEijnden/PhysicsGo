@@ -251,3 +251,47 @@
     border-color: #d64545;
     color: #d64545;
 }
+
+/* Changing the password */
+.password {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.password-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 420px;
+}
+
+.password-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.password-field input {
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background-color: var(--color-bg-app);
+    color: var(--color-text-primary);
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+}
+
+.password-field input:focus {
+    outline: none;
+    border-color: var(--color-brand-accent);
+}
+
+.password-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}

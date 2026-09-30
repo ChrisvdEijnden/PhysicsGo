@@ -28,6 +28,8 @@ pub struct RunResult {
     pub ok: bool,
     pub history: Vec<Env>,
     pub errors: Vec<RunError>,
+    /// A `stop als` condition ended the run (rather than the step limit or an error)
+    pub stopped: bool,
 }
 
 #[wasm_bindgen(start)]
@@ -52,7 +54,7 @@ pub fn run_with_data(start_src: &str, model_src: &str, max_steps: usize, data: J
 }
 
 fn failed(error: RunError) -> RunResult {
-    RunResult { ok: false, history: vec![], errors: vec![error] }
+    RunResult { ok: false, history: vec![], errors: vec![error], stopped: false }
 }
 
 pub fn run_source(start_src: &str, model_src: &str, max_steps: usize) -> RunResult {
@@ -80,8 +82,8 @@ pub fn run_source_with_data(start_src: &str, model_src: &str, max_steps: usize, 
 
     let start_block = Block { name: "start", line_map: &start.line_map };
     let model_block = Block { name: "model", line_map: &model.line_map };
-    let (history, error) = run_simulation(start_pairs, model_pairs, max_steps, data, &start_block, &model_block);
-    RunResult { ok: error.is_none(), history, errors: error.into_iter().collect() }
+    let run = run_simulation(start_pairs, model_pairs, max_steps, data, &start_block, &model_block);
+    RunResult { ok: run.error.is_none(), history: run.history, errors: run.error.into_iter().collect(), stopped: run.stopped }
 }
 
 // Grammar rule names, in words a student understands
@@ -268,6 +270,23 @@ mod tests {
         assert_eq!(s.at(1.0), 5.0);
         assert_eq!(s.at(2.0), 6.0);
         assert!(series("x", &[], &[]).at(0.0).is_nan());
+    }
+
+    #[test]
+    fn reports_whether_the_stop_condition_ended_the_run() {
+        let stopped = run_source("t = 0\ndt = 1\n", "stop als t >= 3", 10);
+        assert!(stopped.ok && stopped.stopped);
+        // The condition sees t = 3 on the fourth step, which still moves t on: t = 0 through 4
+        assert_eq!(stopped.history.len(), 5);
+
+        let limit = run_source("t = 0\ndt = 1\n", "stop als t >= 100", 10);
+        assert!(limit.ok && !limit.stopped);
+        assert_eq!(limit.history.len(), 11);
+
+        // Stopping on the very last allowed step still counts as stopping
+        let last_step = run_source("t = 0\ndt = 1\n", "stop als t >= 9", 10);
+        assert!(last_step.stopped);
+        assert_eq!(last_step.history.len(), 11);
     }
 
     #[test]

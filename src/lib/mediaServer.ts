@@ -1,3 +1,4 @@
+import { reportSessionEnded } from "./api";
 import type { Result } from "./api";
 
 // Media files on the server. A teacher reads a student's files by passing the student's id.
@@ -12,6 +13,7 @@ export async function uploadMedia(projectId: string, mediaId: string, file: Blob
             body: file,
         });
         if (res.ok) return { ok: true };
+        if (res.status === 401) reportSessionEnded();
         const data = await res.json().catch(() => ({}));
         return { ok: false, error: data.error ?? (res.status === 413 ? "file_too_large" : "server_error") };
     } catch {
@@ -55,6 +57,7 @@ export async function uploadProjectMedia<P>(projectId: string, mediaId: string, 
         });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.project) return { ok: true, project: data.project };
+        if (res.status === 401) reportSessionEnded();
         return { ok: false, error: data.error ?? (res.status === 413 ? "file_too_large" : "server_error") };
     } catch {
         return { ok: false, error: "network" };

@@ -1,9 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { api, errorOf } from "./api";
+import { api, errorOf, onSessionEnded } from "./api";
 import type { Result } from "./api";
 import { setStorageUser } from "../data/Projects";
-import { syncLocalWork } from "./workSync";
+import { resumeSaving, syncLocalWork } from "./workSync";
 
 export type Role = "student" | "teacher";
 
@@ -32,6 +32,9 @@ interface UserData {
 interface AuthContextValue {
     user: AuthUser | null;
     loading: boolean;
+    // The server ended the session while `user` was using the app; they stay on the page until they
+    // sign in again (or sign out), so nothing they were doing is lost
+    sessionEnded: boolean;
     checkCode: (code: string) => Promise<Result<{ info: CodeInfo }>>;
     register: (input: { code: string; name: string; email: string; password: string }) => Promise<AuthResult>;
     login: (email: string, password: string) => Promise<AuthResult>;
@@ -50,21 +53,54 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [loading, setLoading] = useState(true);
+    const [sessionEnded, setSessionEnded] = useState(false);
+    const userRef = useRef<AuthUser | null>(null);
+    const sessionEndedRef = useRef(false);
+
+    const markSessionEnded = useCallback((ended: boolean) => {
+        sessionEndedRef.current = ended;
+        setSessionEnded(ended);
+    }, []);
 
     // Work saved in this browser is per account, so it switches before anything renders for the new user
     const applyUser = useCallback((next: AuthUser | null) => {
+        // The same person signed in again (here or in another tab) after their session ended:
+        // what couldn't be saved in the meantime is sent now
+        const resumed = next !== null && sessionEndedRef.current && next.id === userRef.current?.id;
         setStorageUser(next?.id ?? null);
+        userRef.current = next;
         setUser(next);
-    }, []);
+        markSessionEnded(false);
+        if (resumed) resumeSaving();
+    }, [markSessionEnded]);
 
+    // Only an answer from the server changes who is signed in; being offline doesn't sign anyone out
     const refresh = useCallback(async () => {
-        const { data } = await api<UserData>("/auth/me");
-        applyUser(data.user ?? null);
+        const { ok, data } = await api<UserData>("/auth/me");
+        if (ok) applyUser(data.user ?? null);
     }, [applyUser]);
 
     useEffect(() => {
         refresh().then(() => setLoading(false));
     }, [refresh]);
+
+    useEffect(() => onSessionEnded(() => {
+        if (userRef.current) markSessionEnded(true);
+    }), [markSessionEnded]);
+
+    // Signing in or out in one tab updates the others (they share the session cookie)
+    const channel = useRef<BroadcastChannel | null>(null);
+    useEffect(() => {
+        if (typeof BroadcastChannel === "undefined") return;
+        const tabs = new BroadcastChannel("physicsgo-auth");
+        tabs.onmessage = () => refresh();
+        channel.current = tabs;
+        return () => {
+            tabs.close();
+            channel.current = null;
+        };
+    }, [refresh]);
+    const tellOtherTabs = useCallback(() => channel.current?.postMessage("changed"), []);
 
     // Work this browser has that the server hasn't (made offline, or from before work was saved online)
     // is sent after signing in and whenever the connection comes back
@@ -81,8 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { ok, data } = await res;
         if (!ok) return { ok: false as const, error: errorOf(data) };
         applyUser(data.user ?? null);
+        tellOtherTabs();
         return { ok: true as const };
-    }, [applyUser]);
+    }, [applyUser, tellOtherTabs]);
 
     const checkCode = useCallback(async (code: string): Promise<Result<{ info: CodeInfo }>> => {
         const { ok, data } = await api<{ kind: CodeInfo["kind"]; className: string | null }>(
@@ -109,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = useCallback(async () => {
         await api("/auth/logout", "POST");
         applyUser(null);
-    }, [applyUser]);
+        tellOtherTabs();
+    }, [applyUser, tellOtherTabs]);
 
     const updateUser = useCallback(
         (patch: Partial<Pick<AuthUser, "name" | "email">> & { currentPassword?: string }) =>
@@ -136,8 +174,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     const value = useMemo(
-        () => ({ user, loading, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh }),
-        [user, loading, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh]
+        () => ({ user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh }),
+        [user, loading, sessionEnded, checkCode, register, login, logout, updateUser, joinClass, checkResetCode, resetPassword, refresh]
     );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

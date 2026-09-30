@@ -70,6 +70,35 @@ function Settings() {
         if (user) loadSessions(api<{ sessions: Session[] }>("/auth/sessions"));
     }, [user, loadSessions]);
 
+    // Changing the password: the current one, then the new one twice. The server signs out other devices.
+    const [passwordForm, setPasswordForm] = useState<{ current: string; next: string; confirm: string } | null>(null);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordChanged, setPasswordChanged] = useState(false);
+    const [passwordBusy, setPasswordBusy] = useState(false);
+
+    const changePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!passwordForm || passwordBusy) return;
+        if (passwordForm.next.length < 10) return setPasswordError("weak_password");
+        if (passwordForm.next !== passwordForm.confirm) return setPasswordError("password_mismatch");
+        setPasswordBusy(true);
+        setPasswordError(null);
+        const { ok, data } = await api<{ sessions: Session[] }>("/auth/password", "POST", {
+            currentPassword: passwordForm.current,
+            newPassword: passwordForm.next,
+        });
+        setPasswordBusy(false);
+        if (!ok || !data.sessions) return setPasswordError(errorOf(data));
+        setSessions(data.sessions);
+        setPasswordForm(null);
+        setPasswordChanged(true);
+    };
+
+    const setPasswordField = (field: "current" | "next" | "confirm") => (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPasswordForm((f) => f && { ...f, [field]: e.target.value });
+        setPasswordError(null);
+    };
+
     const endSession = (id: string) => loadSessions(api<{ sessions: Session[] }>(`/auth/sessions/${id}`, "DELETE"));
     const endOtherSessions = () => loadSessions(api<{ sessions: Session[] }>("/auth/sessions/end-others", "POST"));
     const others = sessions?.filter((s) => !s.current).length ?? 0;
@@ -187,6 +216,61 @@ function Settings() {
                         </button>
                     </div>
                 </div>
+                )}
+                {user && (
+                    <div className="password">
+                        <div className="setting-row">
+                            <div className="setting-row-text">
+                                <h3>{t("settings.passwordTitle")}</h3>
+                                <p>{passwordChanged ? t("settings.passwordChanged") : t("settings.passwordDescription")}</p>
+                            </div>
+                            {!passwordForm && (
+                                <button
+                                    type="button"
+                                    className="logout-button sign-in"
+                                    onClick={() => {
+                                        setPasswordForm({ current: "", next: "", confirm: "" });
+                                        setPasswordChanged(false);
+                                    }}
+                                >
+                                    {t("settings.changePassword")}
+                                </button>
+                            )}
+                        </div>
+                        {passwordForm && (
+                            <form className="password-form" onSubmit={changePassword}>
+                                {/* Lets password managers file the new password under the right account */}
+                                <input type="email" autoComplete="username" value={user.email} readOnly hidden/>
+                                <label className="password-field">
+                                    <span>{t("settings.currentPassword")}</span>
+                                    <input type="password" autoComplete="current-password" required autoFocus
+                                           value={passwordForm.current} onChange={setPasswordField("current")}/>
+                                </label>
+                                <label className="password-field">
+                                    <span>{t("settings.newPassword")}</span>
+                                    <input type="password" autoComplete="new-password" required minLength={10} maxLength={128}
+                                           value={passwordForm.next} onChange={setPasswordField("next")}/>
+                                </label>
+                                <label className="password-field">
+                                    <span>{t("settings.repeatPassword")}</span>
+                                    <input type="password" autoComplete="new-password" required
+                                           value={passwordForm.confirm} onChange={setPasswordField("confirm")}/>
+                                </label>
+                                {passwordError && <p className="session-error" role="alert">{t(authErrorKey(passwordError))}</p>}
+                                <div className="password-actions">
+                                    <button type="button" className="session-signout" onClick={() => {
+                                        setPasswordForm(null);
+                                        setPasswordError(null);
+                                    }}>
+                                        {t("user.cancel")}
+                                    </button>
+                                    <button type="submit" className="logout-button sign-in" disabled={passwordBusy}>
+                                        {t("settings.savePassword")}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
                 )}
                 {user && (
                     <div className="sessions">

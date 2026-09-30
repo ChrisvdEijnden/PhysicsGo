@@ -400,6 +400,22 @@
     padding: 8px;
 }
 
+.code-footer {
+    flex-wrap: wrap;
+}
+
+/* How the last run ended, next to the steps field */
+.run-status {
+    flex: 1 1 220px;
+    margin: 0;
+    line-height: 1.4;
+    color: var(--color-text-secondary);
+}
+
+.run-status.warning {
+    color: var(--color-warning-text);
+}
+
 .code-footer strong, .analysis-footer strong {
     font-weight: 600;
 }

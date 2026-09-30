@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./dashboard.css";
@@ -302,7 +302,7 @@ function Classes() {
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
-                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
+                    <h2><Link className="breadcrumb-link" to="/dashboard">{t("nav.dashboard")}</Link></h2>
                     <div className="spacer"></div>
                     <h2>{t("nav.classes")}</h2>
                 </div>

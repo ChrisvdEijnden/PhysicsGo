@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
 import "./dashboard.css";
@@ -12,7 +12,7 @@ import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // holds all the projects edited by the user
-import { useProjects } from "../lib/useProjects";
+import { assignmentPath, useProjects } from "../lib/useProjects";
 import { useWorkActivity } from "../lib/useWorkActivity";
 import { formatRelativeDate } from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
@@ -47,20 +47,20 @@ function Dashboard() {
                         <h2>{t("dashboard.startNewModel")}</h2>
                         <div className="dual-action-buttons">
                             {/* Teachers start a new project for their classes; students an empty model */}
-                            <div className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
+                            <button type="button" className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
                                 <img src={NewFile24px} alt=""/>
-                                <div className="action-text">
-                                    <h3>{t("dashboard.emptyProjectTitle")}</h3>
-                                    <p>{t("dashboard.emptyProjectDesc")}</p>
-                                </div>
-                            </div>
-                            <div className="action-open" onClick={() => navigate("/modeling")}>
+                                <span className="action-text">
+                                    <span className="action-title">{t("dashboard.emptyProjectTitle")}</span>
+                                    <span className="action-description">{t("dashboard.emptyProjectDesc")}</span>
+                                </span>
+                            </button>
+                            <button type="button" className="action-open" onClick={() => navigate("/modeling")}>
                                 <img src={FolderOpen24px} alt=""/>
-                                <div className="action-text">
-                                    <h3>{t("dashboard.openProjectTitle")}</h3>
-                                    <p>{t("dashboard.openProjectDesc")}</p>
-                                </div>
-                            </div>
+                                <span className="action-text">
+                                    <span className="action-title">{t("dashboard.openProjectTitle")}</span>
+                                    <span className="action-description">{t("dashboard.openProjectDesc")}</span>
+                                </span>
+                            </button>
                         </div>
                     </div>
                     {user && (
@@ -74,19 +74,13 @@ function Dashboard() {
                                 )
                                 : !isTeacher && <p className="classes-empty">{t("dashboard.noClasses")}</p>}
                             <div className="presets-list">
-                                <div
-                                    className="preset-item"
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={() => navigate(isTeacher ? "/classes" : "/join-class")}
-                                    onKeyDown={(e) => e.key === "Enter" && navigate(isTeacher ? "/classes" : "/join-class")}
-                                >
+                                <Link className="preset-item" to={isTeacher ? "/classes" : "/join-class"}>
                                     <div className="preset-item-text">
                                         <h3>{isTeacher ? t("nav.classes") : t("dashboard.joinClassTitle")}</h3>
                                         <p>{isTeacher ? t("dashboard.manageClassesDesc") : t("dashboard.joinClassDesc")}</p>
                                     </div>
                                     <img src={AscewArrow67px} alt=""/>
-                                </div>
+                                </Link>
                             </div>
                         </div>
                     )}
@@ -96,15 +90,10 @@ function Dashboard() {
                             {visibleProjects
                                 .filter((project) => project.curriculum)
                                 .map((project) => (
-                                    <div
-                                        key={project.id}
-                                        className="preset-item"
-                                        onClick={() => navigate(
-                                            "/modeling",
-                                            { state: { presetId: project.id } }
-                                        )}>
+                                    // The title's link covers the whole row (dashboard.css); the publish button sits above it
+                                    <div key={project.id} className="preset-item">
                                         <div className="preset-item-text">
-                                            <h3>{project.title}</h3>
+                                            <h3><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></h3>
                                         </div>
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                         {isTeacher && (
@@ -123,7 +112,7 @@ function Dashboard() {
                 <div className="right-panel">
                     <div className="top-row">
                         <h2>{t("dashboard.recentProjects")}</h2>
-                        <a onClick={() => navigate("/all-models")}>{t("dashboard.viewAllModels")}</a>
+                        <Link to="/all-models">{t("dashboard.viewAllModels")}</Link>
                     </div>
                     <div className="header-row">
                         <p className="project-name">{t("table.colProjectName")}</p>
@@ -135,17 +124,11 @@ function Dashboard() {
                         {[...visibleProjects]
                             .sort(byLastEdit)
                             .map((project) => (
-                                <div
-                                    key={project.id}
-                                    className="recent-item"
-                                    onClick={() => navigate(
-                                        "/modeling",
-                                        { state: { presetId: project.id } }
-                                    )}>
+                                <div key={project.id} className="recent-item">
                                     <div className="left-side">
                                         <img src={FileCode18px} alt="" />
                                         <div className="project-recent-name">
-                                            <p className="recent-name">{project.title}</p>
+                                            <p className="recent-name"><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></p>
                                             {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
                                         </div>
                                     </div>
