@@ -45,8 +45,10 @@ function client() {
     };
 }
 
-function teacherInvite() {
-    return execFileSync("node", ["create-teacher-code.js", "5"], { cwd: serverDir, env }).toString().split(" ")[0];
+// For the only school there is (made with the first one), or for the school named
+function teacherInvite(school) {
+    const args = ["create-teacher-code.js", "5", ...(school ? [school] : [])];
+    return execFileSync("node", args, { cwd: serverDir, env }).toString().split(" ")[0];
 }
 
 const PASSWORD = "correct-horse-battery";
@@ -319,7 +321,9 @@ describe("administration and your own data", () => {
     });
 
     test("teacher invitations are made and revoked in the app", async () => {
-        const made = await admin("POST", "/admin/invites", { uses: 2, days: 7 });
+        assert.equal((await admin("POST", "/admin/invites", { uses: 2, days: 7 })).data.error, "school_required");
+        const [school] = (await admin("GET", "/admin/schools")).data.schools;
+        const made = await admin("POST", "/admin/invites", { uses: 2, days: 7, schoolId: school.id });
         assert.equal(made.status, 201);
         assert.equal((await client()("POST", "/auth/code", { code: made.data.code })).data.kind, "teacher");
         assert.ok(made.data.invites.some((i) => i.code === made.data.code && i.usesLeft === 2));
@@ -367,5 +371,65 @@ describe("administration and your own data", () => {
         const id = (await admin("GET", "/admin/users?q=c@school.test")).data.users[0].id;
         assert.equal((await admin("DELETE", `/admin/users/${id}`)).status, 200);
         assert.deepEqual((await admin("GET", "/admin/users?q=c@school.test")).data.users, []);
+    });
+});
+
+describe("schools", () => {
+    const admin = client();
+    const teacherA = client();
+    const teacherB = client();
+    let classA;
+
+    before(async () => {
+        await signUp(admin, teacherInvite(), "Admin Two", "admin2@a.test");
+        execFileSync("node", ["make-admin.js", "admin2@a.test"], { cwd: serverDir, env });
+        await signUp(teacherA, teacherInvite(), "Teacher A", "teacher@a.test");
+        await signUp(teacherB, teacherInvite("Other School"), "Teacher B", "teacher@b.test");
+        classA = (await teacherA("POST", "/classes", { name: "5V" })).data.class;
+    });
+
+    test("accounts belong to the school of their invitation or class", async () => {
+        const [a, b] = await Promise.all([teacherA("GET", "/auth/me"), teacherB("GET", "/auth/me")]);
+        assert.equal(b.data.user.school.name, "Other School");
+        assert.notEqual(a.data.user.school.id, b.data.user.school.id);
+        const student = client();
+        const joined = await signUp(student, classA.code, "Student A", "student@a.test");
+        assert.equal(joined.school.id, a.data.user.school.id);
+    });
+
+    test("teachers only see co-teaching invitations from their own school", async () => {
+        await teacherA("POST", `/classes/${classA.id}/teachers`, { email: "teacher@b.test" });
+        assert.deepEqual((await teacherB("GET", "/classes/invitations")).data.invitations, []);
+        assert.equal((await teacherB("POST", `/classes/invitations/${classA.id}/accept`)).status, 404);
+    });
+
+    test("students can't join a class of another school", async () => {
+        const classB = (await teacherB("POST", "/classes", { name: "B1" })).data.class;
+        const student = client();
+        await student("POST", "/auth/login", { email: "student@a.test", password: PASSWORD });
+        const res = await student("POST", "/classes/join", { code: classB.code });
+        assert.deepEqual([res.status, res.data.error], [403, "other_school"]);
+    });
+
+    test("administrators manage schools and move accounts that are in no classes", async () => {
+        const made = await admin("POST", "/admin/schools", { name: "Third School" });
+        assert.equal(made.status, 201);
+        assert.equal((await admin("POST", "/admin/schools", { name: "third school" })).data.error, "school_exists");
+        const third = made.data.schools.find((s) => s.name === "Third School");
+        assert.equal((await admin("PATCH", `/admin/schools/${third.id}`, { name: "3rd School" })).status, 200);
+
+        const teacherBId = (await teacherB("GET", "/auth/me")).data.user.id;
+        assert.equal((await admin("PATCH", `/admin/users/${teacherBId}`, { schoolId: third.id })).data.error, "has_classes");
+        const invite = await admin("POST", "/admin/invites", { uses: 1, days: 7, schoolId: third.id });
+        assert.equal(invite.data.invites.find((i) => i.code === invite.data.code).school, "3rd School");
+        const newTeacher = await signUp(client(), invite.data.code, "Teacher C", "teacher@c.test");
+        assert.equal(newTeacher.school.name, "3rd School");
+
+        // A school is only deleted once nothing belongs to it
+        assert.equal((await admin("DELETE", `/admin/schools/${third.id}`)).data.error, "school_in_use");
+        const other = (await admin("GET", "/admin/schools")).data.schools.find((s) => s.name === "Other School");
+        assert.equal((await admin("PATCH", `/admin/users/${newTeacher.id}`, { schoolId: other.id })).data.user.school.name, "Other School");
+        const left = (await admin("DELETE", `/admin/schools/${third.id}`)).data.schools;
+        assert.equal(left.some((s) => s.id === third.id), false);
     });
 });

@@ -39,6 +39,11 @@ const MAP: Record<string, TranslationKey> = {
     account_disabled: "auth.errAccountDisabled",
     cannot_change_self: "admin.errSelf",
     already_reviewed: "handIn.errAlreadyReviewed",
+    other_school: "code.errOtherSchool",
+    school_exists: "admin.errSchoolExists",
+    school_in_use: "admin.errSchoolInUse",
+    school_required: "admin.errSchoolRequired",
+    has_classes: "admin.errHasClasses",
 };
 
 export const authErrorKey = (error: string): TranslationKey => MAP[error] ?? "auth.errGeneric";

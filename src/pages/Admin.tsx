@@ -7,6 +7,7 @@ import "./admin.css";
 
 import TopBar from "../components/TopBar";
 import ConfirmButton from "../components/ConfirmButton";
+import EditIcon20px from "../assets/icons/edit-20px.svg";
 import { api } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import { formatRelativeDate } from "../lib/formatRelativeDate";
@@ -14,12 +15,22 @@ import { useAuth } from "../lib/useAuth";
 import type { Role } from "../lib/useAuth";
 import { useTranslation } from "../lib/useTranslations";
 
+interface School {
+    id: number;
+    name: string;
+    teachers: number;
+    students: number;
+    classes: number;
+    invites: number;
+}
+
 interface Invite {
     code: string;
     usesLeft: number;
     createdAt: number | null;
     expiresAt: number | null;
     createdBy: string | null;
+    school: string | null;
 }
 
 interface Account {
@@ -32,55 +43,149 @@ interface Account {
     createdAt: number;
     lastActiveAt: number | null;
     classes: number;
+    school: { id: number; name: string } | null;
 }
 
 // What went wrong for one account, e.g. a teacher whose classes need another teacher first
 type RowError = { error: string; classes?: string[] };
 
-// For administrators: teacher invitations, and every account (roles, resets, deactivating, deleting)
+// For administrators: schools, teacher invitations, and every account (school, roles, resets,
+// deactivating, deleting)
 export default function Admin() {
     const { t } = useTranslation();
+    const { refresh } = useAuth();
+    const [schools, setSchools] = useState<School[] | null>(null);
+    const reloadSchools = useCallback(() => {
+        api<{ schools: School[] }>("/admin/schools").then(({ ok, data }) => ok && data.schools && setSchools(data.schools));
+    }, []);
+    useEffect(reloadSchools, [reloadSchools]);
+    // A renamed school: the user menu shows yours
+    const schoolsChanged = (list: School[]) => {
+        setSchools(list);
+        refresh();
+    };
+
     return (
         <div>
             <TopBar crumbs={[{ label: t("nav.admin") }]}/>
             <div className="content-dashboard admin-page">
                 <div className="left-panel admin-left">
-                    <Invitations/>
+                    <Schools schools={schools} onChange={schoolsChanged}/>
+                    <Invitations schools={schools ?? []} onChange={reloadSchools}/>
                 </div>
                 <div className="right-panel">
-                    <Accounts/>
+                    <Accounts schools={schools ?? []} onChange={reloadSchools}/>
                 </div>
             </div>
         </div>
     );
 }
 
-function Invitations() {
+function Schools({ schools, onChange }: { schools: School[] | null; onChange: (schools: School[]) => void }) {
+    const { t } = useTranslation();
+    const [name, setName] = useState("");
+    const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    async function send(path: string, method: "POST" | "PATCH" | "DELETE", body?: object) {
+        setError(null);
+        const { ok, data } = await api<{ schools: School[] }>(path, method, body);
+        if (!ok || !data.schools) {
+            setError(data.error ?? "server_error");
+            return false;
+        }
+        onChange(data.schools);
+        return true;
+    }
+
+    async function add(e: React.FormEvent) {
+        e.preventDefault();
+        if (name.trim() && await send("/admin/schools", "POST", { name })) setName("");
+    }
+
+    async function rename(e: React.FormEvent) {
+        e.preventDefault();
+        if (editing && await send(`/admin/schools/${editing.id}`, "PATCH", { name: editing.name })) setEditing(null);
+    }
+
+    return (
+        <div className="creator-card admin-card">
+            <h2>{t("admin.schoolsTitle")}</h2>
+            <p className="section-hint">{t("admin.schoolsDesc")}</p>
+            <form className="admin-invite-form" onSubmit={add}>
+                <label className="publish-field">
+                    <span>{t("admin.schoolName")}</span>
+                    <input className="class-input" value={name} maxLength={100} onChange={(e) => setName(e.target.value)}/>
+                </label>
+                <button type="submit" className="class-button primary" disabled={!name.trim()}>{t("admin.addSchool")}</button>
+            </form>
+            {error && <p className="class-error" role="alert">{t(authErrorKey(error))}</p>}
+            <div className="member-list">
+                {schools?.length === 0 && <p className="classes-empty">{t("admin.noSchools")}</p>}
+                {schools?.map((s) => editing?.id === s.id ? (
+                    <form key={s.id} className="member-row" onSubmit={rename}>
+                        <input className="class-input" value={editing.name} maxLength={100} autoFocus
+                               aria-label={t("admin.renameSchool", { name: s.name })}
+                               onChange={(e) => setEditing({ id: s.id, name: e.target.value })}
+                               onKeyDown={(e) => e.key === "Escape" && setEditing(null)}/>
+                        <button type="submit" className="class-button primary" disabled={!editing.name.trim()}>{t("admin.save")}</button>
+                        <button type="button" className="class-button" onClick={() => setEditing(null)}>{t("admin.cancel")}</button>
+                    </form>
+                ) : (
+                    <div key={s.id} className="member-row">
+                        <div className="member-text">
+                            <p className="member-name">{s.name}</p>
+                            <p className="member-sub">{t("admin.schoolCounts", { teachers: s.teachers, students: s.students, classes: s.classes })}</p>
+                        </div>
+                        <button type="button" className="icon-button" aria-label={t("admin.renameSchool", { name: s.name })}
+                                title={t("admin.renameSchool", { name: s.name })}
+                                onClick={() => { setError(null); setEditing({ id: s.id, name: s.name }); }}>
+                            <img src={EditIcon20px} alt=""/>
+                        </button>
+                        {s.teachers + s.students + s.classes + s.invites === 0 && (
+                            <ConfirmButton className="class-button danger" label={t("admin.deleteSchool")}
+                                           onConfirm={() => send(`/admin/schools/${s.id}`, "DELETE")}/>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function Invitations({ schools, onChange }: { schools: School[]; onChange: () => void }) {
     const { t, language } = useTranslation();
     const [invites, setInvites] = useState<Invite[] | null>(null);
+    const [schoolId, setSchoolId] = useState<number | null>(null);
     const [uses, setUses] = useState(1);
     const [days, setDays] = useState(14);
     const [made, setMade] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    // Again when schools change, since each invitation shows its school's name
     useEffect(() => {
         api<{ invites: Invite[] }>("/admin/invites").then(({ ok, data }) => ok && data.invites && setInvites(data.invites));
-    }, []);
+    }, [schools]);
 
     async function create(e: React.FormEvent) {
         e.preventDefault();
         setError(null);
-        const { ok, data } = await api<{ code: string; invites: Invite[] }>("/admin/invites", "POST", { uses, days });
+        const { ok, data } = await api<{ code: string; invites: Invite[] }>("/admin/invites", "POST", { uses, days, schoolId: school });
         if (!ok || !data.code) return setError(data.error ?? "server_error");
         setMade(data.code);
         setInvites(data.invites ?? []);
+        onChange();
     }
 
     async function revoke(code: string) {
         const { ok, data } = await api<{ invites: Invite[] }>(`/admin/invites/${code}`, "DELETE");
         if (ok && data.invites) setInvites(data.invites);
         if (made === code) setMade(null);
+        onChange();
     }
+
+    // The school chosen, or the only one there is
+    const school = schoolId ?? (schools.length === 1 ? schools[0].id : null);
 
     const date = (ms: number) => new Date(ms).toLocaleDateString(language, { dateStyle: "medium" });
 
@@ -89,6 +194,14 @@ function Invitations() {
             <h2>{t("admin.invitesTitle")}</h2>
             <p className="section-hint">{t("admin.invitesDesc")}</p>
             <form className="admin-invite-form" onSubmit={create}>
+                <label className="publish-field admin-school-field">
+                    <span>{t("admin.school")}</span>
+                    <select className="class-input" value={school ?? ""} required
+                            onChange={(e) => setSchoolId(Number(e.target.value) || null)}>
+                        {school === null && <option value="">–</option>}
+                        {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                </label>
                 <label className="publish-field">
                     <span>{t("admin.inviteUses")}</span>
                     <input type="number" className="class-input" min={1} max={100} value={uses}
@@ -100,7 +213,7 @@ function Invitations() {
                         {[7, 14, 30, 90].map((d) => <option key={d} value={d}>{t("admin.days", { n: d })}</option>)}
                     </select>
                 </label>
-                <button type="submit" className="class-button primary">{t("admin.createInvite")}</button>
+                <button type="submit" className="class-button primary" disabled={school === null}>{t("admin.createInvite")}</button>
             </form>
             {error && <p className="class-error" role="alert">{t(authErrorKey(error))}</p>}
             {made && (
@@ -117,6 +230,7 @@ function Invitations() {
                             <p className="member-name admin-code">{i.code}</p>
                             <p className="member-sub">
                                 {[
+                                    i.school,
                                     t("admin.usesLeft", { n: i.usesLeft }),
                                     i.expiresAt !== null ? t("admin.validUntil", { date: date(i.expiresAt) }) : t("admin.noExpiry"),
                                     i.createdBy,
@@ -131,7 +245,7 @@ function Invitations() {
     );
 }
 
-function Accounts() {
+function Accounts({ schools, onChange }: { schools: School[]; onChange: () => void }) {
     const { t, language } = useTranslation();
     const { user: me } = useAuth();
     const [query, setQuery] = useState("");
@@ -162,11 +276,13 @@ function Accounts() {
         return next;
     });
 
-    async function change(account: Account, body: Partial<Pick<Account, "role" | "isAdmin" | "disabled">>) {
+    async function change(account: Account, body: Partial<Pick<Account, "role" | "isAdmin" | "disabled">> | { schoolId: number }) {
         const { ok, data } = await api<{ user: Account; classes?: string[] }>(`/admin/users/${account.id}`, "PATCH", body);
         if (!ok || !data.user) return fail(account.id, { error: data.error ?? "", classes: data.classes });
         fail(account.id, null);
         replace(data.user);
+        // The schools' counts change with an account's school or role
+        if ("schoolId" in body || "role" in body) onChange();
     }
 
     async function reset(account: Account) {
@@ -179,6 +295,7 @@ function Accounts() {
         const { ok, data } = await api<{ classes?: string[] }>(`/admin/users/${account.id}`, "DELETE");
         if (!ok) return fail(account.id, { error: data.error ?? "", classes: data.classes });
         setAccounts((list) => list?.filter((a) => a.id !== account.id) ?? null);
+        onChange();
     }
 
     const errorText = (e: RowError) => e.error === "classes_need_teacher"
@@ -214,6 +331,12 @@ function Accounts() {
                                         ].filter(Boolean).join(" · ")}
                                     </p>
                                 </div>
+                                <select className="class-input admin-role" value={a.school?.id ?? ""}
+                                        aria-label={t("admin.schoolOf", { name: a.name })}
+                                        onChange={(e) => change(a, { schoolId: Number(e.target.value) })}>
+                                    {!a.school && <option value="">{t("admin.noSchool")}</option>}
+                                    {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                </select>
                                 <select className="class-input admin-role" value={a.role} disabled={self}
                                         aria-label={t("admin.role", { name: a.name })}
                                         onChange={(e) => change(a, { role: e.target.value as Role })}>

@@ -15,7 +15,7 @@ Physics modelling lessons: students sign in, work on assignments and hand them i
 
 | Who | Data | Where (server/db.js) |
 | --- | --- | --- |
-| Students and teachers | Name, email address, role, password hash (argon2id), account created, last active, administrator flag, deactivated | `users` |
+| Students and teachers | Name, email address, role, school, password hash (argon2id), account created, last active, administrator flag, deactivated | `users`, `schools` |
 | Students and teachers | Class memberships and when they started; teachers' invitations of colleagues (email address) | `class_students`, `class_teachers`, `class_teacher_invites` |
 | Students (and teachers trying assignments) | Saved work: start values, model rules, graphs, measured points | `project_work` |
 | Students | Handed-in copies of their work, with the time | `submissions` |

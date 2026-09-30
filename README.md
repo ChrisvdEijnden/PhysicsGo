@@ -36,11 +36,13 @@ Use pnpm rather than npm: `pnpm-lock.yaml` is the only lockfile.
 Students join with the class code from the Classes page, and teachers sign up with an invitation code. Create the first invitation from the command line, sign up with it, and make that account an administrator:
 
 ```sh
-node server/create-teacher-code.js      # one use; pass a number for more
-node server/make-admin.js <email>       # --remove takes it away again
+node server/create-teacher-code.js 1 "Your school"   # uses, and the school it's for
+node server/make-admin.js <email>                     # --remove takes it away again
 ```
 
-Open the app, choose "No account yet? Use a class code" and enter the invitation code. From then on, administrators do the rest on the Administration page (in the account menu): invite teachers, find accounts, change roles, make password reset codes, and deactivate or delete accounts.
+Open the app, choose "No account yet? Use a class code" and enter the invitation code. From then on, administrators do the rest on the Administration page (in the account menu): add schools, invite teachers, find accounts, change roles or schools, make password reset codes, and deactivate or delete accounts.
+
+Every account, class and teacher invitation belongs to a school. Teachers only co-teach, and students only join classes, within their own school. Accounts made before schools existed are in a school called "Mijn school"; rename it on the Administration page.
 
 `node server/reset-password.js <email>` still prints a reset code, for when no administrator can sign in.
 

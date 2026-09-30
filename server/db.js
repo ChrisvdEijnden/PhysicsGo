@@ -252,6 +252,27 @@ const MIGRATIONS = [
     ALTER TABLE submissions ADD COLUMN reviewed_at INTEGER;
     ALTER TABLE submissions ADD COLUMN reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
     `,
+    // 15: schools (see schools.js). Users, classes and teacher invitations belong to one; whatever
+    // already exists goes into a school called "Mijn school", which an administrator can rename.
+    (db) => {
+        db.exec(`
+            CREATE TABLE schools (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+                created_at INTEGER NOT NULL
+            );
+            ALTER TABLE users ADD COLUMN school_id INTEGER REFERENCES schools(id);
+            ALTER TABLE classes ADD COLUMN school_id INTEGER REFERENCES schools(id);
+            ALTER TABLE teacher_invites ADD COLUMN school_id INTEGER REFERENCES schools(id);
+        `);
+        const { n } = db.prepare(`
+            SELECT (SELECT COUNT(*) FROM users) + (SELECT COUNT(*) FROM classes) + (SELECT COUNT(*) FROM teacher_invites) AS n
+        `).get();
+        if (n > 0) {
+            const id = db.prepare("INSERT INTO schools (name, created_at) VALUES ('Mijn school', ?)").run(Date.now()).lastInsertRowid;
+            for (const table of ["users", "classes", "teacher_invites"]) db.prepare(`UPDATE ${table} SET school_id = ?`).run(id);
+        }
+    },
 ];
 
 const current = db.pragma("user_version", { simple: true });

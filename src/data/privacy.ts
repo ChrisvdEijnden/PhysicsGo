@@ -25,7 +25,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
             {
                 title: "What is stored",
                 items: [
-                    "Your account: name, email address, whether you're a student or teacher, your password (only as a secure hash, never readable), when you created the account and when you last used it.",
+                    "Your account: name, email address, your school, whether you're a student or teacher, your password (only as a secure hash, never readable), when you created the account and when you last used it.",
                     "Your classes: the classes you're in and when you joined; for teachers, the classes they teach and the email addresses of colleagues they invited.",
                     "Your work: start values, model rules, graphs, measured points, the photos and videos you add, and the work you hand in, with dates.",
                     "Signed-in browsers: when each one signed in and was last used, and which browser and system it is. Changing your password signs out all other browsers.",
@@ -89,7 +89,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
             {
                 title: "Wat er bewaard wordt",
                 items: [
-                    "Je account: naam, e-mailadres, of je leerling of docent bent, je wachtwoord (alleen als veilige hash, nooit leesbaar), wanneer je het account hebt gemaakt en wanneer je het voor het laatst gebruikte.",
+                    "Je account: naam, e-mailadres, je school, of je leerling of docent bent, je wachtwoord (alleen als veilige hash, nooit leesbaar), wanneer je het account hebt gemaakt en wanneer je het voor het laatst gebruikte.",
                     "Je klassen: de klassen waarin je zit en sinds wanneer; bij docenten de klassen die ze lesgeven en de e-mailadressen van collega's die ze uitnodigden.",
                     "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's en video's die je toevoegt en het werk dat je inlevert, met data.",
                     "Ingelogde browsers: wanneer elke browser inlogde en voor het laatst gebruikt werd, en welke browser en welk systeem het is. Als je je wachtwoord wijzigt, worden alle andere browsers uitgelogd.",

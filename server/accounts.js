@@ -60,6 +60,7 @@ export function exportAccount(userId) {
             email: user.email,
             role: user.role,
             administrator: Boolean(user.is_admin),
+            school: db.prepare("SELECT name FROM schools WHERE id = ?").get(user.school_id)?.name ?? null,
             createdAt: iso(user.created_at),
             lastActiveAt: iso(user.last_active_at),
         },

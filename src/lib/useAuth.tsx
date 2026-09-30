@@ -22,6 +22,8 @@ export interface AuthUser {
     // Manages teacher invitations and accounts (Administration page)
     isAdmin: boolean;
     classes: ClassRef[];
+    // Teachers only work together (co-teaching, classes to join) within their school
+    school: { id: number; name: string } | null;
 }
 
 export type AuthResult = Result;

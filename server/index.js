@@ -15,6 +15,7 @@ import { findReset, purgeExpiredResets } from "./resets.js";
 import { mediaRouter, workRouter } from "./work.js";
 import { classesOnlyTaughtBy, deleteAccount, deleteInactiveAccounts, exportAccount } from "./accounts.js";
 import { adminRouter } from "./admin.js";
+import { schoolOf } from "./schools.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -74,7 +75,7 @@ const DUMMY_HASH = await argon.hash("dummy-password-for-timing");
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const str = (v) => (typeof v === "string" ? v : "");
 const publicUser = (u) => ({
-    id: u.id, name: u.name, email: u.email, role: u.role, isAdmin: Boolean(u.is_admin), classes: classesOf(u),
+    id: u.id, name: u.name, email: u.email, role: u.role, isAdmin: Boolean(u.is_admin), classes: classesOf(u), school: schoolOf(u),
 });
 const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -221,9 +222,10 @@ api.post("/auth/register", authLimiter, wrap(async (req, res) => {
 
         const now = Date.now();
         const role = found.kind === "teacher" ? "teacher" : "student";
+        // The account belongs to the school of the class, or of the teacher invitation
         const info = db.prepare(
-            "INSERT INTO users (name, email, role, password_hash, created_at, last_active_at) VALUES (?, ?, ?, ?, ?, ?)"
-        ).run(name, email, role, hash, now, now);
+            "INSERT INTO users (name, email, role, password_hash, created_at, last_active_at, school_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).run(name, email, role, hash, now, now, found.schoolId ?? null);
 
         if (found.kind === "teacher") {
             db.prepare("UPDATE teacher_invites SET uses_left = uses_left - 1 WHERE code = ?").run(found.code);

@@ -70,6 +70,7 @@ export default function UserMenu() {
                     <div className="user-menu-who">
                         <strong>{user.name}</strong>
                         <span>{user.email}</span>
+                        {user.school && <span>{user.school.name}</span>}
                         <span className="class-chip">{user.role === "teacher" ? t("user.roleTeacher") : t("user.roleStudent")}</span>
                     </div>
                     <button type="button" role="menuitem" autoFocus onClick={() => go("/user")}>{t("nav.user")}</button>

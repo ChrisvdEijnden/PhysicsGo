@@ -23,19 +23,19 @@ export function lookupCode(raw) {
     const code = normalizeCode(raw);
     if (!code) return { error: "invalid_code" };
 
-    const cls = db.prepare("SELECT id, name, join_open, archived_at FROM classes WHERE code = ?").get(code);
+    const cls = db.prepare("SELECT id, name, join_open, archived_at, school_id FROM classes WHERE code = ?").get(code);
     if (cls) {
         return cls.join_open && cls.archived_at === null
-            ? { kind: "class", class: { id: cls.id, name: cls.name } }
+            ? { kind: "class", class: { id: cls.id, name: cls.name }, schoolId: cls.school_id }
             : { error: "class_closed" };
     }
 
     if (db.prepare("SELECT 1 FROM retired_class_codes WHERE code = ?").get(code)) return { error: "code_expired" };
 
-    const invite = db.prepare("SELECT uses_left, expires_at FROM teacher_invites WHERE code = ?").get(code);
+    const invite = db.prepare("SELECT uses_left, expires_at, school_id FROM teacher_invites WHERE code = ?").get(code);
     if (invite) {
         const valid = invite.uses_left > 0 && (invite.expires_at === null || invite.expires_at > Date.now());
-        return valid ? { kind: "teacher", code } : { error: "code_expired" };
+        return valid ? { kind: "teacher", code, schoolId: invite.school_id } : { error: "code_expired" };
     }
 
     return { error: "invalid_code" };
@@ -110,8 +110,9 @@ function invitationsFor(user) {
         LEFT JOIN users u ON u.id = i.invited_by
         WHERE i.email = ? AND c.archived_at IS NULL
           AND NOT EXISTS (SELECT 1 FROM class_teachers t WHERE t.class_id = c.id AND t.user_id = ?)
+          AND c.school_id IS ?
         ORDER BY i.created_at
-    `).all(user.email, user.id);
+    `).all(user.email, user.id, user.school_id ?? null);
 }
 
 export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
@@ -125,6 +126,14 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         const found = lookupCode(req.body?.code);
         if (found.error) return res.status(400).json({ error: found.error });
         if (found.kind !== "class") return res.status(400).json({ error: "invalid_code" });
+        // Classes of another school can't be joined; a student without a school gets the class's
+        if (req.user.school_id && found.schoolId && req.user.school_id !== found.schoolId) {
+            return res.status(403).json({ error: "other_school" });
+        }
+        if (!req.user.school_id && found.schoolId) {
+            db.prepare("UPDATE users SET school_id = ? WHERE id = ?").run(found.schoolId, req.user.id);
+            req.user.school_id = found.schoolId;
+        }
 
         const info = db.prepare(
             "INSERT OR IGNORE INTO class_students (class_id, user_id, joined_at) VALUES (?, ?, ?)"
@@ -238,8 +247,9 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
 
         const id = db.transaction(() => {
             const now = Date.now();
-            const info = db.prepare("INSERT INTO classes (name, code, owner_id, created_at) VALUES (?, ?, ?, ?)")
-                .run(name, generateCode(), req.user.id, now);
+            // A class belongs to its teacher's school
+            const info = db.prepare("INSERT INTO classes (name, code, owner_id, created_at, school_id) VALUES (?, ?, ?, ?, ?)")
+                .run(name, generateCode(), req.user.id, now, req.user.school_id ?? null);
             db.prepare("INSERT INTO class_teachers (class_id, user_id, added_at) VALUES (?, ?, ?)")
                 .run(info.lastInsertRowid, req.user.id, now);
             return Number(info.lastInsertRowid);

@@ -109,3 +109,23 @@
         flex-wrap: wrap;
     }
 }
+
+.admin-left {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.admin-invite-form .admin-school-field {
+    flex: 2;
+    min-width: 0;
+}
+
+.admin-card form.member-row .class-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-card .member-sub {
+    white-space: normal;
+}

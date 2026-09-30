@@ -38,12 +38,12 @@ Run it as a service (systemd, pm2, …) under its own user that can write to tho
 ## First accounts
 
 ```sh
-node server/create-teacher-code.js          # prints an invitation code (in Docker: docker exec physicsgo node server/create-teacher-code.js)
+node server/create-teacher-code.js 1 "Your school"   # prints an invitation code (in Docker: docker exec physicsgo node server/create-teacher-code.js …)
 # sign up with it in the app, then:
 node server/make-admin.js you@school.nl
 ```
 
-After that, administrators invite teachers and manage accounts on the Administration page.
+After that, administrators add schools, invite teachers and manage accounts on the Administration page. Without a school name, the invitation is for the only school there is (or a new "Mijn school" when there's none yet).
 
 ## Settings
 
