@@ -139,6 +139,13 @@
     overflow: hidden;
     width: 750px;
     height: 750px;
+    transition: opacity 0.2s ease;
+}
+
+/* The logo is drawn in white, which barely shows on the light background; on the dark one it's
+   faded to a shade just above the background, so it blends in the same way */
+[data-theme="dark"] .background-logo {
+    opacity: 0.07;
 }
 
 .info {
