@@ -61,6 +61,8 @@ After that, administrators add schools, invite teachers and manage accounts on t
 | `PHYSICSGO_MEDIA_QUOTA_MB` | `2048` | Storage per account |
 | `SESSION_IDLE_HOURS` | `8` | Signed out after this long without use |
 | `ACCOUNT_RETENTION_DAYS` | `730` | Unused accounts are deleted after this long; `0` keeps them |
+| `AUDIT_RETENTION_DAYS` | `365` | How long the audit log (Administration → Activity) is kept; `0` keeps it |
+| `PHYSICSGO_REQUEST_LOG` | | `off` stops the request log on standard output (it has no personal data) |
 
 ## HTTPS with a reverse proxy
 

@@ -308,6 +308,20 @@ const MIGRATIONS = [
             });
         }
     },
+    // 18: who deleted or changed accounts, classes, schools and assignments, for administrators (audit.js).
+    // Names are copied in, so an entry still says who it was about once that account is gone.
+    `
+    CREATE TABLE audit_log (
+        id           INTEGER PRIMARY KEY,
+        at           INTEGER NOT NULL,
+        actor_id     INTEGER,
+        actor_name   TEXT,
+        action       TEXT NOT NULL,
+        target_label TEXT,
+        details      TEXT
+    );
+    CREATE INDEX audit_log_at ON audit_log(at);
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

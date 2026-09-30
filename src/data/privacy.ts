@@ -29,8 +29,10 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                     "Your classes: the classes you're in and when you joined; for teachers, the classes they teach and the email addresses of colleagues they invited.",
                     "Your work: start values, model rules, graphs, measured points, the photos, videos, PDFs and web addresses you add, and the work you hand in, with dates.",
                     "Signed-in browsers: when each one signed in and was last used, and which browser and system it is. Changing your password signs out all other browsers.",
+                    "Changes made by teachers and administrators: when a teacher or administrator deletes or changes an account, a class or a school (for example removes a student from a class or makes a password reset code), who did it, when, and the name and email address of the account it was about. Deleting your own account is recorded without your name.",
                 ],
                 paragraphs: [
+                    "The server also keeps a technical log of requests (time, which part of PhysicsGo, whether it worked, how long it took), without names, email addresses, internet addresses or anything else about who made them.",
                     "Nothing else. PhysicsGo has no advertising, tracking or analytics and uses no services of other companies: fonts and all code come from PhysicsGo itself, except websites added to an assignment (below). It uses one cookie, to keep you signed in. Your language, theme and work that isn't saved yet are kept in your browser.",
                 ],
             },
@@ -52,7 +54,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "You.",
                     "The teachers of your classes: your name, email address, work and hand-ins for the assignments in their classes.",
-                    "The administrators of this PhysicsGo installation: your account details, to help with access problems.",
+                    "The administrators of this PhysicsGo installation: your account details, to help with access problems, and the record of changes made by teachers and administrators.",
                 ],
             },
             {
@@ -61,6 +63,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                     "Signing in lasts 7 days at most, and ends after 8 hours without use.",
                     "A code to set a new password works for 24 hours.",
                     "A deleted class can be restored for 30 days; after that it's removed.",
+                    "The record of changes made by teachers and administrators is kept for 1 year.",
                     "Accounts that haven't been used for 2 years are deleted, with all work that's only theirs.",
                     "When an account is deleted, its work, hand-ins, photos and videos are deleted with it. Backups of the database are removed after 14 days.",
                 ],
@@ -100,8 +103,10 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                     "Je klassen: de klassen waarin je zit en sinds wanneer; bij docenten de klassen die ze lesgeven en de e-mailadressen van collega's die ze uitnodigden.",
                     "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's, video's, pdf's en webadressen die je toevoegt en het werk dat je inlevert, met data.",
                     "Ingelogde browsers: wanneer elke browser inlogde en voor het laatst gebruikt werd, en welke browser en welk systeem het is. Als je je wachtwoord wijzigt, worden alle andere browsers uitgelogd.",
+                    "Wijzigingen door docenten en beheerders: als een docent of beheerder een account, klas of school verwijdert of wijzigt (bijvoorbeeld een leerling uit een klas haalt of een herstelcode voor een wachtwoord maakt), wie dat deed, wanneer, en de naam en het e-mailadres van het account waar het om ging. Als je je eigen account verwijdert, wordt dat zonder je naam vastgelegd.",
                 ],
                 paragraphs: [
+                    "De server houdt ook een technisch logboek van verzoeken bij (tijd, welk deel van PhysicsGo, of het lukte, hoe lang het duurde), zonder namen, e-mailadressen, internetadressen of iets anders over wie ze deed.",
                     "Verder niets. PhysicsGo heeft geen advertenties, tracking of analytics en gebruikt geen diensten van andere bedrijven: lettertypen en alle code komen van PhysicsGo zelf, behalve websites die aan een opdracht zijn toegevoegd (hieronder). Er is één cookie, om je ingelogd te houden. Je taal, weergave en werk dat nog niet is opgeslagen, blijven in je browser.",
                 ],
             },
@@ -123,7 +128,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "Jij.",
                     "De docenten van je klassen: je naam, e-mailadres, werk en inleveringen voor de opdrachten in hun klassen.",
-                    "De beheerders van deze PhysicsGo-installatie: je accountgegevens, om te helpen bij problemen met inloggen.",
+                    "De beheerders van deze PhysicsGo-installatie: je accountgegevens, om te helpen bij problemen met inloggen, en het overzicht van wijzigingen door docenten en beheerders.",
                 ],
             },
             {
@@ -132,6 +137,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                     "Inloggen duurt hooguit 7 dagen en stopt na 8 uur niet gebruiken.",
                     "Een code om een nieuw wachtwoord in te stellen werkt 24 uur.",
                     "Een verwijderde klas kan 30 dagen worden teruggezet; daarna wordt hij verwijderd.",
+                    "Het overzicht van wijzigingen door docenten en beheerders wordt 1 jaar bewaard.",
                     "Accounts die 2 jaar niet gebruikt zijn, worden verwijderd, met al het werk dat alleen van hen is.",
                     "Als een account wordt verwijderd, gaan het werk, de inleveringen, foto's en video's mee. Back-ups van de database worden na 14 dagen verwijderd.",
                 ],

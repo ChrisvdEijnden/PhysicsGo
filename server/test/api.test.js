@@ -393,6 +393,32 @@ describe("administration and your own data", () => {
         assert.equal((await admin("DELETE", `/admin/users/${id}`)).status, 200);
         assert.deepEqual((await admin("GET", "/admin/users?q=c@school.test")).data.users, []);
     });
+
+    test("administrators see who deleted or changed what", async () => {
+        // A teacher removing a student from their class is recorded with both names
+        const classId = (await teacher("GET", "/classes")).data.classes.find((c) => c.name === "4H").id;
+        const pupil = client();
+        await signUp(pupil, classCode, "Student D", "d@school.test");
+        const pupilId = (await pupil("GET", "/auth/me")).data.user.id;
+        await teacher("DELETE", `/classes/${classId}/students/${pupilId}`);
+        // Someone deleting their own account is recorded without their name
+        await pupil("DELETE", "/auth/me", { password: PASSWORD });
+
+        assert.equal((await teacher("GET", "/admin/audit")).status, 403);
+        const { entries } = (await admin("GET", "/admin/audit")).data;
+        const find = (action) => entries.find((e) => e.action === action);
+        assert.deepEqual(
+            { ...find("class.remove_student"), id: 0, at: 0 },
+            { id: 0, at: 0, actor: "Teacher Four", action: "class.remove_student", target: "Student D (d@school.test)", details: { class: "4H" } },
+        );
+        assert.deepEqual([find("account.delete_self").actor, find("account.delete_self").target, find("account.delete_self").details],
+            [null, null, { role: "student" }]);
+        assert.equal(find("user.delete").target, "Student C (c@school.test)");
+        assert.equal(find("user.role").details.role, "teacher");
+        assert.ok(find("user.disable") && find("user.enable") && find("user.reset") && find("invite.create") && find("invite.revoke"));
+        // Newest first
+        assert.ok(entries.every((e, i) => i === 0 || entries[i - 1].at >= e.at));
+    });
 });
 
 describe("schools", () => {

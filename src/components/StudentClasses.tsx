@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import "../pages/classes.css";
@@ -9,6 +9,7 @@ import { authErrorKey } from "../lib/authErrors";
 import { formatDueDay } from "../lib/formatDueDate";
 import { useAuth } from "../lib/useAuth";
 import { assignmentPath, useProjects } from "../lib/useProjects";
+import { useRefreshOnReturn } from "../lib/useRefreshOnReturn";
 import { useTranslation } from "../lib/useTranslations";
 
 interface StudentClass {
@@ -29,6 +30,9 @@ export default function StudentClasses() {
 
     // user.classes changes when a class is joined or left
     const classKey = user?.classes.map((c) => c.id).join(",");
+    // And coming back to the page (a teacher may have renamed the class or added a colleague)
+    const [reloads, setReloads] = useState(0);
+    useRefreshOnReturn(useCallback(() => setReloads((n) => n + 1), []));
     useEffect(() => {
         let cancelled = false;
         api<{ classes: StudentClass[] }>("/classes/mine").then(({ ok, data }) => {
@@ -37,7 +41,7 @@ export default function StudentClasses() {
         return () => {
             cancelled = true;
         };
-    }, [classKey]);
+    }, [classKey, reloads]);
 
     async function leave(id: number) {
         setError(null);

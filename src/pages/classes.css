@@ -888,3 +888,64 @@
     background-color: rgba(214, 69, 69, 0.1);
     font-weight: 600;
 }
+
+/* A class's parts (students, assignments, teachers, managing it) as tabs */
+:where(.page-classes) .class-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.page-classes) .class-tabs button {
+    margin-bottom: -1px;
+    padding: 8px 12px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+:where(.page-classes) .class-tabs button:hover {
+    color: var(--color-text-primary);
+}
+
+:where(.page-classes) .class-tabs button.active {
+    border-bottom-color: var(--color-brand);
+    color: var(--color-brand);
+    font-weight: 600;
+}
+
+:where(.page-classes) .class-tab-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+/* Students: the heading with a search field and the export next to it */
+:where(.page-classes) .section-heading.student-tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+:where(.page-classes) .student-tools h3 {
+    flex: 1;
+}
+
+:where(.page-classes) .student-search {
+    flex: 0 1 220px;
+    min-width: 140px;
+}
+
+:where(.page-classes) .class-tab-panel > .class-section:first-child {
+    padding-top: 0;
+    border-top: none;
+}

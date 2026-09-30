@@ -132,3 +132,32 @@
 :where(.page-admin) .admin-card .member-sub {
     white-space: normal;
 }
+
+/* Activity: who deleted or changed what, newest first, in a scrolling list */
+:where(.page-admin) .admin-activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 420px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-primary);
+    text-align: left;
+}
+
+:where(.page-admin) .admin-activity-list li {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border);
+}
+
+:where(.page-admin) .admin-activity-list time {
+    font-size: 11px;
+    color: var(--color-text-tertiary);
+}

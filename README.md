@@ -95,6 +95,8 @@ Set these environment variables for the API (all optional):
 | `PHYSICSGO_BACKUP_DIR` | `server/backups` | Daily database copies (the last `PHYSICSGO_BACKUPS`, default 14, are kept; `0` turns them off) |
 | `PHYSICSGO_STATIC` | `dist` | The built app, served by the same server when it's there |
 | `ACCOUNT_RETENTION_DAYS` | `730` | Accounts not used for this many days are deleted (administrators, and teachers who are a class's only teacher, are kept); `0` keeps them |
+| `AUDIT_RETENTION_DAYS` | `365` | How long the record of who deleted or changed accounts, classes and schools is kept (Administration → Activity); `0` keeps it |
+| `PHYSICSGO_REQUEST_LOG` | | `off` stops the request log on standard output (time, method, route, status, duration; no personal data) |
 
 The database and media folder hold student data; neither is committed. What is stored and for how long is described for schools in [docs/privacy.md](docs/privacy.md), and for students and teachers in the app's privacy statement (`#/privacy`).
 

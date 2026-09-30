@@ -4,6 +4,7 @@ import { api, errorOf } from "./api";
 import type { Result } from "./api";
 import { useAuth } from "./useAuth";
 import type { AuthUser, ClassRef } from "./useAuth";
+import { useRefreshOnReturn } from "./useRefreshOnReturn";
 
 // A class an assignment is published to, with that class's instructions, when it opens (students
 // don't see it before) and when it's due; times in ms
@@ -52,6 +53,17 @@ export function usePublished() {
             cancelled = true;
         };
     }, [user]);
+
+    // Coming back to the page: what was published meanwhile (a co-teacher, another device)
+    useRefreshOnReturn(useCallback(() => {
+        if (!user) return;
+        api<{ published: PublishedMap }>("/projects/published").then(({ ok, data }) => {
+            if (ok && data.published) {
+                const next = data.published;
+                setPublished((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
+            }
+        });
+    }, [user]));
 
     // Teachers: open the project to exactly these of their classes, with the given settings per class
     const setProjectClasses = useCallback(async (

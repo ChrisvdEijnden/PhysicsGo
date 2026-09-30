@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import db from "./db.js";
+import { audit } from "./audit.js";
 import { MAX_FILE, MEDIA_ID, allowedType, projectMediaDir, projectMediaPath, requestMime, sendMedia, storeUpload, userMediaDir } from "./media.js";
 
 // Built-in presets have readable ids ("standard-freefall"), teachers' projects random ones ("p-…")
@@ -225,7 +226,8 @@ export function projectsRouter({ requireAuth }) {
     // student's own assignment, that's all of it). Other students' saved work stays in their accounts.
     router.delete("/:projectId", wrap(async (req, res) => {
         const { projectId } = req.params;
-        if (!authored(req)) return res.status(404).json({ error: "not_found" });
+        const project = authored(req);
+        if (!project) return res.status(404).json({ error: "not_found" });
         db.transaction(() => {
             db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
             for (const table of ["project_work", "media_files", "submissions"]) {
@@ -234,6 +236,8 @@ export function projectsRouter({ requireAuth }) {
         })();
         await fs.promises.rm(projectMediaDir(projectId), { recursive: true, force: true });
         await fs.promises.rm(path.join(userMediaDir(req.user.id), projectId), { recursive: true, force: true });
+        // A teacher's assignment may have been students' work; a student's own is only theirs
+        if (req.user.role === "teacher") audit(req.user, "project.delete", project.title);
         res.json({ ok: true });
     }));
 

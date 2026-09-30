@@ -4,6 +4,7 @@ import { generateCode, normalizeCode } from "./codes.js";
 import { createReset } from "./resets.js";
 import { deleteAccount } from "./accounts.js";
 import { readSubmission, readWork } from "./work.js";
+import { accountLabel, audit } from "./audit.js";
 
 const MAX_CLASS_NAME = 60;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
@@ -61,7 +62,11 @@ export function teachesStudent(teacherId, studentId) {
 }
 
 export function purgeArchivedClasses(now = Date.now()) {
-    db.prepare("DELETE FROM classes WHERE archived_at IS NOT NULL AND archived_at <= ?").run(now - ARCHIVE_MS);
+    const due = db.prepare("SELECT id, name FROM classes WHERE archived_at IS NOT NULL AND archived_at <= ?").all(now - ARCHIVE_MS);
+    for (const c of due) {
+        db.prepare("DELETE FROM classes WHERE id = ?").run(c.id);
+        audit(null, "class.purge", c.name);
+    }
 }
 
 function validName(v) {
@@ -212,12 +217,13 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
     router.param("classId", (req, res, next, raw) => {
         const id = Number(raw);
         const row = Number.isSafeInteger(id) && db.prepare(`
-            SELECT c.archived_at, ${OWNER} AS owner
+            SELECT c.name, c.archived_at, ${OWNER} AS owner
             FROM classes c JOIN class_teachers m ON m.class_id = c.id AND m.user_id = ?
             WHERE c.id = ?
         `).get(req.user.id, id);
         if (!row) return res.status(404).json({ error: "not_found" });
         req.classId = id;
+        req.className = row.name;
         req.classArchived = row.archived_at !== null;
         req.isClassOwner = row.owner === req.user.id;
         next();
@@ -296,11 +302,13 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
     // working, but the owner can restore it until it's purged
     router.delete("/:classId", ownerOnly, active, (req, res) => {
         db.prepare("UPDATE classes SET archived_at = ? WHERE id = ?").run(Date.now(), req.classId);
+        audit(req.user, "class.archive", req.className);
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
     router.post("/:classId/restore", ownerOnly, (req, res) => {
-        db.prepare("UPDATE classes SET archived_at = NULL WHERE id = ?").run(req.classId);
+        const { changes } = db.prepare("UPDATE classes SET archived_at = NULL WHERE id = ? AND archived_at IS NOT NULL").run(req.classId);
+        if (changes > 0) audit(req.user, "class.restore", req.className);
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
@@ -316,8 +324,10 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
 
     // Idempotent, so a second teacher removing the same student just sees the current list
     router.delete("/:classId/students/:userId", active, (req, res) => {
-        db.prepare("DELETE FROM class_students WHERE class_id = ? AND user_id = ?")
+        const student = db.prepare("SELECT name, email FROM users WHERE id = ?").get(Number(req.params.userId));
+        const { changes } = db.prepare("DELETE FROM class_students WHERE class_id = ? AND user_id = ?")
             .run(req.classId, Number(req.params.userId));
+        if (changes > 0) audit(req.user, "class.remove_student", accountLabel(student), { class: req.className });
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
@@ -326,7 +336,9 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         const userId = Number(req.params.userId);
         const inClass = db.prepare("SELECT 1 FROM class_students WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
         if (!inClass) return res.status(404).json({ error: "student_not_found" });
-        res.status(201).json(createReset(userId, req.user.id));
+        const reset = createReset(userId, req.user.id);
+        audit(req.user, "class.reset_student", accountLabel(db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId)), { class: req.className });
+        res.status(201).json(reset);
     });
 
     // Deletes a student's account altogether (e.g. one who left school), with all their work.
@@ -335,7 +347,9 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         const userId = Number(req.params.userId);
         const inClass = db.prepare("SELECT 1 FROM class_students WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
         if (!inClass) return res.status(404).json({ error: "student_not_found" });
+        const label = accountLabel(db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId));
         await deleteAccount(userId);
+        audit(req.user, "class.delete_student", label, { class: req.className });
         res.json({ class: classDetail(req.classId, req.user.id) });
     }));
 
@@ -444,6 +458,7 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         const teaches = db.prepare("SELECT 1 FROM class_teachers WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
         if (!teaches) return res.status(400).json({ error: "bad_request" });
         db.prepare("UPDATE classes SET owner_id = ? WHERE id = ?").run(userId, req.classId);
+        audit(req.user, "class.owner", accountLabel(db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId)), { class: req.className });
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
@@ -455,7 +470,9 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         if (leaving && req.isClassOwner) return res.status(409).json({ error: "owner_cannot_leave" });
         if (!leaving && !req.isClassOwner) return res.status(403).json({ error: "owner_only" });
 
-        db.prepare("DELETE FROM class_teachers WHERE class_id = ? AND user_id = ?").run(req.classId, userId);
+        const teacher = db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId);
+        const { changes } = db.prepare("DELETE FROM class_teachers WHERE class_id = ? AND user_id = ?").run(req.classId, userId);
+        if (changes > 0) audit(req.user, leaving ? "class.leave" : "class.remove_teacher", leaving ? req.className : accountLabel(teacher), { class: req.className });
         if (leaving) return res.json({ left: true });
         res.json({ class: classDetail(req.classId, req.user.id) });
     });

@@ -7,6 +7,30 @@ import { useAuth } from "./useAuth";
 import { useLanguage } from "./useLanguage";
 import { localizeProject } from "../data/Projects";
 import type { Project } from "../data/Projects";
+import type { Language } from "./useLanguage";
+import { useRefreshOnReturn } from "./useRefreshOnReturn";
+
+// Each project in the chosen language, made once per loaded project: an open assignment keeps the
+// same object when the list is loaded again, so the page showing it doesn't start over
+const localized = new WeakMap<Project, { language: Language; project: Project }>();
+function localizeOnce(project: Project, language: Language) {
+    const cached = localized.get(project);
+    if (cached?.language === language) return cached.project;
+    const result = localizeProject(project, language);
+    localized.set(project, { language, project: result });
+    return result;
+}
+
+// A list loaded again keeps the projects that didn't change (and the list itself if none did)
+function keepUnchanged(current: Project[] | null, next: Project[]): Project[] {
+    if (!current) return next;
+    const before = new Map(current.map((p) => [p.id, p]));
+    const merged = next.map((p) => {
+        const old = before.get(p.id);
+        return old && JSON.stringify(old) === JSON.stringify(p) ? old : p;
+    });
+    return merged.length === current.length && merged.every((p, i) => p === current[i]) ? current : merged;
+}
 
 // The modeling page for an assignment; the address can be shared and bookmarked
 export const assignmentPath = (projectId: string) => `/modeling/${encodeURIComponent(projectId)}`;
@@ -37,17 +61,21 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     const { language } = useLanguage();
     const userId = user?.id ?? null;
     const [loaded, setProjects] = useState<Project[] | null>(null);
-    const projects = useMemo(() => loaded?.map((p) => localizeProject(p, language)) ?? null, [loaded, language]);
+    const projects = useMemo(() => loaded?.map((p) => localizeOnce(p, language)) ?? null, [loaded, language]);
 
+    // Loading again (coming back to the page) keeps what was there when the server can't be reached
     const load = useCallback(async () => {
         const { ok, data } = await api<{ projects: Project[] }>("/projects");
-        setProjects(ok && data.projects ? data.projects : []);
+        setProjects((current) => (ok && data.projects ? keepUnchanged(current, data.projects) : current ?? []));
     }, []);
 
     useEffect(() => {
         setProjects(null);
         if (userId !== null) load();
     }, [userId, load]);
+    useRefreshOnReturn(useCallback(() => {
+        if (userId !== null) load();
+    }, [userId, load]));
 
     const byId = useCallback((id: string | undefined) => projects?.find((p) => p.id === id), [projects]);
 

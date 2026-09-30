@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { api } from "./api";
 import { useAuth } from "./useAuth";
+import { useRefreshOnReturn } from "./useRefreshOnReturn";
 import type { Project } from "../data/Projects";
 import type { ReviewStatus } from "./workSync";
 
@@ -18,6 +19,10 @@ export function useWorkActivity() {
     const { user } = useAuth();
     const [activity, setActivity] = useState<Record<string, WorkActivity>>({});
 
+    // Loaded again when coming back to the page, e.g. after working in another tab
+    const [reloads, setReloads] = useState(0);
+    useRefreshOnReturn(useCallback(() => setReloads((n) => n + 1), []));
+
     useEffect(() => {
         if (!user) return setActivity({});
         let cancelled = false;
@@ -28,7 +33,7 @@ export function useWorkActivity() {
         return () => {
             cancelled = true;
         };
-    }, [user]);
+    }, [user, reloads]);
 
     // When the user last saved work on the project; null when they never have
     const lastEdit = (project: Project) =>

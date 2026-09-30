@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import db from "./db.js";
 import { projectMediaDir, userMediaDir } from "./media.js";
+import { audit } from "./audit.js";
 
 // Classes that would have no teacher left if this teacher's account were deleted
 export function classesOnlyTaughtBy(userId) {
@@ -35,9 +36,14 @@ export async function deleteInactiveAccounts(before) {
     const stale = db.prepare(`
         SELECT id FROM users WHERE is_admin = 0 AND COALESCE(last_active_at, created_at) < ?
     `).all(before);
+    let count = 0;
     for (const { id } of stale) {
-        if (classesOnlyTaughtBy(id).length === 0) await deleteAccount(id);
+        if (classesOnlyTaughtBy(id).length > 0) continue;
+        await deleteAccount(id);
+        count++;
     }
+    // Only how many: these people didn't ask for anything to be kept about them
+    if (count > 0) audit(null, "account.expire", null, { count });
 }
 
 // Everything stored about an account, readable (the right of access): account details, classes,

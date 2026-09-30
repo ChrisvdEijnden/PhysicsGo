@@ -18,6 +18,44 @@ import { formatCode } from "../components/CodeInput";
 import { formatMark } from "../components/Feedback";
 import CopyIcon20px from "../assets/icons/copy-20px.svg";
 import CheckIcon20px from "../assets/icons/check-20px.svg";
+import { toCsv } from "../lib/csv";
+import { downloadFile, fileNameFor } from "../lib/download";
+import { useRefreshOnReturn } from "../lib/useRefreshOnReturn";
+
+type ClassTab = "students" | "assignments" | "teachers" | "settings";
+
+// The selected class's parts; arrow keys move between them, as in any tab list
+function ClassTabs({ tabs, tab, onChange }: { tabs: { id: ClassTab; label: string }[]; tab: ClassTab; onChange: (tab: ClassTab) => void }) {
+    const { t } = useTranslation();
+    const onKeyDown = (e: React.KeyboardEvent) => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const index = tabs.findIndex((x) => x.id === tab);
+        const next = tabs[(index + step + tabs.length) % tabs.length].id;
+        onChange(next);
+        document.getElementById(`class-tab-${next}`)?.focus();
+    };
+    return (
+        <div className="class-tabs" role="tablist" aria-label={t("classes.parts")} onKeyDown={onKeyDown}>
+            {tabs.map((x) => (
+                <button
+                    key={x.id}
+                    type="button"
+                    role="tab"
+                    id={`class-tab-${x.id}`}
+                    aria-selected={tab === x.id}
+                    aria-controls={`class-panel-${x.id}`}
+                    tabIndex={tab === x.id ? 0 : -1}
+                    className={tab === x.id ? "active" : undefined}
+                    onClick={() => onChange(x.id)}
+                >
+                    {x.label}
+                </button>
+            ))}
+        </div>
+    );
+}
 
 interface ClassSummary {
     id: number;
@@ -116,8 +154,13 @@ function Classes() {
     const [resetCode, setResetCode] = useState<{ studentId: number; code: string; expiresAt: number } | null>(null);
     const [copied, setCopied] = useState(false);
     const [busy, setBusy] = useState(false);
+    // Which part of the selected class is shown; coming back from a student's work, its assignments
+    const [tab, setTab] = useState<ClassTab>(returnTo !== null ? "assignments" : "students");
+    const [studentQuery, setStudentQuery] = useState("");
     const selectedRef = useRef<number | null>(null);
     selectedRef.current = selectedId;
+    const detailRef = useRef<ClassDetail | null>(null);
+    detailRef.current = detail;
 
     const loadList = useCallback(async () => {
         const { ok, data } = await api<{ classes: ClassSummary[] }>("/classes");
@@ -155,6 +198,7 @@ function Classes() {
         setResetCode(null);
         setProgress(null);
         setOpenProject(null);
+        setStudentQuery("");
         if (selectedId === null) return;
         api<{ projects: ProjectProgress[] }>(`/classes/${selectedId}/progress`).then(({ ok, data }) => {
             if (selectedRef.current === selectedId && ok && data.projects) setProgress(data.projects);
@@ -165,6 +209,30 @@ function Classes() {
             else setDetailError(errorOf(data));
         });
     }, [selectedId, showDetail]);
+
+    // Coming back to the page: the list, invitations and the open class again (a student may have
+    // joined or handed in, a co-teacher changed something). A class name being typed stays.
+    const refreshSelected = useCallback(() => {
+        const id = selectedRef.current;
+        if (id === null) return;
+        api<{ projects: ProjectProgress[] }>(`/classes/${id}/progress`).then(({ ok, data }) => {
+            if (selectedRef.current === id && ok && data.projects) setProgress(data.projects);
+        });
+        api<{ class: ClassDetail }>(`/classes/${id}`).then(({ ok, data }) => {
+            if (selectedRef.current !== id || !ok || !data.class) return;
+            const updated = data.class;
+            const before = detailRef.current?.name;
+            setDetail(updated);
+            setNameDraft((draft) => (draft === before ? updated.name : draft));
+            setClasses((list) => list?.map((x) => (x.id === updated.id ? summarize(updated) : x)) ?? list);
+        });
+    }, []);
+    useRefreshOnReturn(useCallback(() => {
+        if (!isTeacher) return;
+        loadList();
+        loadInvitations();
+        refreshSelected();
+    }, [isTeacher, loadList, loadInvitations, refreshSelected]));
 
     // Runs a change to the selected class. The server answers with the updated class,
     // or with not_found when another teacher deleted it or removed this teacher meanwhile.
@@ -287,6 +355,33 @@ function Classes() {
     const activeClasses = classes?.filter((c) => c.archivedAt === null) ?? [];
     const archivedClasses = classes?.filter((c) => c.archivedAt !== null) ?? [];
     const archived = detail?.archivedAt != null;
+
+    // Tabs of the selected class: an archived class has no assignments to follow, and its owner has
+    // nothing to manage but restoring it (shown above the tabs)
+    const tabs: { id: ClassTab; label: string }[] = detail ? [
+        { id: "students", label: `${t("classes.students")} (${detail.students.length})` },
+        ...(!archived ? [{ id: "assignments" as const, label: `${t("classes.assignments")}${progress ? ` (${progress.length})` : ""}` }] : []),
+        { id: "teachers", label: t("classes.teachers") },
+        ...(!detail.youAreOwner || !archived ? [{ id: "settings" as const, label: t("classes.manage") }] : []),
+    ] : [];
+    const shownTab = tabs.some((x) => x.id === tab) ? tab : "students";
+
+    // Students whose name or email contains what's typed, ignoring case and accents
+    const fold = (text: string) => text.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+    const query = fold(studentQuery.trim());
+    const shownStudents = detail?.students.filter((s) => !query || fold(`${s.name} ${s.email}`).includes(query)) ?? [];
+
+    // The class list as a spreadsheet, e.g. for the school's administration
+    function exportStudents() {
+        if (!detail) return;
+        const csv = toCsv(
+            [t("classes.csvName"), t("classes.csvEmail"), t("classes.csvJoined")],
+            detail.students.map((s) => [s.name, s.email, new Date(s.joinedAt).toISOString().slice(0, 10)]),
+            language,
+        );
+        downloadFile(fileNameFor(`${detail.name} ${t("classes.students").toLowerCase()}`, "csv"), new Blob([csv], { type: "text/csv" }));
+    }
+
     const classItem = (c: ClassSummary) => (
         <button
             key={c.id}
@@ -405,6 +500,9 @@ function Classes() {
                                 </section>
                             )}
 
+                            <ClassTabs tabs={tabs} tab={shownTab} onChange={setTab}/>
+
+                            {shownTab === "students" && <div className="class-tab-panel" role="tabpanel" id="class-panel-students" aria-labelledby="class-tab-students">
                             {!archived && (
                                 <section className="class-section">
                                     <div className="section-heading">
@@ -422,15 +520,27 @@ function Classes() {
                                 </section>
                             )}
 
-                            {(!archived || detail.students.length > 0) && <section className="class-section">
-                                <div className="section-heading">
+                            <section className="class-section">
+                                <div className="section-heading student-tools">
                                     <h3>{t("classes.students")}</h3>
+                                    {detail.students.length > 0 && (
+                                        <>
+                                            <input type="search" className="class-input student-search" value={studentQuery}
+                                                   placeholder={t("classes.searchStudents")} aria-label={t("classes.searchStudents")}
+                                                   onChange={(e) => setStudentQuery(e.target.value)}/>
+                                            <button type="button" className="class-button" onClick={exportStudents}>
+                                                {t("classes.exportStudents")}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                                 {detail.students.length === 0
                                     ? <p className="classes-empty">{t("classes.noStudents")}</p>
+                                    : shownStudents.length === 0
+                                    ? <p className="classes-empty">{t("classes.noStudentsFound", { query: studentQuery.trim() })}</p>
                                     : (
                                         <div className="member-list">
-                                            {detail.students.map((s) => (
+                                            {shownStudents.map((s) => (
                                                 <Fragment key={s.id}>
                                                     <div className="member-row">
                                                         <div className="member-text">
@@ -472,13 +582,12 @@ function Classes() {
                                             ))}
                                         </div>
                                     )}
-                            </section>}
+                            </section>
+                            </div>}
 
-                            {!archived && progress && (
+                            {shownTab === "assignments" && <div className="class-tab-panel" role="tabpanel" id="class-panel-assignments" aria-labelledby="class-tab-assignments">
+                            {progress === null ? <p className="classes-empty">{t("classes.loading")}</p> : (
                                 <section className="class-section">
-                                    <div className="section-heading">
-                                        <h3>{t("classes.assignments")}</h3>
-                                    </div>
                                     {progress.length === 0 && <p className="classes-empty">{t("classes.noAssignments")}</p>}
                                     {progress.map((p) => {
                                         const count = (status: string) => p.students.filter((s) => s.status === status).length;
@@ -544,11 +653,10 @@ function Classes() {
                                     })}
                                 </section>
                             )}
+                            </div>}
 
+                            {shownTab === "teachers" && <div className="class-tab-panel" role="tabpanel" id="class-panel-teachers" aria-labelledby="class-tab-teachers">
                             <section className="class-section">
-                                <div className="section-heading">
-                                    <h3>{t("classes.teachers")}</h3>
-                                </div>
                                 <div className="member-list">
                                     {detail.teachers.map((m) => (
                                         <div key={m.id} className="member-row">
@@ -620,11 +728,10 @@ function Classes() {
                                     <p className="section-hint" role="status">{t("classes.inviteSent", { email: invitedEmail })}</p>
                                 )}
                             </section>
+                            </div>}
 
-                            {(!detail.youAreOwner || !archived) && <section className="class-section">
-                                <div className="section-heading">
-                                    <h3>{t("classes.manage")}</h3>
-                                </div>
+                            {shownTab === "settings" && <div className="class-tab-panel" role="tabpanel" id="class-panel-settings" aria-labelledby="class-tab-settings">
+                            <section className="class-section">
                                 {/* The owner hands the class over before leaving; co-teachers can always leave */}
                                 {!detail.youAreOwner && (
                                     <div className="setting-row">
@@ -650,7 +757,8 @@ function Classes() {
                                         </div>
                                     </>
                                 )}
-                            </section>}
+                            </section>
+                            </div>}
                         </>
                     )}
                 </div>}

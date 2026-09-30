@@ -24,6 +24,9 @@ Physics modelling lessons: students sign in, work on assignments and hand them i
 | Teachers | Assignments they wrote, due dates and instructions per class | `projects`, `project_classes` |
 | Students and teachers | Signed-in browsers: token hash, created, last used, browser description (user agent) | `sessions` |
 | Students and teachers | Password reset codes (hash only), who made them | `password_resets` |
+| Students and teachers | Audit log: who (name) deleted or changed which account (name and email), class, school or assignment, and when; people deleting their own account and automatic deletions are logged without names | `audit_log` |
+
+The server writes a request log to standard output: time, method, route pattern (e.g. `/api/classes/:classId/students/:userId`), status and duration. It has no IP addresses, accounts, ids, email addresses, query strings or bodies, so it holds no personal data. `PHYSICSGO_REQUEST_LOG=off` turns it off.
 
 Websites shown in an assignment (a PhET simulation, a YouTube or Vimeo video, any https page) are loaded by the user's browser from that website, in a sandboxed frame that can't reach PhysicsGo. That website receives the user's IP address and browser details and may set cookies under its own terms; PhysicsGo sends it no account data or work. YouTube links are shown through youtube-nocookie.com and Vimeo with `dnt=1`. Schools that don't want this can agree with teachers not to add websites; users can always open a website in a new tab instead.
 
@@ -33,7 +36,7 @@ No special categories of personal data are processed. Most users are minors; the
 
 - The user themselves.
 - Teachers: the students in their own classes (name, email, work, hand-ins for assignments in those classes).
-- Administrators (set by the processor or school): account details of all users, to manage access. Administrators don't see work through the app.
+- Administrators (set by the processor or school): account details of all users, to manage access, and the audit log (Administration → Activity). Administrators don't see work through the app.
 - The processor's system administrators, for operation and backups.
 
 ## Retention
@@ -43,6 +46,7 @@ No special categories of personal data are processed. Most users are minors; the
 | Sessions | at most 7 days; ended after 8 hours without use (`SESSION_IDLE_HOURS`); expired ones removed hourly |
 | Password reset codes | 24 hours |
 | Deleted classes | restorable for 30 days, then removed with their memberships |
+| Audit log | 1 year (`AUDIT_RETENTION_DAYS`), removed hourly after that |
 | Accounts | deleted after 2 years without use (`ACCOUNT_RETENTION_DAYS`), with their work, hand-ins and files; kept only for administrators and for teachers who are still the only teacher of a class |
 | Deleted accounts | removed immediately, with work, hand-ins, uploaded files and unpublished assignments |
 | Backups | 14 daily copies of the database (see docs/deployment.md) |

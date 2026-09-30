@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import "../styles/global.css";
@@ -22,6 +22,7 @@ import { useWorkActivity } from "../lib/useWorkActivity";
 import { formatRelativeDate } from "../lib/formatRelativeDate";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
+import { useRefreshOnReturn } from "../lib/useRefreshOnReturn";
 import { canSeeProject, dueDate, usePublished } from "../lib/usePublished";
 import { formatDueDate, formatDueDay } from "../lib/formatDueDate";
 import { formatMark } from "../components/Feedback";
@@ -292,6 +293,9 @@ function ReviewChip({ review }: { review: { status: ReviewStatus; mark: number |
 // Teachers: the latest hand-ins in their classes; null while loading
 function useRecentHandIns(isTeacher: boolean) {
     const [handIns, setHandIns] = useState<HandIn[] | null>(null);
+    // Students keep handing in while the dashboard is in the background
+    const [reloads, setReloads] = useState(0);
+    useRefreshOnReturn(useCallback(() => setReloads((n) => n + 1), []));
     useEffect(() => {
         if (!isTeacher) return;
         let cancelled = false;
@@ -301,7 +305,7 @@ function useRecentHandIns(isTeacher: boolean) {
         return () => {
             cancelled = true;
         };
-    }, [isTeacher]);
+    }, [isTeacher, reloads]);
     return handIns;
 }
 

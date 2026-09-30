@@ -6,6 +6,7 @@ import { forgetLocalWork, setStorageUser } from "../data/Projects";
 import { deleteScopeMedia } from "./mediaStore";
 import { storageScope } from "./storageScope";
 import { resumeSaving, syncLocalWork } from "./workSync";
+import { useRefreshOnReturn } from "./useRefreshOnReturn";
 
 export type Role = "student" | "teacher";
 
@@ -92,6 +93,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         refresh().then(() => setLoading(false));
     }, [refresh]);
+
+    // Coming back to the page picks up changes to the account made elsewhere (name, role, classes,
+    // school). A session that ended meanwhile shows the sign-in dialog over the page, as any other
+    // request would, rather than leaving the page.
+    useRefreshOnReturn(useCallback(async () => {
+        if (!userRef.current || sessionEndedRef.current) return;
+        const { ok, data } = await api<UserData>("/auth/me");
+        if (!ok) return;
+        if (!data.user) return markSessionEnded(true);
+        if (JSON.stringify(data.user) !== JSON.stringify(userRef.current)) applyUser(data.user);
+    }, [applyUser, markSessionEnded]));
 
     useEffect(() => onSessionEnded(() => {
         if (userRef.current) markSessionEnded(true);

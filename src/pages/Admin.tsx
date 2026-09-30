@@ -14,6 +14,9 @@ import { formatRelativeDate } from "../lib/formatRelativeDate";
 import { useAuth } from "../lib/useAuth";
 import type { Role } from "../lib/useAuth";
 import { useTranslation } from "../lib/useTranslations";
+import { translations } from "../lib/Translations";
+import type { TranslationKey } from "../lib/Translations";
+import { useRefreshOnReturn } from "../lib/useRefreshOnReturn";
 
 interface School {
     id: number;
@@ -49,19 +52,37 @@ interface Account {
 // What went wrong for one account, e.g. a teacher whose classes need another teacher first
 type RowError = { error: string; classes?: string[] };
 
+// Entries of actions this version doesn't know yet are still shown, untranslated
+const isTranslationKey = (key: string): key is TranslationKey => key in translations.en;
+
+// An entry of the audit log (server/audit.js): who did what, about what
+interface AuditEntry {
+    id: number;
+    at: number;
+    // Null for PhysicsGo itself, and for people deleting their own account
+    actor: string | null;
+    action: string;
+    target: string | null;
+    details: { class?: string; from?: string; school?: string; role?: Role; count?: number; uses?: number };
+}
+
 // For administrators: schools, teacher invitations, and every account (school, roles, resets,
 // deactivating, deleting)
 export default function Admin() {
     const { t } = useTranslation();
     const { refresh } = useAuth();
     const [schools, setSchools] = useState<School[] | null>(null);
+    // Bumped by every change made here, so the activity list shows it
+    const [changes, setChanges] = useState(0);
     const reloadSchools = useCallback(() => {
         api<{ schools: School[] }>("/admin/schools").then(({ ok, data }) => ok && data.schools && setSchools(data.schools));
+        setChanges((n) => n + 1);
     }, []);
     useEffect(reloadSchools, [reloadSchools]);
     // A renamed school: the user menu shows yours
     const schoolsChanged = (list: School[]) => {
         setSchools(list);
+        setChanges((n) => n + 1);
         refresh();
     };
 
@@ -72,6 +93,7 @@ export default function Admin() {
                 <div className="left-panel admin-left">
                     <Schools schools={schools} onChange={schoolsChanged}/>
                     <Invitations schools={schools ?? []} onChange={reloadSchools}/>
+                    <Activity changes={changes}/>
                 </div>
                 <div className="right-panel">
                     <Accounts schools={schools ?? []} onChange={reloadSchools}/>
@@ -281,14 +303,15 @@ function Accounts({ schools, onChange }: { schools: School[]; onChange: () => vo
         if (!ok || !data.user) return fail(account.id, { error: data.error ?? "", classes: data.classes });
         fail(account.id, null);
         replace(data.user);
-        // The schools' counts change with an account's school or role
-        if ("schoolId" in body || "role" in body) onChange();
+        // The schools' counts change with an account's school or role (and the activity list with anything)
+        onChange();
     }
 
     async function reset(account: Account) {
         const { ok, data } = await api<{ code: string; expiresAt: number }>(`/admin/users/${account.id}/reset`, "POST");
         const { code, expiresAt } = data;
         if (ok && code && expiresAt) setResets((all) => ({ ...all, [account.id]: { code, expiresAt } }));
+        onChange();
     }
 
     async function remove(account: Account) {
@@ -374,6 +397,52 @@ function Accounts({ schools, onChange }: { schools: School[]; onChange: () => vo
                 })}
                 {more && <p className="section-hint">{t("admin.more")}</p>}
             </div>
+        </div>
+    );
+}
+
+// Who deleted or changed accounts, classes, schools and assignments, newest first (kept for a year)
+function Activity({ changes }: { changes: number }) {
+    const { t, language } = useTranslation();
+    const [entries, setEntries] = useState<AuditEntry[] | null>(null);
+
+    const load = useCallback(() => {
+        api<{ entries: AuditEntry[] }>("/admin/audit").then(({ ok, data }) => ok && data.entries && setEntries(data.entries));
+    }, []);
+    useEffect(load, [load, changes]);
+    useRefreshOnReturn(load);
+
+    const describe = (e: AuditEntry) => {
+        const values = {
+            actor: e.actor ?? "PhysicsGo",
+            target: e.target ?? "",
+            class: e.details.class ?? "",
+            from: e.details.from ?? "",
+            school: e.details.school ?? "",
+            count: e.details.count ?? 0,
+            role: e.details.role === "teacher" ? t("admin.auditRoleTeacher") : t("admin.auditRoleStudent"),
+        };
+        const key = `audit.${e.action}`;
+        return isTranslationKey(key) ? t(key, values) : `${values.actor}: ${e.action} ${values.target}`;
+    };
+
+    return (
+        <div className="creator-card admin-card admin-activity">
+            <h2>{t("admin.activityTitle")}</h2>
+            <p className="section-hint">{t("admin.activityHint")}</p>
+            {entries?.length === 0 && <p className="classes-empty">{t("admin.activityEmpty")}</p>}
+            {entries && entries.length > 0 && (
+                <ol className="admin-activity-list">
+                    {entries.map((e) => (
+                        <li key={e.id}>
+                            <time dateTime={new Date(e.at).toISOString()}>
+                                {new Date(e.at).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" })}
+                            </time>
+                            <span>{describe(e)}</span>
+                        </li>
+                    ))}
+                </ol>
+            )}
         </div>
     );
 }

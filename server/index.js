@@ -16,6 +16,7 @@ import { mediaRouter, workRouter } from "./work.js";
 import { classesOnlyTaughtBy, deleteAccount, deleteInactiveAccounts, exportAccount } from "./accounts.js";
 import { adminRouter } from "./admin.js";
 import { schoolOf } from "./schools.js";
+import { audit, purgeAuditLog } from "./audit.js";
 
 const PROD = process.env.NODE_ENV === "production";
 const PORT = process.env.PORT || 3001;
@@ -71,6 +72,22 @@ const smallJson = express.json({ limit: "10kb" });
 const ownLimit = (path) => path.startsWith("/api/work/") || path.startsWith("/api/projects");
 app.use((req, res, next) => (ownLimit(req.path) ? next() : smallJson(req, res, next)));
 app.use(cookieParser());
+
+// One line per API request on standard output: time, method, route, status and how long it took.
+// The route is the pattern (/api/classes/:classId/invites/:email), so ids, email addresses and query
+// strings in the address aren't logged, and neither are IP addresses, accounts or bodies: the log
+// holds no personal data. PHYSICSGO_REQUEST_LOG=off turns it off (the API tests do).
+if (process.env.PHYSICSGO_REQUEST_LOG !== "off" && process.env.NODE_ENV !== "test") {
+    app.use("/api", (req, res, next) => {
+        const start = process.hrtime.bigint();
+        res.on("finish", () => {
+            const ms = Number(process.hrtime.bigint() - start) / 1e6;
+            const route = req.route ? `${req.baseUrl}${req.route.path}` : "(no route)";
+            console.log(`${new Date().toISOString()} ${req.method} ${route} ${res.statusCode} ${ms.toFixed(1)} ms`);
+        });
+        next();
+    });
+}
 
 // Used to keep login timing equal when the email doesn't exist
 const DUMMY_HASH = await argon.hash("dummy-password-for-timing");
@@ -176,6 +193,7 @@ function cleanUp() {
     db.prepare("DELETE FROM sessions WHERE expires_at <= ? OR last_seen_at <= ?").run(now, now - SESSION_IDLE_MS);
     purgeArchivedClasses(now);
     purgeExpiredResets(now);
+    purgeAuditLog(now);
     if (RETENTION_DAYS > 0) deleteInactiveAccounts(now - RETENTION_DAYS * 24 * 60 * 60 * 1000).catch((e) => console.error(e));
     backupIfDue(now).catch((e) => console.error("Database backup failed:", e));
 }
@@ -353,6 +371,8 @@ api.delete("/auth/me", requireAuth, passwordLimiter, wrap(async (req, res) => {
     if (alone.length > 0) return res.status(409).json({ error: "classes_need_teacher", classes: alone.map((c) => c.name) });
 
     await deleteAccount(req.user.id);
+    // Without a name: they asked for their account to be gone
+    audit(null, "account.delete_self", null, { role: req.user.role });
     res.clearCookie(COOKIE, cookieOptions);
     res.json({ ok: true });
 }));
