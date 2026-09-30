@@ -16,10 +16,13 @@ const inUse = db.prepare(`
     UNION ALL SELECT 1 FROM teacher_invites WHERE code = @code
 `);
 
+export const randomCode = () =>
+    Array.from({ length: CODE_LENGTH }, () => ALPHABET[crypto.randomInt(ALPHABET.length)]).join("");
+
 // Every code is unique across class codes (current and retired) and teacher invitations
 export function generateCode() {
     for (;;) {
-        const code = Array.from({ length: CODE_LENGTH }, () => ALPHABET[crypto.randomInt(ALPHABET.length)]).join("");
+        const code = randomCode();
         if (!inUse.get({ code })) return code;
     }
 }

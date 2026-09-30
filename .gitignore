@@ -26,3 +26,6 @@ dist-ssr
 # Local SQLite database (accounts, sessions)
 server/physicsgo.db
 server/physicsgo.db-*
+
+# Uploaded media files (videos, photos) from the local server
+server/media/

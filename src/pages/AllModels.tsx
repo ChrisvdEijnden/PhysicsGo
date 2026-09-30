@@ -7,7 +7,8 @@ import "./classes.css";
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
 import HelpIcon21px from "../assets/icons/help-21px.svg";
 import NavBrand from "../components/NavBrand";
-import {Projects, byLastEdit} from "../data/Projects.tsx";
+import { useProjects } from "../lib/useProjects";
+import { useWorkActivity } from "../lib/useWorkActivity";
 import { useAuth } from "../lib/useAuth";
 import { canSeeProject, usePublished } from "../lib/usePublished";
 import ProjectClasses from "../components/ProjectClasses";
@@ -22,6 +23,8 @@ function AllModels() {
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
+    const { lastEdit, byLastEdit, handedIn } = useWorkActivity();
+    const { projects } = useProjects();
     return (
         <div>
             <div className="nav">
@@ -53,7 +56,7 @@ function AllModels() {
                         {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
-                        {Projects
+                        {(projects ?? [])
                             .filter((project) => canSeeProject(user, published, project.id))
                             .sort(byLastEdit)
                             .map((project) => (
@@ -68,13 +71,14 @@ function AllModels() {
                                         <img src={FileCode18px} alt="" />
                                         <div className="project-recent-name">
                                             <p className="recent-name">{project.title}</p>
+                                            {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
                                         </div>
                                     </div>
                                     <div className="other-filters">
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>
+                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!) : t("classes.statusNotStarted") }</p>
                                     </div>
                                     {isTeacher && (
                                         <div className="publish-col">

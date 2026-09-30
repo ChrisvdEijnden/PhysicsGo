@@ -1,7 +1,7 @@
 import init, { run_with_data as runInterpreter } from "../wasm/interpreterGo";
 import type { CodeEditorHandle, InterpreterError } from "../components/codeEditor.tsx";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import "./modeling.css";
 
 import SettingsIcon21px from "../assets/icons/settings-21px.svg";
@@ -16,24 +16,32 @@ import Graph from "../components/Graph.tsx";
 import MediaTile, { DEFAULT_POINT_STEP, pointSeries } from "../components/MediaTile.tsx";
 import type { MediaItem } from "../components/MediaTile.tsx";
 import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/mediaStore";
+import { realPoints } from "../lib/calibration";
 import type { ChartPoint } from "../components/lineChart.tsx";
-import {Projects, markProjectEdited, loadProjectWork, saveProjectWork} from "../data/Projects.tsx";
-import { newGraph } from "../data/Projects.tsx";
-import type { GraphConfig, MediaCategory, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
+import { newGraph, normalizeWork } from "../data/Projects.tsx";
+import { useProjects } from "../lib/useProjects";
+import type { GraphConfig, MediaCategory, Project, ProjectWork, SavedMedia, YLine } from "../data/Projects.tsx";
+import { openWork, useWorkSync } from "../lib/workSync";
+import type { OpenedWork, SaveStatus, Submission } from "../lib/workSync";
+import { api, errorOf } from "../lib/api";
+import type { Result } from "../lib/api";
+import HandInDialog from "../components/HandInDialog";
+import { deleteServerMedia, mediaOnServer, mediaUrl, uploadMedia } from "../lib/mediaServer";
+import { authErrorKey } from "../lib/authErrors";
 import CodeEditor from "../components/codeEditor.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
 import { usePublished } from "../lib/usePublished";
 import PublishDialog from "../components/PublishDialog";
 
-const DEFAULT_CODE = [
+// Start values run once; model rules run every step
+const DEFAULT_START = [
     "// Initialiseer Parameters",
     "t = 0",
     "dt = 0.01 // in seconds",
-    "\n",
-    "stop als t >= 10",
     "",
 ].join("\n");
+const DEFAULT_MODEL = "stop als t >= 10\n";
 
 const DEFAULT_STEPS = 100_000;
 const MAX_STEPS = 1_000_000;
@@ -94,12 +102,125 @@ function nextVarName(category: MediaCategory, items: SavedMedia[]) {
     return `${category}${n}`;
 }
 
+const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced: false, offline: false };
+
+// Work is saved per account, so the workspace only opens once it's known who is signed in and
+// their work has loaded; a different account gets a fresh workspace, not the previous one's state
 function Modeling() {
     const navigate = useNavigate();
-    const { t } = useTranslation();
     const location = useLocation();
+    const { user, loading } = useAuth();
     const presetId = (location.state as { presetId?: string } | null)?.presetId;
-    const project = Projects.find((p) => p.id === presetId);
+    const { projects, byId } = useProjects();
+    const project = byId(presetId);
+    const [opened, setOpened] = useState<OpenedWork | null>(null);
+    // Bumped to load the work again, e.g. after choosing another device's version
+    const [reloads, setReloads] = useState(0);
+
+    useEffect(() => {
+        if (!loading && !user) navigate("/login", { replace: true });
+    }, [loading, user, navigate]);
+
+    useEffect(() => {
+        if (!user || projects === null) return;
+        if (!project) return setOpened(NO_WORK);
+        let cancelled = false;
+        setOpened(null);
+        openWork(project.id).then((work) => {
+            if (!cancelled) setOpened(work);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [user, projects, project, reloads]);
+
+    if (loading || !user || !opened) return null;
+    return (
+        <ModelingWorkspace
+            key={`${user.id}-${reloads}`}
+            project={project}
+            opened={opened}
+            onReload={() => setReloads((n) => n + 1)}
+        />
+    );
+}
+
+// A teacher looking at a student's work: read-only, either the handed-in copy or the current work
+interface Review {
+    classId: number;
+    studentId: number;
+    studentName: string;
+    submittedAt: number | null;
+    showing: "submission" | "work";
+    hasWork: boolean;
+    onShow: (which: "submission" | "work") => void;
+}
+
+// A teacher's read-only view of a student's work on a project published to their class
+export function ReviewWork() {
+    const navigate = useNavigate();
+    const { t } = useTranslation();
+    const { user, loading } = useAuth();
+    const params = useParams();
+    const classId = Number(params.classId);
+    const studentId = Number(params.userId);
+    const { projects, byId } = useProjects();
+    const project = byId(params.projectId);
+    const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [showing, setShowing] = useState<"submission" | "work">("submission");
+
+    useEffect(() => {
+        if (loading) return;
+        if (!user) navigate("/login", { replace: true });
+        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
+    }, [loading, user, navigate]);
+
+    useEffect(() => {
+        if (user?.role !== "teacher" || !project) return;
+        api<{ student: { name: string }; work: unknown; submission: { work: unknown; submittedAt: number } | null }>(
+            `/classes/${classId}/students/${studentId}/work/${project.id}`
+        ).then(({ ok, data }) => {
+            if (!ok || !data.student) return setError(errorOf(data));
+            setData({ student: data.student, work: data.work ?? null, submission: data.submission ?? null });
+            setShowing(data.submission ? "submission" : "work");
+        });
+    }, [user, project, classId, studentId]);
+
+    if (loading || user?.role !== "teacher" || projects === null) return null;
+    if (!project || error) {
+        return <p className="review-error" role="alert">{t(authErrorKey(error ?? "not_found"))}</p>;
+    }
+    if (!data) return null;
+
+    const work = normalizeWork(showing === "submission" ? data.submission?.work : data.work);
+    return (
+        <ModelingWorkspace
+            key={showing}
+            project={project}
+            opened={{ ...NO_WORK, work }}
+            onReload={() => undefined}
+            review={{
+                classId,
+                studentId,
+                studentName: data.student.name,
+                submittedAt: data.submission?.submittedAt ?? null,
+                showing,
+                hasWork: data.work !== null,
+                onShow: setShowing,
+            }}
+        />
+    );
+}
+
+function ModelingWorkspace({ project, opened, onReload, review }: {
+    project: Project | undefined;
+    opened: OpenedWork;
+    onReload: () => void;
+    review?: Review;
+}) {
+    const navigate = useNavigate();
+    const { t, language } = useTranslation();
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
@@ -167,31 +288,72 @@ function Modeling() {
 
     // ---------- code panel ----------
     // A project reopens with the code and steps saved for it; an empty project starts fresh
-    const [savedWork] = useState(() => (project ? loadProjectWork(project.id) : null));
-    const [code, setCode] = useState(savedWork?.code ?? DEFAULT_CODE);
+    const savedWork = opened.work;
+    // Viewing a student's work saves nothing
+    const sync = useWorkSync(review ? null : project?.id ?? null, opened.version);
+    // The handed-in copy of this work, if any (students)
+    const [submission, setSubmission] = useState<Submission | null>(opened.submission);
+    const [handInOpen, setHandInOpen] = useState(false);
+    // Media that couldn't be stored on the server, and why; it's still kept in this browser
+    const [mediaError, setMediaError] = useState<{ name: string; error: string } | null>(null);
+    // New work starts from the project's starter code
+    const [start, setStart] = useState(savedWork?.start ?? project?.start ?? DEFAULT_START);
+    const [model, setModel] = useState(savedWork?.model ?? project?.model ?? DEFAULT_MODEL);
     const [steps, setSteps] = useState(savedWork?.steps ?? "");
     // A new project starts with one empty graph
     const [graphs, setGraphs] = useState<GraphConfig[]>(() => savedWork?.graphs ?? [newGraph()]);
     // Media is loaded from this device after opening; mediaLoaded is false until then
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const mediaLoaded = useRef(!project);
-    const editorRef = useRef<CodeEditorHandle>(null);
+    const startEditorRef = useRef<CodeEditorHandle>(null);
+    const modelEditorRef = useRef<CodeEditorHandle>(null);
     const [wasmReady, setWasmReady] = useState(false);
 
     // Every change to a project is saved with it and counts as an edit
     function saveWork(changes: Partial<ProjectWork>) {
-        if (!project) return;
+        if (!project || review) return;
         // Until the media files have loaded, keep the media that was saved before
         const media = mediaLoaded.current ? toSaved(mediaItems) : savedWork?.media ?? [];
-        saveProjectWork(project.id, { code, steps, graphs, media, ...changes });
-        markProjectEdited(project.id);
+        sync.save({ start, model, steps, graphs, media, ...changes });
     }
 
-    // The editor also reports values set from outside, so only real changes count as an edit
-    function handleCodeChange(value: string) {
-        if (value === code) return;
-        setCode(value);
-        saveWork({ code: value });
+    // Hands in the work as it is now: the latest changes are saved first, so the teacher sees exactly this
+    async function handIn(): Promise<Result> {
+        if (!project) return { ok: false, error: "server_error" };
+        if (sync.version === 0) saveWork({}); // nothing saved yet: save the starting state
+        const { saved, version } = await sync.saveNow();
+        if (!saved) return { ok: false, error: "not_saved" };
+        const { ok, data } = await api<{ submission: Submission }>(`/work/${project.id}/submit`, "POST", { version });
+        if (!ok || !data.submission) return { ok: false, error: errorOf(data) };
+        setSubmission(data.submission);
+        return { ok: true };
+    }
+
+    async function retractHandIn(): Promise<Result> {
+        if (!project) return { ok: false, error: "server_error" };
+        const { ok, data } = await api(`/work/${project.id}/submission`, "DELETE");
+        if (!ok) return { ok: false, error: errorOf(data) };
+        setSubmission(null);
+        return { ok: true };
+    }
+
+    // Changes made in this browser that the server hasn't got yet (offline, or from before work
+    // was saved on the server) are sent as soon as the project opens
+    useEffect(() => {
+        if (opened.unsynced && savedWork) sync.save(savedWork);
+    }, []); // only on opening
+
+    // The editors also report values set from outside, so only real changes count as an edit
+    function handleStartChange(value: string) {
+        if (value === start) return;
+        setStart(value);
+        saveWork({ start: value });
+    }
+
+    function handleModelChange(value: string) {
+        if (value === model) return;
+        setModel(value);
+        saveWork({ model: value });
     }
 
     function handleStepsChange(value: string) {
@@ -219,19 +381,6 @@ function Modeling() {
         init().then(() => setWasmReady(true));
     }, []);
 
-    // The first blank line (spaces allowed) separates the start values from the model rules.
-    // modelLineOffset turns a model-block line number into a line number in the editor.
-    function splitSource(source: string): { start: string; model: string; modelLineOffset: number } {
-        const blank = /\n[ \t]*\n/.exec(source);
-        if (!blank) return { start: source, model: "", modelLineOffset: 0 };
-        const modelStart = blank.index + blank[0].length;
-        return {
-            start: source.slice(0, blank.index),
-            model: source.slice(modelStart),
-            modelLineOffset: source.slice(0, modelStart).split("\n").length - 1,
-        };
-    }
-
     interface RunResult {
         ok: boolean;
         // One entry per step: every variable's value after that step
@@ -247,14 +396,14 @@ function Modeling() {
 
     // Variables from the code and the measured data, plus any the last run produced that neither shows anymore
     const variables = useMemo(() => {
-        const names = codeVariables(code);
+        const names = codeVariables(`${start}\n${model}`);
         for (const name of [...measuredData.map((s) => s.name), ...(history?.[0]?.keys() ?? [])]) {
             if (!names.includes(name)) names.push(name);
         }
         return names;
-    }, [code, history, measuredData]);
+    }, [start, model, history, measuredData]);
 
-    // The measured points themselves, drawn as dots with the line of their variable when
+    // The measured points themselves (in calibrated units), drawn as dots with the line of their variable when
     // the graph's X is t or the same video's other coordinate
     const markersFor = useCallback((x: string, y: string): ChartPoint[] => {
         for (const item of mediaItems) {
@@ -264,37 +413,28 @@ function Modeling() {
                 axis === "t" ? "t" : axis === xName ? "x" : axis === yName ? "y" : null;
             const [px, py] = [pick(x), pick(y)];
             if (!px || !py || py === "t") continue;
-            return item.points.map((p) => ({ x: px === "t" ? p.t ?? 0 : p[px], y: p[py] }));
+            return realPoints(item).map((p) => ({ x: px === "t" ? p.t ?? 0 : p[px], y: p[py] }));
         }
         return [];
     }, [mediaItems]);
 
     function runSimulation() {
-        if (!wasmReady) {
-            console.warn("wasm not ready yet");
-            return;
-        }
-        editorRef.current?.clearErrors();
-
-        const { start, model, modelLineOffset } = splitSource(code);
-        console.log("start block:", JSON.stringify(start));
-        console.log("model block:", JSON.stringify(model));
+        if (!wasmReady) return;
+        startEditorRef.current?.clearErrors();
+        modelEditorRef.current?.clearErrors();
 
         const result = runInterpreter(start, model, stepCount(), measuredData) as RunResult;
-        console.log("interpreter result:", result);
 
         if (!result.ok) {
-            // Line numbers are relative to their own block; the model block starts after the blank line
-            const errors: InterpreterError[] = result.errors.map((e) => ({
-                line: e.block === "model" ? e.line + modelLineOffset : e.line,
-                column: e.column,
-                message: `[${e.block}] ${e.message}`,
-            }));
-            editorRef.current?.setErrors(errors);
+            // Each error's line is counted in its own block, which is its own editor
+            const inBlock = (block: string): InterpreterError[] => result.errors
+                .filter((e) => e.block === block)
+                .map((e) => ({ line: e.line, column: e.column, message: e.message }));
+            startEditorRef.current?.setErrors(inBlock("start"));
+            modelEditorRef.current?.setErrors(inBlock("model"));
             return;
         }
 
-        console.log(`ran ${result.history.length} steps, final state:`, result.history[result.history.length - 1]);
         setHistory(result.history);
     }
 
@@ -307,17 +447,29 @@ function Modeling() {
         mediaItemsRef.current = mediaItems;
     }, [mediaItems]);
 
-    // Reopening a project brings back its media; a file missing on this device keeps its points
+    // Reopening a project brings back its media: from this browser when it has the file (sending it to
+    // the server if that doesn't have it yet), otherwise from the server. A file found in neither keeps its points.
     useEffect(() => {
         if (!project) return;
         let cancelled = false;
         const saved = savedWork?.media ?? [];
         Promise.all(saved.map(async (media): Promise<MediaItem> => {
+            if (review) {
+                const onServer = await mediaOnServer(project.id, media.id, review.studentId);
+                return { ...media, url: onServer ? mediaUrl(project.id, media.id, review.studentId) : "" };
+            }
             const file = await loadMediaFile(mediaKey(project.id, media.id)).catch(() => undefined);
-            return { ...media, url: file ? URL.createObjectURL(file) : "" };
+            if (file) {
+                mediaOnServer(project.id, media.id).then((onServer) => {
+                    if (onServer === false) uploadMedia(project.id, media.id, file);
+                });
+                return { ...media, url: URL.createObjectURL(file) };
+            }
+            const onServer = await mediaOnServer(project.id, media.id);
+            return { ...media, url: onServer ? mediaUrl(project.id, media.id) : "" };
         })).then((items) => {
             if (cancelled) {
-                items.forEach((item) => item.url && URL.revokeObjectURL(item.url));
+                items.forEach((item) => item.url.startsWith("blob:") && URL.revokeObjectURL(item.url));
                 return;
             }
             mediaLoaded.current = true;
@@ -326,19 +478,19 @@ function Modeling() {
         return () => {
             cancelled = true;
         };
-    }, [project, savedWork]);
+    }, [project, savedWork, review?.studentId]);
 
     // Revoke every blob URL on unmount so nothing leaks.
     useEffect(() => {
         return () => {
-            mediaItemsRef.current.forEach((item) => item.url && URL.revokeObjectURL(item.url));
+            mediaItemsRef.current.forEach((item) => item.url.startsWith("blob:") && URL.revokeObjectURL(item.url));
         };
     }, []);
 
     const panelCountRef = useRef(0);
 
     const openFilePicker = useCallback(() => {
-        if (panelCountRef.current >= MAX_PANELS) return;
+        if (panelCountRef.current >= MAX_PANELS || review) return;
         const input = fileInputRef.current;
         if (!input) return;
         input.accept = ALL_MEDIA_ACCEPT;
@@ -384,7 +536,14 @@ function Modeling() {
             graphYs: [{ name: "y", color: 0 }],
         };
         setMedia([...mediaItems, newItem]);
-        if (project) saveMediaFile(mediaKey(project.id, newItem.id), file).catch((err) => console.error("couldn't save media", err));
+        if (!project) return;
+        const projectId = project.id;
+        saveMediaFile(mediaKey(projectId, newItem.id), file).catch(() => undefined);
+        setMediaError(null);
+        uploadMedia(projectId, newItem.id, file).then((res) => {
+            // Offline uploads happen the next time the project opens; other failures are shown
+            if (!res.ok && res.error !== "network") setMediaError({ name: file.name, error: res.error });
+        });
     }
 
     function updateMediaItem(updated: MediaItem) {
@@ -393,9 +552,11 @@ function Modeling() {
 
     function removeMediaItem(id: string) {
         const target = mediaItems.find((item) => item.id === id);
-        if (target?.url) URL.revokeObjectURL(target.url);
+        if (target?.url.startsWith("blob:")) URL.revokeObjectURL(target.url);
         setMedia(mediaItems.filter((item) => item.id !== id));
-        if (project) deleteMediaFile(mediaKey(project.id, id)).catch(() => {});
+        if (!project) return;
+        deleteMediaFile(mediaKey(project.id, id)).catch(() => {});
+        deleteServerMedia(project.id, id);
     }
 
     // ---------- analysis panel rows (graphs, then media) ----------
@@ -502,72 +663,111 @@ function Modeling() {
     );
 
     return (
-        <div>
+        <div className="modeling-page">
             <div className="nav">
                 <div className="brand-and-breadcrumb">
                     <NavBrand />
                     <div className="spacer"></div>
                     <h2>{ project?.title }</h2>
+                    {project && !review && <SaveIndicator status={sync.status}/>}
                 </div>
 
                 <div className="system-actions">
-                    <div className="insert-menu-anchor" ref={insertMenuRef}>
-                        <button
-                            type="button"
-                            className="insert-media-btn"
-                            onClick={() => setInsertMenuOpen(!insertMenuOpen)}
-                            disabled={panelsFull}
-                            title={panelsFull ? t("modeling.removePanelTooltip") : undefined}
-                            aria-haspopup="menu"
-                            aria-expanded={insertMenuOpen}
-                        >
-                            <img src={PlusIcon14px} alt="PlusIcon14px"/>
-                            <p>{t("modeling.insertMediaEmbeds")}</p>
-                        </button>
-                        {insertMenuOpen && (
-                            <div className="insert-menu" role="menu">
-                                <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
-                                    {t("modeling.insertGraph")}
-                                </button>
-                                <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={insertMediaFile}
-                                    aria-keyshortcuts="Meta+O Control+O"
-                                >
-                                    {t("modeling.insertMediaFile")}
-                                    <span className="insert-menu-shortcut">⌘O</span>
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        onChange={handleFileChange}
-                        style={{ display: "none" }}
-                    />
-                    {/* Teachers publish projects to their classes; students hand them in */}
-                    {isTeacher ? (
-                        project && (
-                            <button className="hand-in-btn" onClick={() => setPublishOpen(true)}>
-                                <img src={arrowIcon14px} alt="ArrowIcon14px"/>
-                                <p>{t("publish.button")}</p>
-                            </button>
-                        )
+                    {review ? (
+                        <ReviewBar review={review}/>
                     ) : (
-                        <button className="hand-in-btn" onClick={() => navigate("/dashboard")}>
-                            <img src={arrowIcon14px} alt="ArrowIcon14px"/>
-                            <p>{t("modeling.handInAssignment")}</p>
-                        </button>
-                    )}
-                    {publishOpen && project && (
-                        <PublishDialog
-                            title={project.title}
-                            current={published[project.id] ?? []}
-                            onSave={(classIds) => setProjectClasses(project.id, classIds)}
-                            onClose={() => setPublishOpen(false)}
+                        <>
+                        <div className="insert-menu-anchor" ref={insertMenuRef}>
+                            <button
+                                type="button"
+                                className="insert-media-btn"
+                                onClick={() => setInsertMenuOpen(!insertMenuOpen)}
+                                disabled={panelsFull}
+                                title={panelsFull ? t("modeling.removePanelTooltip") : undefined}
+                                aria-haspopup="menu"
+                                aria-expanded={insertMenuOpen}
+                            >
+                                <img src={PlusIcon14px} alt="PlusIcon14px"/>
+                                <p>{t("modeling.insertMediaEmbeds")}</p>
+                            </button>
+                            {insertMenuOpen && (
+                                <div className="insert-menu" role="menu">
+                                    <button type="button" role="menuitem" autoFocus onClick={insertGraph}>
+                                        {t("modeling.insertGraph")}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={insertMediaFile}
+                                        aria-keyshortcuts="Meta+O Control+O"
+                                    >
+                                        {t("modeling.insertMediaFile")}
+                                        <span className="insert-menu-shortcut">⌘O</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={handleFileChange}
+                            style={{ display: "none" }}
                         />
+                        {/* Teachers publish projects to their classes; students hand them in */}
+                        {isTeacher && project && (
+                            <button
+                                className="insert-media-btn"
+                                onClick={() => navigate(project.mine ? `/projects/${project.id}/edit` : "/projects/new", {
+                                    state: project.mine ? undefined : { copyOf: project.id },
+                                })}
+                            >
+                                <p>{project.mine ? t("projectEditor.edit") : t("projectEditor.duplicate")}</p>
+                            </button>
+                        )}
+                        {isTeacher ? (
+                            project && (
+                                <button className="hand-in-btn" onClick={() => setPublishOpen(true)}>
+                                    <img src={arrowIcon14px} alt="ArrowIcon14px"/>
+                                    <p>{t("publish.button")}</p>
+                                </button>
+                            )
+                        ) : (
+                            // Only projects that are an assignment in one of the student's classes can be handed in
+                            project && (published[project.id]?.length ?? 0) > 0 && (
+                                <>
+                                    {submission && (
+                                        <span className="hand-in-chip">
+                                            {t(sync.version > submission.workVersion ? "handIn.chipChanged" : "handIn.handedInAt", {
+                                                time: new Date(submission.submittedAt).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" }),
+                                            })}
+                                        </span>
+                                    )}
+                                    <button className="hand-in-btn" onClick={() => setHandInOpen(true)}>
+                                        <img src={arrowIcon14px} alt=""/>
+                                        <p>{submission ? t("modeling.handInAgain") : t("modeling.handInAssignment")}</p>
+                                    </button>
+                                </>
+                            )
+                        )}
+                        {handInOpen && project && (
+                            <HandInDialog
+                                title={project.title}
+                                submission={submission}
+                                changedSince={!!submission && sync.version > submission.workVersion}
+                                onHandIn={handIn}
+                                onRetract={retractHandIn}
+                                onClose={() => setHandInOpen(false)}
+                            />
+                        )}
+                        {publishOpen && project && (
+                            <PublishDialog
+                                title={project.title}
+                                current={published[project.id] ?? []}
+                                onSave={(classIds) => setProjectClasses(project.id, classIds)}
+                                onClose={() => setPublishOpen(false)}
+                            />
+                        )}
+                        </>
                     )}
                     <div className="right-system-actions">
                         <button onClick={() => navigate("/settings")}>
@@ -580,16 +780,46 @@ function Modeling() {
                 </div>
             </div>
 
+            {sync.conflict && (
+                <div className="modeling-banner" role="alert">
+                    <p>{t("modeling.conflict")}</p>
+                    <button type="button" className="modeling-banner-btn" onClick={() => {
+                        sync.takeTheirs();
+                        onReload();
+                    }}>
+                        {t("modeling.conflictTheirs")}
+                    </button>
+                    <button type="button" className="modeling-banner-btn primary" onClick={sync.keepMine}>
+                        {t("modeling.conflictMine")}
+                    </button>
+                </div>
+            )}
+            {mediaError && (
+                <div className="modeling-banner" role="alert">
+                    <p>{t("modeling.mediaNotUploaded", { name: mediaError.name, reason: t(authErrorKey(mediaError.error)) })}</p>
+                    <button type="button" className="modeling-banner-btn" onClick={() => setMediaError(null)}>
+                        {t("classes.close")}
+                    </button>
+                </div>
+            )}
             <div className="content-modeling" ref={contentRef}>
                 <div className="explanation-panel" style={{ flex: `0 0 ${panelWidths[0]}%` }}>
                     <div className="explanation">
                         <p>{ project?.explanation }</p>
                     </div>
-                    <div className="explanation-footer">
-                        <span>{t("modeling.estimatedTime")} <strong>{project?.estimatedTime} m</strong></span>
-                        <span className="code-footer-dot">·</span>
-                        <span>{t("modeling.equipment")} <strong>{project?.equipment ?? t("modeling.equipmentNone")}</strong></span>
-                    </div>
+                    {project && (
+                        <div className="explanation-footer">
+                            {project.estimatedTime !== null && (
+                                <>
+                                    <span>{t("modeling.estimatedTime")} <strong>{t("modeling.minutes", { n: project.estimatedTime })}</strong></span>
+                                    <span className="code-footer-dot">·</span>
+                                </>
+                            )}
+                            <span>{t("modeling.equipment")} <strong>
+                                {project.equipment.length > 0 ? project.equipment.join(", ") : t("modeling.equipmentNone")}
+                            </strong></span>
+                        </div>
+                    )}
                 </div>
 
                 <div
@@ -607,8 +837,18 @@ function Modeling() {
                                 <img src={PlayIcon20px} alt="PlayIcon20px"/>
                             </button>
                         </div>
-                        <div className="code-editor">
-                            <CodeEditor ref={editorRef} value={code} onChange={handleCodeChange} onRun={runSimulation}/>
+                        {/* Start values run once before the first step; model rules run every step */}
+                        <div className="code-block code-block-start">
+                            <p className="code-block-label">{t("modeling.startValues")}</p>
+                            <div className="code-editor">
+                                <CodeEditor ref={startEditorRef} value={start} onChange={handleStartChange} onRun={runSimulation} readOnly={!!review}/>
+                            </div>
+                        </div>
+                        <div className="code-block code-block-model">
+                            <p className="code-block-label">{t("modeling.modelRules")}</p>
+                            <div className="code-editor">
+                                <CodeEditor ref={modelEditorRef} value={model} onChange={handleModelChange} onRun={runSimulation} readOnly={!!review}/>
+                            </div>
                         </div>
                     </div>
 
@@ -683,6 +923,7 @@ function Modeling() {
                                             style={rowStyle}
                                             onRemove={() => removeMediaItem(row.item.id)}
                                             onChange={updateMediaItem}
+                                            readOnly={!!review}
                                         />
                                     )}
                                 </Fragment>
@@ -694,6 +935,49 @@ function Modeling() {
             </div>
         </div>
     );
+}
+
+// Whose work a teacher is looking at, and which copy: the handed-in one or the current work
+function ReviewBar({ review }: { review: Review }) {
+    const { t, language } = useTranslation();
+    const navigate = useNavigate();
+    return (
+        <div className="review-bar">
+            <span className="review-student">
+                {review.studentName}
+                {review.submittedAt !== null && ` · ${t("handIn.handedInAt", {
+                    time: new Date(review.submittedAt).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" }),
+                })}`}
+                {review.submittedAt === null && ` · ${t("review.notHandedIn")}`}
+            </span>
+            {review.submittedAt !== null && review.hasWork && (
+                <div className="review-toggle" role="radiogroup" aria-label={t("review.whichCopy")}>
+                    {(["submission", "work"] as const).map((which) => (
+                        <button key={which} type="button" role="radio" aria-checked={review.showing === which}
+                                className={review.showing === which ? "active" : ""} onClick={() => review.onShow(which)}>
+                            {which === "submission" ? t("review.handedInCopy") : t("review.currentWork")}
+                        </button>
+                    ))}
+                </div>
+            )}
+            <button type="button" className="review-back" onClick={() => navigate("/classes", { state: { classId: review.classId } })}>
+                {t("review.backToClass")}
+            </button>
+        </div>
+    );
+}
+
+// Whether the project's latest changes are saved on the server
+function SaveIndicator({ status }: { status: SaveStatus }) {
+    const { t } = useTranslation();
+    const text = {
+        saved: t("modeling.saveSaved"),
+        saving: t("modeling.saveSaving"),
+        offline: t("modeling.saveOffline"),
+        error: t("modeling.saveError"),
+        conflict: t("modeling.saveConflict"),
+    }[status];
+    return <span className={`save-indicator ${status}`} role="status">{text}</span>;
 }
 
 export default Modeling;

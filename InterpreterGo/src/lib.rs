@@ -149,6 +149,13 @@ mod tests {
     }
 
     #[test]
+    fn blank_lines_inside_a_block_are_just_blank_lines() {
+        // Start values and model rules come from separate editors, so spacing never moves a line between them
+        let state = final_state("t = 0\n\ndt = 0.5\n\nx = 0\n", "x = x + 1\n\nstop als t >= 1", 10);
+        assert_eq!(state["x"], 3.0);
+    }
+
+    #[test]
     fn freefall_advances_time_once_when_the_model_updates_t() {
         let start = "t = 0\ndt = 0.01\nh = 20\nv = 0\n";
         let model = "v = v - 9.81 * dt\nh = h + v * dt\nt += dt\n\nstop als h <= 0\n";

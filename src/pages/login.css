@@ -261,3 +261,28 @@
 .auth-link:hover {
     color: var(--color-text-primary);
 }
+/* Confirming a new email address on the account page */
+.info-hint {
+    margin: -4px 0 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.info-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
+}
+
+.info-actions .auth-button {
+    width: auto;
+}
+
+.reset-help {
+    width: 80%;
+    margin: 0;
+    text-align: center;
+}

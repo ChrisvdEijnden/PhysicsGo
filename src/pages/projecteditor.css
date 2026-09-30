@@ -1,0 +1,92 @@
+/* Writing a project: one scrolling column of fields */
+.project-editor-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.project-editor {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.project-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.project-field textarea {
+    resize: vertical;
+    font-family: "Figtree", sans-serif;
+    line-height: 1.5;
+}
+
+.project-field-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+
+.project-code {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.project-code-block {
+    flex: 1 1 320px;
+    display: flex;
+    flex-direction: column;
+    height: 220px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background-color: var(--color-bg-app);
+    overflow: hidden;
+}
+
+.project-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.project-delete {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    margin-right: auto;
+}
+
+.project-code-block .monaco-container {
+    flex: 1;
+    min-height: 0;
+}
+
+.project-code-block .code-block-label {
+    margin: 0;
+    padding: 10px 16px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}

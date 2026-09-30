@@ -7,8 +7,9 @@ import UndoIcon16px from "../assets/icons/undo-16px.svg";
 import TrashIcon16px from "../assets/icons/trash-16px.svg";
 import Graph from "./Graph.tsx";
 import ConfirmButton from "./ConfirmButton";
-import type { MediaPoint, SavedMedia } from "../data/Projects.tsx";
+import type { LengthUnit, MediaPoint, SavedMedia } from "../data/Projects.tsx";
 import { useTranslation } from "../lib/useTranslations";
+import { realPoints, unitsPerPixel } from "../lib/calibration";
 
 // Saved media plus the URL of its file for this session ("" when the file isn't on this device)
 export interface MediaItem extends SavedMedia {
@@ -20,10 +21,11 @@ export const DEFAULT_POINT_STEP = 1 / 30;
 // Axes a media's points can be plotted on: photos have no time
 export const pointAxes = (item: SavedMedia) => (item.category === "photo" ? ["x", "y"] : ["t", "x", "y"]);
 
-// Only video points have a real time, so only they become variables in the code
+// Only video points have a real time, so only they become variables in the code;
+// they're in the media's calibrated units, or pixels without a calibration
 export function pointSeries(item: SavedMedia) {
     if (item.category !== "video" || item.points.length === 0) return [];
-    const sorted = [...item.points].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    const sorted = realPoints(item).sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
     const t = sorted.map((p) => p.t ?? 0);
     return [
         { name: `x_${item.varName}`, t, values: sorted.map((p) => p.x) },
@@ -50,17 +52,25 @@ type VideoWithFrameCallback = HTMLVideoElement & {
 
 const round = (value: number, decimals: number) => Math.round(value * 10 ** decimals) / 10 ** decimals;
 
+const UNITS: LengthUnit[] = ["m", "cm", "mm"];
+
+// Setting a scale: click both ends of something of known length, type that length, then click the origin
+type CalibrationStep = "ends" | "length" | "origin";
+
 export default function MediaTile({
     item,
     style,
     onRemove,
     onChange,
+    readOnly = false,
 }: {
     item: MediaItem;
     style: React.CSSProperties;
     onRemove: () => void;
     // Called with the updated media whenever its points or settings change
     onChange: (item: MediaItem) => void;
+    // Viewing someone else's work: the media and its points can be looked at, not changed
+    readOnly?: boolean;
 }) {
     const { t } = useTranslation();
     const isImage = item.mime.startsWith("image/");
@@ -80,6 +90,13 @@ export default function MediaTile({
     // Size of the original file in pixels; points are stored in these coordinates
     const [size, setSize] = useState<{ width: number; height: number } | null>(null);
     const [stepDraft, setStepDraft] = useState(String(round(item.step, 4)));
+
+    const [calibrating, setCalibrating] = useState<CalibrationStep | null>(null);
+    // The reference line being drawn, in pixels with y up; b is missing until the second click
+    const [ruler, setRuler] = useState<{ ax: number; ay: number; bx?: number; by?: number } | null>(null);
+    const [lengthDraft, setLengthDraft] = useState("");
+    const [unitDraft, setUnitDraft] = useState<LengthUnit>("m");
+    const calibration = item.calibration ?? null;
 
     useEffect(() => {
         if (!isVideo) return;
@@ -121,13 +138,50 @@ export default function MediaTile({
         setPointMode(next);
         if (next) {
             setShowGraph(false);
+            setCalibrating(null);
             videoRef.current?.pause(); // points are plotted on a still frame
         }
     }
 
+    function startCalibration() {
+        setPointMode(false);
+        setShowGraph(false);
+        videoRef.current?.pause();
+        setRuler(null);
+        setLengthDraft(calibration ? String(calibration.length) : "");
+        setUnitDraft(calibration?.unit ?? "m");
+        setCalibrating("ends");
+    }
+
+    function cancelCalibration() {
+        setCalibrating(null);
+        setRuler(null);
+    }
+
+    function confirmLength() {
+        const length = Number(lengthDraft.replace(",", "."));
+        if (!(length > 0) || !ruler || ruler.bx === undefined) return;
+        setCalibrating("origin");
+    }
+
+    function finishCalibration(originX: number, originY: number) {
+        const length = Number(lengthDraft.replace(",", "."));
+        if (!ruler || ruler.bx === undefined || ruler.by === undefined || !(length > 0)) return cancelCalibration();
+        onChange({
+            ...item,
+            calibration: { ax: ruler.ax, ay: ruler.ay, bx: ruler.bx, by: ruler.by, length, unit: unitDraft, originX, originY },
+        });
+        cancelCalibration();
+    }
+
+    function removeCalibration() {
+        onChange({ ...item, calibration: null });
+        cancelCalibration();
+    }
+
     // Click on the media: store the position in pixels of the original file, y up from the bottom
     function handlePlot(e: React.MouseEvent<SVGSVGElement>) {
-        if (!pointMode || !size) return;
+        if ((!pointMode && calibrating !== "ends" && calibrating !== "origin") || !size) return;
         const svg = e.currentTarget;
         const matrix = svg.getScreenCTM();
         if (!matrix) return;
@@ -138,6 +192,15 @@ export default function MediaTile({
         const x = round(at.x, 1);
         const y = round(size.height - at.y, 1);
         const video = videoRef.current;
+
+        if (calibrating === "ends") {
+            // Two ends make the reference line; a third click starts a new one
+            if (!ruler || ruler.bx !== undefined) return setRuler({ ax: x, ay: y });
+            if (ruler.ax === x && ruler.ay === y) return;
+            setRuler({ ...ruler, bx: x, by: y });
+            return setCalibrating("length");
+        }
+        if (calibrating === "origin") return finishCalibration(x, y);
 
         if (isVideo && video) {
             const time = round(video.currentTime, 4);
@@ -178,10 +241,10 @@ export default function MediaTile({
         else setStepDraft(String(round(item.step, 4)));
     }
 
-    // Each plotted point as a sample for the graph; photos have no time
+    // Each plotted point as a sample for the graph (in calibrated units); photos have no time
     const graphSamples = useMemo(
-        () => item.points.map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]])),
-        [item.points]
+        () => realPoints(item).map((p) => new Map([...(p.t === null ? [] : [["t", p.t] as const]), ["x", p.x], ["y", p.y]])),
+        [item]
     );
 
     // Dots scale with the media, so size them relative to it
@@ -190,13 +253,42 @@ export default function MediaTile({
         ? item.points.find((p) => Math.abs((p.t ?? 0) - timeSec) < item.step / 2)
         : undefined;
 
+    // The reference line: the one being drawn while calibrating, otherwise the saved one
+    const shownRuler = calibrating ? ruler : calibration;
+    const clicking = pointMode || calibrating === "ends" || calibrating === "origin";
+    const axisLength = size ? Math.min(size.width, size.height) / 8 : 0;
+
     const overlay = size && (
         <svg
-            className={`media-points${pointMode ? " plotting" : ""}`}
+            className={`media-points${clicking ? " plotting" : ""}`}
             viewBox={`0 0 ${size.width} ${size.height}`}
             preserveAspectRatio="xMidYMid meet"
             onClick={handlePlot}
         >
+            {shownRuler && (
+                <g className="media-ruler">
+                    {shownRuler.bx !== undefined && shownRuler.by !== undefined && (
+                        <line x1={shownRuler.ax} y1={size.height - shownRuler.ay}
+                              x2={shownRuler.bx} y2={size.height - shownRuler.by} strokeWidth={dotRadius / 2}/>
+                    )}
+                    <circle cx={shownRuler.ax} cy={size.height - shownRuler.ay} r={dotRadius}/>
+                    {shownRuler.bx !== undefined && shownRuler.by !== undefined && (
+                        <circle cx={shownRuler.bx} cy={size.height - shownRuler.by} r={dotRadius}/>
+                    )}
+                </g>
+            )}
+            {calibration && !calibrating && (
+                <g className="media-origin" strokeWidth={dotRadius / 2}>
+                    <line x1={calibration.originX} y1={size.height - calibration.originY}
+                          x2={calibration.originX + axisLength} y2={size.height - calibration.originY}/>
+                    <line x1={calibration.originX} y1={size.height - calibration.originY}
+                          x2={calibration.originX} y2={size.height - calibration.originY - axisLength}/>
+                    <text x={calibration.originX + axisLength} y={size.height - calibration.originY + dotRadius * 3}
+                          fontSize={dotRadius * 3}>x</text>
+                    <text x={calibration.originX - dotRadius * 3} y={size.height - calibration.originY - axisLength}
+                          fontSize={dotRadius * 3}>y</text>
+                </g>
+            )}
             {item.points.length > 1 && (
                 <polyline
                     className="media-points-path"
@@ -230,7 +322,17 @@ export default function MediaTile({
                     </button>
                 )}
                 <div className="right-btns">
-                    {canPlot && !fileMissing && (
+                    {canPlot && !fileMissing && !showGraph && !readOnly && (
+                        <button
+                            type="button"
+                            className={`insert-points-btn${calibrating ? " active" : ""}`}
+                            aria-pressed={calibrating !== null}
+                            onClick={calibrating ? cancelCalibration : startCalibration}
+                        >
+                            <p>{t("modeling.calibrate")}</p>
+                        </button>
+                    )}
+                    {canPlot && !fileMissing && !readOnly && (
                         <button
                             type="button"
                             className={`insert-points-btn${pointMode ? " active" : ""}`}
@@ -249,19 +351,20 @@ export default function MediaTile({
                             onClick={() => {
                                 setShowGraph(!showGraph);
                                 setPointMode(false);
+                                cancelCalibration();
                             }}
                         >
                             <p>{showGraph ? t("modeling.showMedia") : t("modeling.showGraph")}</p>
                         </button>
                     )}
-                    <button
+                    {!readOnly && <button
                         type="button"
                         className="analysis-media-remove"
                         onClick={onRemove}
                         aria-label={t("modeling.removeMedia", { name: item.name })}
                     >
                         <img src={CloseIcon20px} alt="CloseIcon20px"/>
-                    </button>
+                    </button>}
                 </div>
             </div>
 
@@ -317,8 +420,64 @@ export default function MediaTile({
             )}
 
             {/* Part of the panel, below the media, so nothing covers the picture */}
-            {!showGraph && !fileMissing && (isVideo || pointMode) && (
+            {!showGraph && !fileMissing && (isVideo || pointMode || calibrating || calibration) && (
                 <div className="analysis-footer media-footer">
+                    {calibrating ? (
+                        <div className="calibration-bar">
+                            {calibrating === "ends" && <span>{t("modeling.calibrateEndsHint")}</span>}
+                            {calibrating === "length" && (
+                                <label className="points-step">
+                                    {t("modeling.calibrateLength")}
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        autoFocus
+                                        value={lengthDraft}
+                                        onChange={(e) => setLengthDraft(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && confirmLength()}
+                                    />
+                                    <select
+                                        className="calibration-unit"
+                                        aria-label={t("modeling.calibrateUnit")}
+                                        value={unitDraft}
+                                        onChange={(e) => setUnitDraft(e.target.value as LengthUnit)}
+                                    >
+                                        {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
+                                    </select>
+                                </label>
+                            )}
+                            {calibrating === "length" && (
+                                <button type="button" className="calibration-btn primary" onClick={confirmLength}
+                                        disabled={!(Number(lengthDraft.replace(",", ".")) > 0)}>
+                                    {t("modeling.calibrateNext")}
+                                </button>
+                            )}
+                            {calibrating === "origin" && <span>{t("modeling.calibrateOriginHint")}</span>}
+                            {calibrating === "origin" && (
+                                <button type="button" className="calibration-btn" onClick={() => finishCalibration(0, 0)}>
+                                    {t("modeling.calibrateCorner")}
+                                </button>
+                            )}
+                            {calibration && calibrating === "ends" && (
+                                <button type="button" className="calibration-btn" onClick={removeCalibration}>
+                                    {t("modeling.calibrateRemove")}
+                                </button>
+                            )}
+                            <button type="button" className="calibration-btn" onClick={cancelCalibration}>
+                                {t("modeling.calibrateCancel")}
+                            </button>
+                        </div>
+                    ) : (calibration || pointMode) && (
+                        <span className="media-footer-scale">
+                            {calibration
+                                ? t("modeling.scaleInfo", {
+                                    length: calibration.length,
+                                    unit: calibration.unit,
+                                    pixels: round(calibration.length / unitsPerPixel(calibration), 1),
+                                })
+                                : t("modeling.pixelsHint")}
+                        </span>
+                    )}
                     {isVideo && (
                         <span className="media-footer-time">
                             {t("modeling.frame")} <strong>{frame}</strong>

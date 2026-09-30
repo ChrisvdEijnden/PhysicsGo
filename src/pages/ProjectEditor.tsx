@@ -1,0 +1,166 @@
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+
+import "../styles/global.css";
+import "./classes.css";
+import "./projecteditor.css";
+
+import SettingsIcon21px from "../assets/icons/settings-21px.svg";
+import HelpIcon21px from "../assets/icons/help-21px.svg";
+import NavBrand from "../components/NavBrand";
+import CodeEditor from "../components/codeEditor.tsx";
+import ConfirmButton from "../components/ConfirmButton";
+import { useTranslation } from "../lib/useTranslations";
+import { useAuth } from "../lib/useAuth";
+import { useProjects } from "../lib/useProjects";
+import { authErrorKey } from "../lib/authErrors";
+
+// Where teachers write a project: /projects/new (optionally a copy of another) or /projects/<id>/edit
+function ProjectEditor() {
+    const navigate = useNavigate();
+    const location = useLocation();
+    const { projectId } = useParams();
+    const { t } = useTranslation();
+    const { user, loading } = useAuth();
+    const { projects, byId, createProject, updateProject, deleteProject } = useProjects();
+    const editing = projectId !== undefined;
+    const existing = byId(projectId);
+    const copyOf = byId((location.state as { copyOf?: string } | null)?.copyOf);
+
+    const [form, setForm] = useState<{
+        title: string; explanation: string; estimatedTime: string; equipment: string; start: string; model: string;
+    } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (loading) return;
+        if (!user) navigate("/login", { replace: true });
+        else if (user.role !== "teacher") navigate("/dashboard", { replace: true });
+    }, [loading, user, navigate]);
+
+    // Filled in once the projects have loaded: the project being edited, the one being copied, or empty
+    useEffect(() => {
+        if (projects === null || form !== null) return;
+        const source = editing ? existing : copyOf;
+        if (editing && !existing?.mine) return;
+        setForm({
+            title: source ? (editing ? source.title : t("projectEditor.copyOf", { title: source.title })) : "",
+            explanation: source?.explanation ?? "",
+            estimatedTime: source?.estimatedTime != null ? String(source.estimatedTime) : "",
+            equipment: source?.equipment.join("\n") ?? "",
+            start: source?.start ?? "t = 0\ndt = 0.01\n",
+            model: source?.model ?? "stop als t >= 10\n",
+        });
+    }, [projects, form, editing, existing, copyOf, t]);
+
+    if (loading || user?.role !== "teacher" || projects === null) return null;
+    if (editing && !existing?.mine) return <p className="review-error" role="alert">{t("classes.errNotFound")}</p>;
+    if (!form) return null;
+
+    const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+        setForm((f) => f && { ...f, [field]: e.target.value });
+
+    const save = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (busy) return;
+        const minutes = form.estimatedTime.trim() === "" ? null : Number(form.estimatedTime);
+        const fields = {
+            title: form.title.trim(),
+            explanation: form.explanation,
+            estimatedTime: minutes,
+            equipment: form.equipment.split("\n").map((x) => x.trim()).filter(Boolean),
+            start: form.start,
+            model: form.model,
+        };
+        setBusy(true);
+        setError(null);
+        const res = editing ? await updateProject(projectId, fields) : await createProject(fields);
+        setBusy(false);
+        if (!res.ok) return setError(res.error);
+        // Opens the project the way students will see it, where it can be published
+        navigate("/modeling", { state: { presetId: res.project.id }, replace: true });
+    };
+
+    const remove = async () => {
+        if (!projectId) return;
+        setBusy(true);
+        const res = await deleteProject(projectId);
+        setBusy(false);
+        if (res.ok) navigate("/dashboard", { replace: true });
+        else setError(res.error);
+    };
+
+    return (
+        <div className="project-editor-page">
+            <div className="nav">
+                <div className="brand-and-breadcrumb">
+                    <NavBrand />
+                    <div className="spacer"></div>
+                    <h2 className="breadcrumb-link" onClick={() => navigate("/dashboard")}>{t("nav.dashboard")}</h2>
+                    <div className="spacer"></div>
+                    <h2>{editing ? t("projectEditor.editTitle") : t("projectEditor.newTitle")}</h2>
+                </div>
+                <div className="right-system-actions">
+                    <button onClick={() => navigate("/settings")}>
+                        <img src={SettingsIcon21px} alt="SettingsIcon21px"/>
+                    </button>
+                    <button onClick={() => navigate("/")}>
+                        <img src={HelpIcon21px} alt="HelpIcon21px"/>
+                    </button>
+                </div>
+            </div>
+
+            <form className="project-editor" onSubmit={save}>
+                <label className="project-field">
+                    <span>{t("projectEditor.title")}</span>
+                    <input className="class-input" type="text" required maxLength={100} value={form.title} onChange={set("title")}/>
+                </label>
+                <label className="project-field">
+                    <span>{t("projectEditor.explanation")}</span>
+                    <textarea className="class-input" rows={8} maxLength={20000} value={form.explanation} onChange={set("explanation")}/>
+                </label>
+                <div className="project-field-row">
+                    <label className="project-field">
+                        <span>{t("projectEditor.estimatedTime")}</span>
+                        <input className="class-input" type="number" min={1} max={600} value={form.estimatedTime} onChange={set("estimatedTime")}/>
+                    </label>
+                    <label className="project-field">
+                        <span>{t("projectEditor.equipment")}</span>
+                        <textarea className="class-input" rows={3} value={form.equipment} onChange={set("equipment")}/>
+                    </label>
+                </div>
+                <div className="project-field">
+                    <span>{t("projectEditor.starterCode")}</span>
+                    <p className="section-hint">{t("projectEditor.starterHint")}</p>
+                    <div className="project-code">
+                        <div className="project-code-block">
+                            <p className="code-block-label">{t("modeling.startValues")}</p>
+                            <CodeEditor value={form.start} onChange={(start) => setForm((f) => f && { ...f, start })}/>
+                        </div>
+                        <div className="project-code-block">
+                            <p className="code-block-label">{t("modeling.modelRules")}</p>
+                            <CodeEditor value={form.model} onChange={(model) => setForm((f) => f && { ...f, model })}/>
+                        </div>
+                    </div>
+                </div>
+
+                {error && <p className="auth-error class-error" role="alert">{t(authErrorKey(error))}</p>}
+                <div className="project-actions">
+                    {editing && (
+                        <div className="project-delete">
+                            <ConfirmButton className="class-button danger" label={t("projectEditor.delete")} disabled={busy} onConfirm={remove}/>
+                            <p className="section-hint">{t("projectEditor.deleteHint")}</p>
+                        </div>
+                    )}
+                    <button type="button" className="class-button" onClick={() => navigate(-1)}>{t("publish.cancel")}</button>
+                    <button type="submit" className="class-button primary" disabled={busy || !form.title.trim()}>
+                        {t("projectEditor.save")}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
+
+export default ProjectEditor;

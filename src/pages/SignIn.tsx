@@ -98,6 +98,9 @@ function SignIn() {
                         <button className="auth-link" type="button" onClick={() => navigate("/join")}>
                             {t("login.noAccount")}
                         </button>
+                        <button className="auth-link" type="button" onClick={() => navigate("/reset")}>
+                            {t("login.forgotPassword")}
+                        </button>
                     </div>
                     <div className="footer-context">
                         <p>PhysicsGo v1.1 · C.H.M. van den Eijnden · J.J. van Wegen</p>

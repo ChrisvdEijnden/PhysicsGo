@@ -437,10 +437,10 @@
 .right-btns {
     display: flex;
     flex-direction: row;
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
     align-items: center;
-    justify-content: center;
-
+    justify-content: flex-end;
 }
 /* Chart footer: axis pickers on one row, domain and range on the next */
 .chart-footer {
@@ -767,4 +767,228 @@
 .axis-picker-x {
     flex: 0 1 auto;
     min-width: 50%;
+}
+
+/* Start values (run once) above model rules (run every step), each in its own editor */
+.code-block {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.code-block-start {
+    flex: 2;
+}
+
+.code-block-model {
+    flex: 3;
+    border-top: 1px solid var(--color-border);
+}
+
+.code-block-label {
+    margin: 0;
+    padding: 10px 16px 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+}
+
+/* Calibration: the reference line of known length and the chosen origin */
+.media-ruler line {
+    stroke: var(--color-brand);
+    stroke-dasharray: 6 4;
+    vector-effect: non-scaling-stroke;
+    stroke-width: 2px;
+}
+
+.media-ruler circle {
+    fill: var(--color-brand);
+    stroke: #FFFFFF;
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+}
+
+.media-origin line {
+    stroke: var(--color-brand);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+}
+
+.media-origin text {
+    fill: var(--color-brand);
+    font-family: "Figtree", sans-serif;
+    font-weight: 700;
+}
+
+.calibration-bar {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+}
+
+.calibration-btn {
+    height: 24px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.calibration-btn.primary {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+.calibration-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.calibration-unit {
+    height: 22px;
+    margin-left: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background-color: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-primary);
+}
+
+.media-footer-scale {
+    color: var(--color-text-secondary);
+}
+
+/* Whether the latest changes are saved on the server */
+.save-indicator {
+    margin-left: 12px;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+.save-indicator.offline, .save-indicator.error, .save-indicator.conflict {
+    color: #B45309;
+    font-weight: 600;
+}
+
+/* Messages about saving that need a choice or attention */
+.modeling-banner {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 24px;
+    background-color: #FEF3C7;
+    border-bottom: 1px solid #FCD34D;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: #78350F;
+}
+
+.modeling-banner p {
+    flex: 1;
+    margin: 0;
+}
+
+.modeling-banner-btn {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    border: 1px solid #D97706;
+    border-radius: 8px;
+    background: #FFFFFF;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: #78350F;
+    cursor: pointer;
+}
+
+.modeling-banner-btn.primary {
+    background: #D97706;
+    color: #FFFFFF;
+}
+
+/* The workspace takes whatever height the bar and any messages above it leave */
+.modeling-page {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.modeling-page > .nav {
+    flex-shrink: 0;
+}
+
+/* When the work was handed in (students) */
+.hand-in-chip {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background-color: var(--color-brand-subtle-bg);
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+
+/* A teacher viewing a student's work */
+.review-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+}
+
+.review-student {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+}
+
+.review-toggle {
+    display: flex;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.review-toggle button, .review-back {
+    padding: 5px 12px;
+    border: none;
+    background: var(--color-bg-surface);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+
+.review-toggle button.active {
+    background: var(--color-brand);
+    color: var(--color-on-brand);
+}
+
+.review-back {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    color: var(--color-text-primary);
+}
+
+.review-error {
+    padding: 24px;
+    font-family: "Figtree", sans-serif;
+    color: #d64545;
 }

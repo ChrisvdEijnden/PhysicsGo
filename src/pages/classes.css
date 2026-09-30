@@ -504,3 +504,96 @@
     justify-content: flex-end;
     gap: 8px;
 }
+
+/* Co-teacher invitations addressed to this teacher */
+.invitations-card .member-list {
+    width: 100%;
+}
+
+/* Deleted (archived) classes, restorable for a while */
+.archived-heading {
+    margin: 4px 0 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.class-name-static {
+    flex: 1;
+    min-width: 0;
+    margin: 0 12px 0 0;
+    padding: 6px 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.archived-notice {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-top: none;
+    border-radius: 12px;
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.archived-notice p {
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    color: var(--color-text-primary);
+}
+
+/* One-time password reset code for a student */
+.reset-code-panel {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin: 0 0 4px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background-color: var(--color-brand-subtle-bg);
+}
+
+.reset-code-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+}
+
+.reset-code-text .class-code {
+    user-select: all;
+}
+
+.reset-code-text .section-hint {
+    color: var(--color-text-secondary);
+}
+
+.class-chip.handed-in {
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+/* Assignments: progress per published project */
+.assignment-students {
+    margin: 0 0 8px 16px;
+}
+
+.class-badge.status-handed_in {
+    border-color: var(--color-brand);
+    background-color: var(--color-brand-subtle-bg);
+    color: var(--color-text-primary);
+}
+
+.class-badge.status-working {
+    color: var(--color-text-primary);
+}

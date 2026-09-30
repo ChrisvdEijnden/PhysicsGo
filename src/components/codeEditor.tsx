@@ -6,6 +6,8 @@ interface CodeEditorProps {
     onChange: (value: string) => void;
     language?: string;
     onRun?: () => void;
+    // Shown but not editable, e.g. a teacher viewing a student's model
+    readOnly?: boolean;
 }
 
 export interface InterpreterError {
@@ -90,7 +92,7 @@ function definePhysicsGoLanguage() {
 definePhysicsGoLanguage();
 
 const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
-    ({ value, onChange, language = LANGUAGE_ID, onRun }, ref) => {
+    ({ value, onChange, language = LANGUAGE_ID, onRun, readOnly = false }, ref) => {
         const containerRef = useRef<HTMLDivElement | null>(null);
         const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 
@@ -139,6 +141,8 @@ const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(
                 renderLineHighlight: "line",
                 overviewRulerBorder: false,
                 hideCursorInOverviewRuler: true,
+                readOnly,
+                domReadOnly: readOnly,
             });
             editorRef.current = editor;
 

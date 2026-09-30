@@ -1,9 +1,19 @@
 import express from "express";
 import db from "./db.js";
 import { generateCode, normalizeCode } from "./codes.js";
+import { createReset } from "./resets.js";
+import { readSubmission, readWork } from "./work.js";
 
 const MAX_CLASS_NAME = 60;
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+// A deleted class is archived: restorable this long, then removed for good
+export const ARCHIVE_MS = 30 * 24 * 60 * 60 * 1000;
 const str = (v) => (typeof v === "string" ? v : "");
+
+// Owner of class `c`: its owner_id, or its longest-serving teacher if the owner's account is gone
+const OWNER = `COALESCE(c.owner_id, (
+    SELECT t.user_id FROM class_teachers t WHERE t.class_id = c.id ORDER BY t.added_at, t.user_id LIMIT 1
+))`;
 
 // Resolves an enrollment code. Teacher invitations share the code space but are only
 // accepted at registration, so they're reported separately from class codes.
@@ -11,8 +21,12 @@ export function lookupCode(raw) {
     const code = normalizeCode(raw);
     if (!code) return { error: "invalid_code" };
 
-    const cls = db.prepare("SELECT id, name, join_open FROM classes WHERE code = ?").get(code);
-    if (cls) return cls.join_open ? { kind: "class", class: { id: cls.id, name: cls.name } } : { error: "class_closed" };
+    const cls = db.prepare("SELECT id, name, join_open, archived_at FROM classes WHERE code = ?").get(code);
+    if (cls) {
+        return cls.join_open && cls.archived_at === null
+            ? { kind: "class", class: { id: cls.id, name: cls.name } }
+            : { error: "class_closed" };
+    }
 
     if (db.prepare("SELECT 1 FROM retired_class_codes WHERE code = ?").get(code)) return { error: "code_expired" };
 
@@ -22,12 +36,27 @@ export function lookupCode(raw) {
     return { error: "invalid_code" };
 }
 
+// The user's active classes; archived ones only show on the teachers' Classes page
 export function classesOf(user) {
     const table = user.role === "teacher" ? "class_teachers" : "class_students";
     return db.prepare(`
         SELECT c.id, c.name FROM ${table} m JOIN classes c ON c.id = m.class_id
-        WHERE m.user_id = ? ORDER BY c.name COLLATE NOCASE
+        WHERE m.user_id = ? AND c.archived_at IS NULL ORDER BY c.name COLLATE NOCASE
     `).all(user.id);
+}
+
+// Whether the teacher teaches the student in a class that isn't archived
+export function teachesStudent(teacherId, studentId) {
+    return Boolean(db.prepare(`
+        SELECT 1 FROM class_teachers t
+        JOIN class_students s ON s.class_id = t.class_id
+        JOIN classes c ON c.id = t.class_id
+        WHERE t.user_id = ? AND s.user_id = ? AND c.archived_at IS NULL
+    `).get(teacherId, studentId));
+}
+
+export function purgeArchivedClasses(now = Date.now()) {
+    db.prepare("DELETE FROM classes WHERE archived_at IS NOT NULL AND archived_at <= ?").run(now - ARCHIVE_MS);
 }
 
 function validName(v) {
@@ -36,7 +65,7 @@ function validName(v) {
 }
 
 function classDetail(classId, viewerId) {
-    const c = db.prepare("SELECT * FROM classes WHERE id = ?").get(classId);
+    const c = db.prepare(`SELECT c.*, ${OWNER} AS owner FROM classes c WHERE c.id = ?`).get(classId);
     const students = db.prepare(`
         SELECT u.id, u.name, u.email, s.joined_at AS joinedAt
         FROM class_students s JOIN users u ON u.id = s.user_id
@@ -46,7 +75,11 @@ function classDetail(classId, viewerId) {
         SELECT u.id, u.name, u.email
         FROM class_teachers t JOIN users u ON u.id = t.user_id
         WHERE t.class_id = ? ORDER BY t.added_at
-    `).all(classId).map((t) => ({ ...t, isYou: t.id === viewerId }));
+    `).all(classId).map((t) => ({ ...t, isYou: t.id === viewerId, isOwner: t.id === c.owner }));
+    const invites = db.prepare(`
+        SELECT email, created_at AS createdAt FROM class_teacher_invites
+        WHERE class_id = ? ORDER BY created_at
+    `).all(classId);
 
     return {
         id: c.id,
@@ -54,9 +87,26 @@ function classDetail(classId, viewerId) {
         code: c.code,
         joinOpen: Boolean(c.join_open),
         createdAt: c.created_at,
+        archivedAt: c.archived_at,
+        purgeAt: c.archived_at === null ? null : c.archived_at + ARCHIVE_MS,
+        youAreOwner: c.owner === viewerId,
         students,
         teachers,
+        invites,
     };
+}
+
+// Classes the teacher has been invited to teach, by the email address of their account
+function invitationsFor(user) {
+    return db.prepare(`
+        SELECT c.id, c.name, i.created_at AS invitedAt, u.name AS invitedBy
+        FROM class_teacher_invites i
+        JOIN classes c ON c.id = i.class_id
+        LEFT JOIN users u ON u.id = i.invited_by
+        WHERE i.email = ? AND c.archived_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM class_teachers t WHERE t.class_id = c.id AND t.user_id = ?)
+        ORDER BY i.created_at
+    `).all(user.email, user.id);
 }
 
 export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
@@ -85,24 +135,59 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         next();
     });
 
+    router.get("/invitations", (req, res) => {
+        res.json({ invitations: invitationsFor(req.user) });
+    });
+
+    router.post("/invitations/:inviteClassId/accept", (req, res) => {
+        const classId = Number(req.params.inviteClassId);
+        const accepted = db.transaction(() => {
+            if (!invitationsFor(req.user).some((c) => c.id === classId)) return false;
+            db.prepare("INSERT INTO class_teachers (class_id, user_id, added_at) VALUES (?, ?, ?)")
+                .run(classId, req.user.id, Date.now());
+            db.prepare("DELETE FROM class_teacher_invites WHERE class_id = ? AND email = ?").run(classId, req.user.email);
+            return true;
+        })();
+        if (!accepted) return res.status(404).json({ error: "invite_not_found" });
+        res.json({ invitations: invitationsFor(req.user), user: publicUser(req.user) });
+    });
+
+    router.post("/invitations/:inviteClassId/decline", (req, res) => {
+        db.prepare("DELETE FROM class_teacher_invites WHERE class_id = ? AND email = ?")
+            .run(Number(req.params.inviteClassId), req.user.email);
+        res.json({ invitations: invitationsFor(req.user) });
+    });
+
     // Only teachers of the class may see or change it; others get a 404 so ids don't leak
     router.param("classId", (req, res, next, raw) => {
         const id = Number(raw);
-        const isTeacher = Number.isSafeInteger(id) &&
-            db.prepare("SELECT 1 FROM class_teachers WHERE class_id = ? AND user_id = ?").get(id, req.user.id);
-        if (!isTeacher) return res.status(404).json({ error: "not_found" });
+        const row = Number.isSafeInteger(id) && db.prepare(`
+            SELECT c.archived_at, ${OWNER} AS owner
+            FROM classes c JOIN class_teachers m ON m.class_id = c.id AND m.user_id = ?
+            WHERE c.id = ?
+        `).get(req.user.id, id);
+        if (!row) return res.status(404).json({ error: "not_found" });
         req.classId = id;
+        req.classArchived = row.archived_at !== null;
+        req.isClassOwner = row.owner === req.user.id;
         next();
     });
 
+    // An archived class can be viewed and restored, and teachers can leave it; nothing else
+    const active = (req, res, next) =>
+        req.classArchived ? res.status(409).json({ error: "class_archived" }) : next();
+    const ownerOnly = (req, res, next) =>
+        req.isClassOwner ? next() : res.status(403).json({ error: "owner_only" });
+
     router.get("/", (req, res) => {
         const classes = db.prepare(`
-            SELECT c.id, c.name, c.code, c.join_open AS joinOpen,
+            SELECT c.id, c.name, c.code, c.join_open AS joinOpen, c.archived_at AS archivedAt,
+                   ${OWNER} = m.user_id AS isOwner,
                    (SELECT COUNT(*) FROM class_students s WHERE s.class_id = c.id) AS studentCount,
                    (SELECT COUNT(*) FROM class_teachers t WHERE t.class_id = c.id) AS teacherCount
             FROM class_teachers m JOIN classes c ON c.id = m.class_id
             WHERE m.user_id = ? ORDER BY c.name COLLATE NOCASE
-        `).all(req.user.id).map((c) => ({ ...c, joinOpen: Boolean(c.joinOpen) }));
+        `).all(req.user.id).map((c) => ({ ...c, joinOpen: Boolean(c.joinOpen), isOwner: Boolean(c.isOwner) }));
         res.json({ classes });
     });
 
@@ -112,8 +197,8 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
 
         const id = db.transaction(() => {
             const now = Date.now();
-            const info = db.prepare("INSERT INTO classes (name, code, created_at) VALUES (?, ?, ?)")
-                .run(name, generateCode(), now);
+            const info = db.prepare("INSERT INTO classes (name, code, owner_id, created_at) VALUES (?, ?, ?, ?)")
+                .run(name, generateCode(), req.user.id, now);
             db.prepare("INSERT INTO class_teachers (class_id, user_id, added_at) VALUES (?, ?, ?)")
                 .run(info.lastInsertRowid, req.user.id, now);
             return Number(info.lastInsertRowid);
@@ -125,7 +210,7 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
-    router.patch("/:classId", (req, res) => {
+    router.patch("/:classId", active, (req, res) => {
         const body = req.body ?? {};
         if ("name" in body) {
             const name = validName(body.name);
@@ -139,13 +224,20 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
-    router.delete("/:classId", (req, res) => {
-        db.prepare("DELETE FROM classes WHERE id = ?").run(req.classId);
-        res.json({ ok: true });
+    // Deleting archives the class: students no longer see it or its projects and its code stops
+    // working, but the owner can restore it until it's purged
+    router.delete("/:classId", ownerOnly, active, (req, res) => {
+        db.prepare("UPDATE classes SET archived_at = ? WHERE id = ?").run(Date.now(), req.classId);
+        res.json({ class: classDetail(req.classId, req.user.id) });
+    });
+
+    router.post("/:classId/restore", ownerOnly, (req, res) => {
+        db.prepare("UPDATE classes SET archived_at = NULL WHERE id = ?").run(req.classId);
+        res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
     // Issue a new code; the old one stops working and reports "expired" from then on
-    router.post("/:classId/code", (req, res) => {
+    router.post("/:classId/code", active, (req, res) => {
         db.transaction(() => {
             const { code } = db.prepare("SELECT code FROM classes WHERE id = ?").get(req.classId);
             db.prepare("INSERT INTO retired_class_codes (code, class_id) VALUES (?, ?)").run(code, req.classId);
@@ -155,41 +247,108 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
     });
 
     // Idempotent, so a second teacher removing the same student just sees the current list
-    router.delete("/:classId/students/:userId", (req, res) => {
+    router.delete("/:classId/students/:userId", active, (req, res) => {
         db.prepare("DELETE FROM class_students WHERE class_id = ? AND user_id = ?")
             .run(req.classId, Number(req.params.userId));
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 
-    // Co-teachers see the class, its students and (later) its submissions
-    router.post("/:classId/teachers", (req, res) => {
-        const email = str(req.body?.email).trim().toLowerCase();
-        const teacher = db.prepare("SELECT id, role FROM users WHERE email = ?").get(email);
-        if (!teacher) return res.status(404).json({ error: "user_not_found" });
-        if (teacher.role !== "teacher") return res.status(400).json({ error: "not_a_teacher" });
+    // A one-time code the student uses to choose a new password; an earlier code stops working
+    router.post("/:classId/students/:userId/reset", active, (req, res) => {
+        const userId = Number(req.params.userId);
+        const inClass = db.prepare("SELECT 1 FROM class_students WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
+        if (!inClass) return res.status(404).json({ error: "student_not_found" });
+        res.status(201).json(createReset(userId, req.user.id));
+    });
 
-        const info = db.prepare(
-            "INSERT OR IGNORE INTO class_teachers (class_id, user_id, added_at) VALUES (?, ?, ?)"
-        ).run(req.classId, teacher.id, Date.now());
-        if (info.changes === 0) return res.status(409).json({ error: "already_teacher" });
+    // Per project published to the class, where each student is: not started, working, or handed in
+    router.get("/:classId/progress", (req, res) => {
+        const projects = db.prepare(`
+            SELECT project_id AS projectId FROM project_classes WHERE class_id = ? ORDER BY published_at
+        `).all(req.classId);
+        const rows = db.prepare(`
+            SELECT u.id, u.name, w.updated_at AS updatedAt, sub.submitted_at AS submittedAt,
+                   w.version AS version, sub.work_version AS submittedVersion
+            FROM class_students s JOIN users u ON u.id = s.user_id
+            LEFT JOIN project_work w ON w.user_id = u.id AND w.project_id = ?
+            LEFT JOIN submissions sub ON sub.user_id = u.id AND sub.project_id = ?
+            WHERE s.class_id = ? ORDER BY u.name COLLATE NOCASE
+        `);
+        res.json({
+            projects: projects.map(({ projectId }) => ({
+                projectId,
+                students: rows.all(projectId, projectId, req.classId).map((r) => ({
+                    id: r.id,
+                    name: r.name,
+                    status: r.submittedAt ? "handed_in" : r.updatedAt ? "working" : "not_started",
+                    updatedAt: r.updatedAt,
+                    submittedAt: r.submittedAt,
+                    // Worked on after handing in
+                    changedSince: Boolean(r.submittedAt && r.version > r.submittedVersion),
+                })),
+            })),
+        });
+    });
+
+    // A student's work on a project published to the class, and what they handed in, to view read-only
+    router.get("/:classId/students/:userId/work/:projectId", (req, res) => {
+        const userId = Number(req.params.userId);
+        const { projectId } = req.params;
+        const allowed = db.prepare(`
+            SELECT u.name FROM class_students s JOIN users u ON u.id = s.user_id
+            JOIN project_classes pc ON pc.class_id = s.class_id AND pc.project_id = ?
+            WHERE s.class_id = ? AND s.user_id = ?
+        `).get(projectId, req.classId, userId);
+        if (!allowed) return res.status(404).json({ error: "student_not_found" });
+        res.json({
+            student: { id: userId, name: allowed.name },
+            ...readWork(userId, projectId),
+            submission: readSubmission(userId, projectId),
+        });
+    });
+
+    // Co-teachers are invited by email and join by accepting. The answer is the same whether or
+    // not the address has an account, so this can't be used to find out who uses PhysicsGo.
+    router.post("/:classId/teachers", active, (req, res) => {
+        const email = str(req.body?.email).trim().toLowerCase();
+        if (!EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ error: "invalid_email" });
+
+        // Teachers of the class are listed on this page anyway, so saying so reveals nothing
+        const teaches = db.prepare(`
+            SELECT 1 FROM class_teachers t JOIN users u ON u.id = t.user_id WHERE t.class_id = ? AND u.email = ?
+        `).get(req.classId, email);
+        if (teaches) return res.status(409).json({ error: "already_teacher" });
+
+        db.prepare(`
+            INSERT OR IGNORE INTO class_teacher_invites (class_id, email, invited_by, created_at) VALUES (?, ?, ?, ?)
+        `).run(req.classId, email, req.user.id, Date.now());
         res.status(201).json({ class: classDetail(req.classId, req.user.id) });
     });
 
-    // Removing yourself is how a teacher leaves a class
+    router.delete("/:classId/invites/:email", (req, res) => {
+        db.prepare("DELETE FROM class_teacher_invites WHERE class_id = ? AND email = ?").run(req.classId, req.params.email);
+        res.json({ class: classDetail(req.classId, req.user.id) });
+    });
+
+    // The owner hands the class over to one of its other teachers
+    router.post("/:classId/owner", ownerOnly, active, (req, res) => {
+        const userId = Number(req.body?.userId);
+        const teaches = db.prepare("SELECT 1 FROM class_teachers WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
+        if (!teaches) return res.status(400).json({ error: "bad_request" });
+        db.prepare("UPDATE classes SET owner_id = ? WHERE id = ?").run(userId, req.classId);
+        res.json({ class: classDetail(req.classId, req.user.id) });
+    });
+
+    // Any teacher can leave, except the owner, who hands the class over first.
+    // Only the owner removes other teachers.
     router.delete("/:classId/teachers/:userId", (req, res) => {
         const userId = Number(req.params.userId);
-        const result = db.transaction(() => {
-            const { n } = db.prepare("SELECT COUNT(*) AS n FROM class_teachers WHERE class_id = ?").get(req.classId);
-            const isMember = db.prepare("SELECT 1 FROM class_teachers WHERE class_id = ? AND user_id = ?")
-                .get(req.classId, userId);
-            if (!isMember) return null;
-            if (n <= 1) return "last_teacher";
-            db.prepare("DELETE FROM class_teachers WHERE class_id = ? AND user_id = ?").run(req.classId, userId);
-            return null;
-        })();
+        const leaving = userId === req.user.id;
+        if (leaving && req.isClassOwner) return res.status(409).json({ error: "owner_cannot_leave" });
+        if (!leaving && !req.isClassOwner) return res.status(403).json({ error: "owner_only" });
 
-        if (result === "last_teacher") return res.status(409).json({ error: result });
-        if (userId === req.user.id) return res.json({ left: true });
+        db.prepare("DELETE FROM class_teachers WHERE class_id = ? AND user_id = ?").run(req.classId, userId);
+        if (leaving) return res.json({ left: true });
         res.json({ class: classDetail(req.classId, req.user.id) });
     });
 

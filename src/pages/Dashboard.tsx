@@ -13,7 +13,8 @@ import AscewArrow67px from "../assets/icons/ascewarrow-67px.svg";
 import FileCode18px from "../assets/icons/filecode-18px.svg";
 
 // holds all the projects edited by the user
-import { Projects, byLastEdit } from "../data/Projects.tsx";
+import { useProjects } from "../lib/useProjects";
+import { useWorkActivity } from "../lib/useWorkActivity";
 import { formatRelativeDate } from "../lib/formatRelativeDate.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { useAuth } from "../lib/useAuth";
@@ -27,7 +28,9 @@ function Dashboard() {
     const { user } = useAuth();
     const isTeacher = user?.role === "teacher";
     const { published, setProjectClasses } = usePublished();
-    const visibleProjects = Projects.filter((project) => canSeeProject(user, published, project.id));
+    const { lastEdit, byLastEdit, handedIn } = useWorkActivity();
+    const { projects } = useProjects();
+    const visibleProjects = (projects ?? []).filter((project) => canSeeProject(user, published, project.id));
     return (
         <div>
             <div className="nav">
@@ -51,7 +54,8 @@ function Dashboard() {
                     <div className="creator-card">
                         <h2>{t("dashboard.startNewModel")}</h2>
                         <div className="dual-action-buttons">
-                            <div className="action-new" onClick={() => navigate("/modeling")}>
+                            {/* Teachers start a new project for their classes; students an empty model */}
+                            <div className="action-new" onClick={() => navigate(isTeacher ? "/projects/new" : "/modeling")}>
                                 <img src={NewFile24px} alt="NewFile24px"/>
                                 <div className="action-text">
                                     <h3>{t("dashboard.emptyProjectTitle")}</h3>
@@ -150,13 +154,14 @@ function Dashboard() {
                                         <img src={FileCode18px} alt="" />
                                         <div className="project-recent-name">
                                             <p className="recent-name">{project.title}</p>
+                                            {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
                                         </div>
                                     </div>
                                     <div className="other-filters">
                                         <ProjectClasses classes={published[project.id]} isTeacher={isTeacher}/>
                                     </div>
                                     <div className="other-filters">
-                                        <p className="recent-last-edit">{ formatRelativeDate(project.lastEdit) }</p>
+                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!) : t("classes.statusNotStarted") }</p>
                                     </div>
                                     {isTeacher && (
                                         <div className="publish-col">
