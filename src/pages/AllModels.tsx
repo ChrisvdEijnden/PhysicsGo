@@ -22,6 +22,7 @@ function AllModels() {
     const { published, setProjectClasses } = usePublished();
     const { lastEdit, byLastEdit, handedIn } = useWorkActivity();
     const { projects } = useProjects();
+    const rows = (projects ?? []).filter((project) => canSeeProject(user, published, project)).sort(byLastEdit);
     return (
         <div className="page-all-models">
             <TopBar crumbs={[{ label: t("nav.allModels") }]}/>
@@ -39,35 +40,35 @@ function AllModels() {
                         {isTeacher && <span className="publish-col" aria-hidden="true"/>}
                     </div>
                     <div className="recents-list">
-                        {(projects ?? [])
-                            .filter((project) => canSeeProject(user, published, project))
-                            .sort(byLastEdit)
-                            .map((project) => (
-                                <div key={project.id} className="recent-item">
-                                    <div className="left-side">
-                                        <img src={FileCode18px} alt="" />
-                                        <div className="project-recent-name">
-                                            <p className="recent-name"><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></p>
-                                            {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
-                                        </div>
+                        {projects !== null && rows.length === 0 && (
+                            <p className="dashboard-empty">{isTeacher ? t("dashboard.libraryEmpty") : t("allModels.empty")}</p>
+                        )}
+                        {rows.map((project) => (
+                            <div key={project.id} className="recent-item">
+                                <div className="left-side">
+                                    <img src={FileCode18px} alt="" />
+                                    <div className="project-recent-name">
+                                        <p className="recent-name"><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></p>
+                                        {handedIn(project) && <span className="class-chip handed-in">{t("handIn.done")}</span>}
                                     </div>
-                                    <div className="other-filters">
-                                        <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
-                                    </div>
-                                    <div className="other-filters col-when">
-                                        <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>
-                                    </div>
-                                    {isTeacher && (
-                                        <div className="publish-col">
-                                            <PublishButton
-                                                title={project.title}
-                                                classes={published[project.id]}
-                                                onSave={(classIds, settings) => setProjectClasses(project.id, classIds, settings)}
-                                            />
-                                        </div>
-                                    )}
                                 </div>
-                            ))}
+                                <div className="other-filters">
+                                    <ProjectClasses classes={published[project.id]} isTeacher={isTeacher} own={project.mine}/>
+                                </div>
+                                <div className="other-filters col-when">
+                                    <p className="recent-last-edit">{ lastEdit(project) ? formatRelativeDate(lastEdit(project)!, language) : t("classes.statusNotStarted") }</p>
+                                </div>
+                                {isTeacher && (
+                                    <div className="publish-col">
+                                        <PublishButton
+                                            title={project.title}
+                                            classes={published[project.id]}
+                                            onSave={(classIds, settings) => setProjectClasses(project.id, classIds, settings)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

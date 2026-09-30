@@ -99,44 +99,6 @@ function Dashboard() {
 
             <div className="content-dashboard">
                 <div className="left-panel">
-                    {!isTeacher && user && (
-                        <div className="curriculum-card">
-                            <h2>{t("dashboard.todo")}</h2>
-                            {!publishedLoaded || projects === null ? null : todo.length === 0 ? (
-                                <p className="classes-empty">
-                                    {user.classes.length === 0 ? t("dashboard.todoNoClass")
-                                        : Object.keys(published).length === 0 ? t("dashboard.todoNothingShared")
-                                        : t("dashboard.todoAllDone")}
-                                </p>
-                            ) : (
-                                <div className="presets-list">
-                                    {todo.map((project) => {
-                                        const dueAt = due(project);
-                                        const overdue = dueAt !== null && dueAt < Date.now();
-                                        return (
-                                            <div key={project.id} className="preset-item">
-                                                <div className="preset-item-text">
-                                                    <h3><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></h3>
-                                                    <p className={`due-label${overdue ? " overdue" : ""}`}>
-                                                        {dueAt === null ? t("dashboard.noDueDate")
-                                                            : t(overdue ? "dashboard.overdue" : "dashboard.due", { time: formatDueDate(dueAt, language) })}
-                                                    </p>
-                                                </div>
-                                                {reviewOf(project)?.status === "returned"
-                                                    ? <span className="class-chip late">{t("feedback.returnedShort")}</span>
-                                                    : (
-                                                        <span className={`class-chip${lastEdit(project) ? "" : " muted"}`}>
-                                                            {lastEdit(project) ? t("classes.statusWorking") : t("classes.statusNotStarted")}
-                                                        </span>
-                                                    )}
-                                                <img src={AscewArrow67px} alt=""/>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
                     <div className="creator-card">
                         <h2>{t("dashboard.startNewModel")}</h2>
                         <div className="dual-action-buttons">
@@ -178,6 +140,45 @@ function Dashboard() {
                                     <img src={AscewArrow67px} alt=""/>
                                 </Link>
                             </div>
+                        </div>
+                    )}
+                    {/* After starting something new and the classes: what the teachers gave them to do */}
+                    {!isTeacher && user && (
+                        <div className="curriculum-card">
+                            <h2>{t("dashboard.todo")}</h2>
+                            {!publishedLoaded || projects === null ? null : todo.length === 0 ? (
+                                <p className="classes-empty">
+                                    {user.classes.length === 0 ? t("dashboard.todoNoClass")
+                                        : Object.keys(published).length === 0 ? t("dashboard.todoNothingShared")
+                                        : t("dashboard.todoAllDone")}
+                                </p>
+                            ) : (
+                                <div className="presets-list">
+                                    {todo.map((project) => {
+                                        const dueAt = due(project);
+                                        const overdue = dueAt !== null && dueAt < Date.now();
+                                        return (
+                                            <div key={project.id} className="preset-item">
+                                                <div className="preset-item-text">
+                                                    <h3><Link className="row-link" to={assignmentPath(project.id)}>{project.title}</Link></h3>
+                                                    <p className={`due-label${overdue ? " overdue" : ""}`}>
+                                                        {dueAt === null ? t("dashboard.noDueDate")
+                                                            : t(overdue ? "dashboard.overdue" : "dashboard.due", { time: formatDueDate(dueAt, language) })}
+                                                    </p>
+                                                </div>
+                                                {reviewOf(project)?.status === "returned"
+                                                    ? <span className="class-chip late">{t("feedback.returnedShort")}</span>
+                                                    : (
+                                                        <span className={`class-chip${lastEdit(project) ? "" : " muted"}`}>
+                                                            {lastEdit(project) ? t("classes.statusWorking") : t("classes.statusNotStarted")}
+                                                        </span>
+                                                    )}
+                                                <img src={AscewArrow67px} alt=""/>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                     {isTeacher && (
