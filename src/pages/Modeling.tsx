@@ -1003,7 +1003,12 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                             <PublishDialog
                                 title={project.title}
                                 current={published[project.id] ?? []}
-                                onSave={(classIds, settings) => setProjectClasses(project.id, classIds, settings)}
+                                onSave={async (classIds, settings) => {
+                                    const res = await setProjectClasses(project.id, classIds, settings);
+                                    // Published to at least one class: back to the dashboard, where it now shows with its classes
+                                    if (res.ok && classIds.length > 0) navigate("/dashboard");
+                                    return res;
+                                }}
                                 onClose={() => setPublishOpen(false)}
                             />
                         )}
