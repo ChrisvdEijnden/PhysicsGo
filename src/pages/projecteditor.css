@@ -103,3 +103,13 @@
     align-self: flex-start;
     font-weight: 500;
 }
+
+.project-media-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.project-media-actions .project-add-media {
+    align-self: auto;
+}

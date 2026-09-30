@@ -19,10 +19,13 @@ Physics modelling lessons: students sign in, work on assignments and hand them i
 | Students and teachers | Class memberships and when they started; teachers' invitations of colleagues (email address) | `class_students`, `class_teachers`, `class_teacher_invites` |
 | Students (and teachers trying assignments) | Saved work: start values, model rules, graphs, measured points | `project_work` |
 | Students | Handed-in copies of their work, with the time | `submissions` |
-| Students and teachers | Photos and videos added to assignments | files under `PHYSICSGO_MEDIA_DIR`, listed in `media_files` |
+| Students and teachers | Photos, videos, PDFs and Word files added to assignments | files under `PHYSICSGO_MEDIA_DIR`, listed in `media_files` |
+| Students and teachers | Addresses of websites shown in assignments (with the work, or as a teacher's starter media) | `project_work`, `project_media.href` |
 | Teachers | Assignments they wrote, due dates and instructions per class | `projects`, `project_classes` |
 | Students and teachers | Signed-in browsers: token hash, created, last used, browser description (user agent) | `sessions` |
 | Students and teachers | Password reset codes (hash only), who made them | `password_resets` |
+
+Websites shown in an assignment (a PhET simulation, a YouTube or Vimeo video, any https page) are loaded by the user's browser from that website, in a sandboxed frame that can't reach PhysicsGo. That website receives the user's IP address and browser details and may set cookies under its own terms; PhysicsGo sends it no account data or work. YouTube links are shown through youtube-nocookie.com and Vimeo with `dnt=1`. Schools that don't want this can agree with teachers not to add websites; users can always open a website in a new tab instead.
 
 No special categories of personal data are processed. Most users are minors; the school decides who gets an account (students need a class code from their teacher, teachers an invitation).
 

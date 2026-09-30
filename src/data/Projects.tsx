@@ -28,6 +28,8 @@ export interface ProjectMedia {
     name: string;
     mime: string;
     category: MediaCategory;
+    // Websites: their address
+    href?: string | null;
 }
 
 // This browser's copy of each project's work (the server has the real one, see lib/workSync),
@@ -86,7 +88,8 @@ export function setStorageUser(userId: number | null) {
     if (setStorageScope(userId) && userId !== null) adoptLegacyWork();
 }
 
-export type MediaCategory = "photo" | "video" | "animation" | "document";
+// "embed": a website, shown in a frame (href); it has no file
+export type MediaCategory = "photo" | "video" | "animation" | "document" | "embed";
 
 // A point plotted on media, in pixels of the original file with y pointing up (0 at the bottom).
 // t is the video time in seconds, the click order for an animation, and null for a photo.
@@ -123,6 +126,8 @@ export interface SavedMedia {
     interval?: number;
     // "project": starter media from the project, whose file is the project's, not the student's
     source?: "project";
+    // Websites: the address shown in the frame
+    href?: string;
 }
 
 export type LengthUnit = "m" | "cm" | "mm";

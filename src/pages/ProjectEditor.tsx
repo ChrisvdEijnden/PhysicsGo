@@ -13,7 +13,9 @@ import Markdown from "../components/Markdown";
 import { useTranslation } from "../lib/useTranslations";
 import { assignmentPath, useProjects } from "../lib/useProjects";
 import { authErrorKey } from "../lib/authErrors";
-import { deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
+import { addProjectLink, deleteProjectMedia, uploadProjectMedia } from "../lib/mediaServer";
+import EmbedDialog from "../components/EmbedDialog";
+import type { Embed } from "../lib/embeds";
 import type { MediaCategory, Project } from "../data/Projects";
 
 const MAX_STARTER_MEDIA = 2;
@@ -41,6 +43,8 @@ function ProjectEditor() {
     } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    // The dialog for adding a website to the starter media
+    const [linkOpen, setLinkOpen] = useState(false);
 
     // Filled in once the projects have loaded: the project being edited, the one being copied, or empty
     useEffect(() => {
@@ -94,6 +98,19 @@ function ProjectEditor() {
         setError(null);
         const mediaId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const res = await uploadProjectMedia<Project>(projectId, mediaId, file, categoryOf(file));
+        setBusy(false);
+        if (res.ok) replaceProject(res.project);
+        else setError(res.error);
+    };
+
+    // A website (a PhET simulation, a video) every student starts with
+    const addLink = async (embed: Embed) => {
+        setLinkOpen(false);
+        if (!projectId) return;
+        setBusy(true);
+        setError(null);
+        const mediaId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const res = await addProjectLink<Project>(projectId, mediaId, embed.href, embed.name);
         setBusy(false);
         if (res.ok) replaceProject(res.project);
         else setError(res.error);
@@ -154,17 +171,26 @@ function ProjectEditor() {
                         <div className="member-list">
                             {existing.media.map((m) => (
                                 <div key={m.id} className="member-row">
-                                    <div className="member-text"><p className="member-name">{m.name}</p></div>
+                                    <div className="member-text">
+                                        <p className="member-name">{m.name}</p>
+                                        {m.href && <p className="member-sub">{m.href}</p>}
+                                    </div>
                                     <ConfirmButton className="class-button danger" label={t("classes.remove")} disabled={busy}
                                                    onConfirm={() => removeMedia(m.id)}/>
                                 </div>
                             ))}
                             {existing.media.length < MAX_STARTER_MEDIA && (
-                                <label className="class-button project-add-media">
-                                    {t("projectEditor.addMedia")}
-                                    <input type="file" accept="image/*,video/*" onChange={addMedia} disabled={busy} hidden/>
-                                </label>
+                                <div className="project-media-actions">
+                                    <label className="class-button project-add-media">
+                                        {t("projectEditor.addMedia")}
+                                        <input type="file" accept="image/*,video/*,.pdf,application/pdf,.doc,.docx" onChange={addMedia} disabled={busy} hidden/>
+                                    </label>
+                                    <button type="button" className="class-button project-add-media" disabled={busy} onClick={() => setLinkOpen(true)}>
+                                        {t("projectEditor.addLink")}
+                                    </button>
+                                </div>
                             )}
+                            {linkOpen && <EmbedDialog onAdd={addLink} onClose={() => setLinkOpen(false)}/>}
                         </div>
                     ) : (
                         <p className="section-hint">{copyOf?.media.length ? t("projectEditor.mediaCopied") : t("projectEditor.saveFirst")}</p>

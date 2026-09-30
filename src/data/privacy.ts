@@ -27,11 +27,18 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "Your account: name, email address, your school, whether you're a student or teacher, your password (only as a secure hash, never readable), when you created the account and when you last used it.",
                     "Your classes: the classes you're in and when you joined; for teachers, the classes they teach and the email addresses of colleagues they invited.",
-                    "Your work: start values, model rules, graphs, measured points, the photos and videos you add, and the work you hand in, with dates.",
+                    "Your work: start values, model rules, graphs, measured points, the photos, videos, PDFs and web addresses you add, and the work you hand in, with dates.",
                     "Signed-in browsers: when each one signed in and was last used, and which browser and system it is. Changing your password signs out all other browsers.",
                 ],
                 paragraphs: [
-                    "Nothing else. PhysicsGo has no advertising, tracking or analytics and uses no services of other companies: fonts and all code come from PhysicsGo itself. It uses one cookie, to keep you signed in. Your language, theme and work that isn't saved yet are kept in your browser.",
+                    "Nothing else. PhysicsGo has no advertising, tracking or analytics and uses no services of other companies: fonts and all code come from PhysicsGo itself, except websites added to an assignment (below). It uses one cookie, to keep you signed in. Your language, theme and work that isn't saved yet are kept in your browser.",
+                ],
+            },
+            {
+                title: "Websites and videos in assignments",
+                paragraphs: [
+                    "You or your teacher can show a website in an assignment, such as a PhET simulation or a YouTube video. That website is loaded from its own server when the assignment is open: it sees your internet address and browser, and it can use cookies under its own privacy terms. PhysicsGo doesn't send it your name, email address or work.",
+                    "The website runs in a closed-off frame, so it can't read or change anything in PhysicsGo. YouTube videos are shown through youtube-nocookie.com, which doesn't store cookies until you play the video, and Vimeo videos without tracking. You can always open the website in a new tab instead.",
                 ],
             },
             {
@@ -91,11 +98,18 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "Je account: naam, e-mailadres, je school, of je leerling of docent bent, je wachtwoord (alleen als veilige hash, nooit leesbaar), wanneer je het account hebt gemaakt en wanneer je het voor het laatst gebruikte.",
                     "Je klassen: de klassen waarin je zit en sinds wanneer; bij docenten de klassen die ze lesgeven en de e-mailadressen van collega's die ze uitnodigden.",
-                    "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's en video's die je toevoegt en het werk dat je inlevert, met data.",
+                    "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's, video's, pdf's en webadressen die je toevoegt en het werk dat je inlevert, met data.",
                     "Ingelogde browsers: wanneer elke browser inlogde en voor het laatst gebruikt werd, en welke browser en welk systeem het is. Als je je wachtwoord wijzigt, worden alle andere browsers uitgelogd.",
                 ],
                 paragraphs: [
-                    "Verder niets. PhysicsGo heeft geen advertenties, tracking of analytics en gebruikt geen diensten van andere bedrijven: lettertypen en alle code komen van PhysicsGo zelf. Er is één cookie, om je ingelogd te houden. Je taal, weergave en werk dat nog niet is opgeslagen, blijven in je browser.",
+                    "Verder niets. PhysicsGo heeft geen advertenties, tracking of analytics en gebruikt geen diensten van andere bedrijven: lettertypen en alle code komen van PhysicsGo zelf, behalve websites die aan een opdracht zijn toegevoegd (hieronder). Er is één cookie, om je ingelogd te houden. Je taal, weergave en werk dat nog niet is opgeslagen, blijven in je browser.",
+                ],
+            },
+            {
+                title: "Websites en video's in opdrachten",
+                paragraphs: [
+                    "Jij of je docent kan een website in een opdracht tonen, zoals een PhET-simulatie of een YouTube-video. Die website wordt van zijn eigen server geladen als de opdracht open is: hij ziet je internetadres en browser, en kan cookies gebruiken volgens zijn eigen privacyvoorwaarden. PhysicsGo stuurt hem niet je naam, e-mailadres of werk.",
+                    "De website draait in een afgesloten kader, zodat hij niets in PhysicsGo kan lezen of veranderen. YouTube-video's worden getoond via youtube-nocookie.com, dat pas cookies opslaat als je de video afspeelt, en Vimeo-video's zonder tracking. Je kunt de website altijd ook in een nieuw tabblad openen.",
                 ],
             },
             {

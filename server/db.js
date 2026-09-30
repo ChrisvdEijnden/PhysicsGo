@@ -273,6 +273,25 @@ const MIGRATIONS = [
             for (const table of ["users", "classes", "teacher_invites"]) db.prepare(`UPDATE ${table} SET school_id = ?`).run(id);
         }
     },
+    // 16: starter media can be a website (a PhET simulation, a video) instead of a file: its address.
+    // SQLite can't change a CHECK constraint, so the table is made again with the 'embed' category.
+    `
+    CREATE TABLE project_media_new (
+        project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        media_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        mime TEXT NOT NULL,
+        category TEXT NOT NULL CHECK (category IN ('photo', 'video', 'animation', 'document', 'embed')),
+        size INTEGER NOT NULL,
+        created_at INTEGER NOT NULL,
+        href TEXT CHECK ((category = 'embed') = (href IS NOT NULL)),
+        PRIMARY KEY (project_id, media_id)
+    );
+    INSERT INTO project_media_new (project_id, media_id, name, mime, category, size, created_at)
+        SELECT project_id, media_id, name, mime, category, size, created_at FROM project_media;
+    DROP TABLE project_media;
+    ALTER TABLE project_media_new RENAME TO project_media;
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });

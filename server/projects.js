@@ -13,12 +13,25 @@ const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).cat
 // Starter media per project: with a graph that's the most panels the modeling page shows
 const MAX_PROJECT_MEDIA = 2;
 const CATEGORIES = new Set(["photo", "video", "animation", "document"]);
+
+// A website as starter media: any https address of another site (the app shows it in a sandboxed
+// frame, and checks the address again before it does)
+function validHref(value, req) {
+    if (typeof value !== "string" || value.length > 2000) return null;
+    try {
+        const url = new URL(value);
+        if (url.protocol !== "https:" || url.username || url.password || url.host === req.get("host")) return null;
+        return url.href;
+    } catch {
+        return null;
+    }
+}
 // Students' own assignments per account, so one account can't fill the database
 const MAX_OWN_PROJECTS = 100;
 
 const projectMedia = (projectId) => db.prepare(`
-    SELECT media_id AS id, name, mime, category FROM project_media WHERE project_id = ? ORDER BY created_at
-`).all(projectId);
+    SELECT media_id AS id, name, mime, category, href FROM project_media WHERE project_id = ? ORDER BY created_at
+`).all(projectId).map(({ href, ...m }) => (href ? { ...m, href } : m));
 
 // A class's settings for an assignment published to it: instructions for that class, when it opens
 // (students don't see it before) and when it's due; times in ms or null. Null when invalid.
@@ -175,11 +188,14 @@ export function projectsRouter({ requireAuth }) {
             fields.estimated_time, fields.equipment, graphs, now, now);
         for (const m of copyOf ? copyOf.media : []) {
             const source = db.prepare("SELECT * FROM project_media WHERE project_id = ? AND media_id = ?").get(copyOf.id, m.id);
-            await fs.promises.mkdir(projectMediaDir(id), { recursive: true });
-            await fs.promises.copyFile(projectMediaPath(copyOf.id, m.id), projectMediaPath(id, m.id));
+            // Websites have no file to copy
+            if (!source.href) {
+                await fs.promises.mkdir(projectMediaDir(id), { recursive: true });
+                await fs.promises.copyFile(projectMediaPath(copyOf.id, m.id), projectMediaPath(id, m.id));
+            }
             db.prepare(`
-                INSERT INTO project_media (project_id, media_id, name, mime, category, size, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-            `).run(id, m.id, source.name, source.mime, source.category, source.size, now);
+                INSERT INTO project_media (project_id, media_id, name, mime, category, size, created_at, href) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(id, m.id, source.name, source.mime, source.category, source.size, now, source.href);
         }
         res.status(201).json({ project: toProject(db.prepare("SELECT * FROM projects WHERE id = ?").get(id), req.user.id) });
     }));
@@ -226,7 +242,7 @@ export function projectsRouter({ requireAuth }) {
     router.get("/:projectId/media/:mediaId", (req, res) => {
         const { projectId, mediaId } = req.params;
         const file = visibleProjects(req.user).some((p) => p.id === projectId)
-            && db.prepare("SELECT mime FROM project_media WHERE project_id = ? AND media_id = ?").get(projectId, mediaId);
+            && db.prepare("SELECT mime FROM project_media WHERE project_id = ? AND media_id = ? AND href IS NULL").get(projectId, mediaId);
         if (!file) return res.status(404).json({ error: "not_found" });
         sendMedia(res, projectMediaPath(projectId, mediaId), file.mime);
     });
@@ -255,6 +271,24 @@ export function projectsRouter({ requireAuth }) {
         db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(Date.now(), projectId);
         res.status(201).json({ project: toProject(authored(req), req.user.id) });
     }));
+
+    // A website as starter media: { href, name }. It counts towards the same limit as files.
+    router.put("/:projectId/links/:mediaId", (req, res) => {
+        const { projectId, mediaId } = req.params;
+        if (req.user.role !== "teacher" || !authored(req)) return res.status(404).json({ error: "not_found" });
+        const href = validHref(req.body?.href, req);
+        const name = str(req.body?.name).trim().slice(0, 200);
+        if (!href || !name) return res.status(400).json({ error: "invalid_link" });
+        const exists = db.prepare("SELECT 1 FROM project_media WHERE project_id = ? AND media_id = ?").get(projectId, mediaId);
+        if (exists) return res.status(409).json({ error: "bad_request" });
+        if (projectMedia(projectId).length >= MAX_PROJECT_MEDIA) return res.status(400).json({ error: "too_many_media" });
+        db.prepare(`
+            INSERT INTO project_media (project_id, media_id, name, mime, category, size, created_at, href)
+            VALUES (?, ?, ?, 'text/html', 'embed', 0, ?, ?)
+        `).run(projectId, mediaId, name, Date.now(), href);
+        db.prepare("UPDATE projects SET updated_at = ? WHERE id = ?").run(Date.now(), projectId);
+        res.status(201).json({ project: toProject(authored(req), req.user.id) });
+    });
 
     // Students who already started keep the media in their work, shown as missing from then on
     router.delete("/:projectId/media/:mediaId", wrap(async (req, res) => {

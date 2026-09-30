@@ -14,13 +14,15 @@ export const QUOTA = (Number(process.env.PHYSICSGO_MEDIA_QUOTA_MB) || 2048) * MB
 // Media ids are made in the app from a timestamp and random letters
 export const MEDIA_ID = /^[a-z0-9-]{1,64}$/;
 
-const WORD_TYPES = new Set([
+const DOCUMENT_TYPES = new Set([
+    "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
-// What "Insert media" accepts. SVG is left out: it can carry scripts.
+// What "Insert media" accepts. SVG is left out: it can carry scripts. Files are served sandboxed
+// (sendMedia), and the app only shows a PDF after checking it starts like one.
 export const allowedType = (mime) =>
-    (/^(image|video)\/[\w.+-]+$/.test(mime) && mime !== "image/svg+xml") || WORD_TYPES.has(mime);
+    (/^(image|video)\/[\w.+-]+$/.test(mime) && mime !== "image/svg+xml") || DOCUMENT_TYPES.has(mime);
 
 export const userMediaDir = (userId) => path.join(MEDIA_DIR, String(userId));
 export const mediaPath = (userId, projectId, mediaId) => path.join(userMediaDir(userId), projectId, mediaId);

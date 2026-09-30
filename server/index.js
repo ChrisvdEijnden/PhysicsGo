@@ -53,8 +53,11 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
             mediaSrc: ["'self'", "blob:"],
+            // PDFs (this page's own copy) and websites added to a panel, in sandboxed frames
+            frameSrc: ["'self'", "blob:", "https:"],
             fontSrc: ["'self'", "data:"],
-            connectSrc: ["'self'"],
+            // blob: reads this page's own copies of files (a PDF is checked before it's shown)
+            connectSrc: ["'self'", "blob:"],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             formAction: ["'self'"],

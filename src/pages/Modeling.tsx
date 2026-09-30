@@ -38,6 +38,9 @@ import { FeedbackForm, FeedbackView, formatMark } from "../components/Feedback";
 import { api, errorOf } from "../lib/api";
 import type { Result } from "../lib/api";
 import HandInDialog from "../components/HandInDialog";
+import EmbedDialog from "../components/EmbedDialog";
+import { safeEmbedSrc } from "../lib/embeds";
+import type { Embed } from "../lib/embeds";
 import Markdown from "../components/Markdown";
 import { deleteServerMedia, mediaOnServer, mediaUrl, projectMediaUrl, uploadMedia, urlExists } from "../lib/mediaServer";
 import { authErrorKey } from "../lib/authErrors";
@@ -117,11 +120,12 @@ type AnalysisRow = { kind: "graph"; graph: GraphConfig } | { kind: "media"; item
 // Graphs and media share the right-hand column
 const MAX_PANELS = 3;
 
-const ACCEPT_BY_CATEGORY: Record<MediaCategory, string> = {
+// Files that can be added (websites are added by address)
+const ACCEPT_BY_CATEGORY: Record<Exclude<MediaCategory, "embed">, string> = {
     photo: "image/*",
     video: "video/*",
     animation: "image/gif,video/mp4,video/webm",
-    document: ".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    document: ".pdf,application/pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 };
 
 function inferMediaCategory(file: File): MediaCategory {
@@ -158,6 +162,7 @@ function starterMedia(project: Project | undefined): SavedMedia[] {
             graphX: m.category === "photo" ? "x" : "t",
             graphYs: [{ name: "y", color: 0 }],
             source: "project",
+            ...(m.href ? { href: m.href } : {}),
         });
     }
     return items;
@@ -675,6 +680,8 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         let cancelled = false;
         const saved = initialMedia;
         Promise.all(saved.map(async (media): Promise<MediaItem> => {
+            // A website has no file: the frame loads its address (checked again before it's shown)
+            if (media.category === "embed") return { ...media, url: safeEmbedSrc(media.href, window.location.origin) ?? "" };
             if (media.source === "project") {
                 const url = projectMediaUrl(project.id, media.id);
                 return { ...media, url: (await urlExists(url)) ? url : "" };
@@ -780,7 +787,7 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
         if (target?.url.startsWith("blob:")) URL.revokeObjectURL(target.url);
         setMedia(mediaItems.filter((item) => item.id !== id));
         // Starter media stays the project's; only the student's own files are deleted
-        if (!project || noSaving || target?.source === "project") return;
+        if (!project || noSaving || target?.source === "project" || target?.category === "embed") return;
         deleteMediaFile(mediaKey(project.id, id)).catch(() => {});
         deleteServerMedia(project.id, id);
     }
@@ -827,6 +834,31 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     function insertMediaFile() {
         setInsertMenuOpen(false);
         openFilePicker();
+    }
+
+    const [embedDialogOpen, setEmbedDialogOpen] = useState(false);
+
+    function insertLink() {
+        setInsertMenuOpen(false);
+        if (!panelsFull && !noSaving) setEmbedDialogOpen(true);
+    }
+
+    function addEmbed(embed: Embed) {
+        setEmbedDialogOpen(false);
+        if (panelsFull) return;
+        setMedia([...mediaItems, {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            category: "embed",
+            name: embed.name,
+            url: embed.href,
+            href: embed.href,
+            mime: "text/html",
+            varName: nextVarName("embed", mediaItems),
+            step: DEFAULT_POINT_STEP,
+            points: [],
+            graphX: "",
+            graphYs: [],
+        }]);
     }
 
     const analysisStackRef = useRef<HTMLDivElement | null>(null);
@@ -955,6 +987,9 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                             {t("modeling.insertMediaFile")}
                                             <span className="insert-menu-shortcut">{isMac ? "⌘O" : "Ctrl+O"}</span>
                                         </button>
+                                        <button type="button" role="menuitem" onClick={insertLink}>
+                                            {t("modeling.insertLink")}
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -1024,6 +1059,10 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
                                     </button>
                                 </>
                             )
+                        )}
+                        {embedDialogOpen && (
+                            <EmbedDialog onAdd={addEmbed} onClose={() => setEmbedDialogOpen(false)}
+                                         returnFocus={() => insertMenuRef.current?.querySelector("button")}/>
                         )}
                         {handInOpen && project && (
                             <HandInDialog

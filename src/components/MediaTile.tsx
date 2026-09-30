@@ -11,6 +11,9 @@ import type { LengthUnit, MediaPoint, SavedMedia } from "../data/Projects.tsx";
 import { useTranslation } from "../lib/useTranslations";
 import { realPoints, unitsPerPixel } from "../lib/calibration";
 import ExportMenu from "./ExportMenu";
+import { DocumentGlyph, DownloadView, EmbedView, PdfView, isPdfMime } from "./DocumentView";
+import ExternalIcon18px from "../assets/icons/external-18px.svg";
+import { safeEmbedSrc } from "../lib/embeds";
 import { tableFromRows } from "../lib/samples";
 import { toCsv } from "../lib/csv";
 import type { CsvCell } from "../lib/csv";
@@ -55,16 +58,6 @@ export function pointSeries(item: SavedMedia) {
     ];
 }
 
-function DocumentGlyph() {
-    return (
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 1.5H9L12.5 5V13.5C12.5 14.05 12.05 14.5 11.5 14.5H4.5C3.95 14.5 3.5 14.05 3.5 13.5V2.5C3.5 1.95 3.95 1.5 4 1.5Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-            <path d="M9 1.5V5H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
-            <path d="M5.5 8.5H10.5M5.5 10.5H10.5M5.5 12H8.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round"/>
-        </svg>
-    );
-}
-
 type VideoWithFrameCallback = HTMLVideoElement & {
     requestVideoFrameCallback?: (
         callback: (now: number, metadata: { presentedFrames?: number }) => void
@@ -98,7 +91,8 @@ export default function MediaTile({
     const isImage = item.mime.startsWith("image/");
     const isVideo = item.mime.startsWith("video/");
     const isLooping = item.category === "animation";
-    const canPlot = item.category !== "document";
+    const canPlot = item.category !== "document" && item.category !== "embed";
+    const embedSrc = item.category === "embed" ? safeEmbedSrc(item.href, window.location.origin) : null;
     const fileMissing = item.url === "";
 
     const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -579,6 +573,12 @@ export default function MediaTile({
                             { label: t("modeling.exportPointsCsv"), onSelect: exportPoints },
                         ]}/>
                     )}
+                    {embedSrc && (
+                        <a className="analysis-view-toggle" href={embedSrc} target="_blank" rel="noopener noreferrer"
+                           aria-label={t("modeling.embedNewTab")} title={t("modeling.embedNewTab")}>
+                            <img src={ExternalIcon18px} alt=""/>
+                        </a>
+                    )}
                     {!readOnly && <button
                         type="button"
                         className="analysis-media-remove"
@@ -651,11 +651,12 @@ export default function MediaTile({
                         {overlay}
                     </div>
                 </>
+            ) : item.category === "embed" ? (
+                <EmbedView href={item.href ?? ""} name={item.name}/>
+            ) : isPdfMime(item.mime) ? (
+                <PdfView url={item.url} name={item.name}/>
             ) : (
-                <div className="analysis-media-file">
-                    <DocumentGlyph/>
-                    <span>{item.name}</span>
-                </div>
+                <DownloadView url={item.url} name={item.name}/>
             )}
 
             {/* Going through a video frame by frame: buttons, a slider (whose arrow keys step one frame),

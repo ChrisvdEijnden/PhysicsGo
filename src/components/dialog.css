@@ -1,0 +1,20 @@
+/* The <dialog> element is only the frame: the .dialog inside it is the visible box (classes.css), so
+   presses outside that box land on the element itself and close it */
+dialog.modal {
+    padding: 0;
+    border: none;
+    background: transparent;
+    max-width: calc(100% - 32px);
+    max-height: calc(100% - 32px);
+    overflow: visible;
+    color: inherit;
+}
+
+dialog.modal::backdrop {
+    background-color: rgba(15, 23, 42, 0.35);
+}
+
+dialog.modal > .dialog {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+}

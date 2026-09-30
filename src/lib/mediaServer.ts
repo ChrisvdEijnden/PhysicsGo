@@ -64,6 +64,23 @@ export async function uploadProjectMedia<P>(projectId: string, mediaId: string, 
     }
 }
 
+// Adds a website to a project's starter media (its author only); resolves with the updated project
+export async function addProjectLink<P>(projectId: string, mediaId: string, href: string, name: string): Promise<Result<{ project: P }>> {
+    try {
+        const res = await fetch(`/api/projects/${projectId}/links/${mediaId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ href, name }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.project) return { ok: true, project: data.project };
+        if (res.status === 401) reportSessionEnded();
+        return { ok: false, error: data.error ?? "server_error" };
+    } catch {
+        return { ok: false, error: "network" };
+    }
+}
+
 export async function deleteProjectMedia<P>(projectId: string, mediaId: string): Promise<Result<{ project: P }>> {
     try {
         const res = await fetch(projectMediaUrl(projectId, mediaId), { method: "DELETE" });

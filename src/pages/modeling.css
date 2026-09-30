@@ -1592,3 +1592,57 @@
     font-size: 12px;
     overflow-wrap: anywhere;
 }
+
+/* ---------- PDFs and websites ---------- */
+
+.media-frame {
+    display: block;
+    /* Below the panel's buttons, which would otherwise cover the page's or viewer's own toolbar */
+    margin-top: 32px;
+    border: none;
+    border-radius: 8px;
+    /* Pages and PDF viewers expect a light page behind them */
+    background-color: #fff;
+}
+
+.embed-footer {
+    justify-content: flex-start;
+    column-gap: 6px;
+    margin: 0;
+    font-family: "Figtree", sans-serif;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.embed-footer a {
+    color: var(--color-brand-accent);
+}
+
+.media-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.media-download img {
+    width: 16px;
+    height: 16px;
+}
+
+a.analysis-view-toggle {
+    text-decoration: none;
+}
+
+.embed-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.embed-status {
+    min-height: 1.3em;
+    margin: -4px 0 0;
+    text-align: left;
+    overflow-wrap: anywhere;
+}

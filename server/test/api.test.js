@@ -167,6 +167,22 @@ describe("classes, assignments and work", () => {
         assert.deepEqual(freefall.graphs[0], { x: "t", ys: ["h"] });
     });
 
+    test("teachers add websites to an assignment's starter media; copies keep them", async () => {
+        const own = (await teacher("POST", "/projects", project("Projectile motion"))).data.project;
+        const phet = "https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html";
+        const bad = await teacher("PUT", `/projects/${own.id}/links/link-1`, { href: "javascript:alert(1)", name: "x" });
+        assert.deepEqual([bad.status, bad.data.error], [400, "invalid_link"]);
+        assert.equal((await teacher("PUT", `/projects/${own.id}/links/link-1`, { href: `http://localhost:${port}/`, name: "x" })).status, 400);
+        const added = await teacher("PUT", `/projects/${own.id}/links/link-1`, { href: phet, name: "PhET: projectile motion" });
+        assert.equal(added.status, 201);
+        assert.deepEqual(added.data.project.media, [{ id: "link-1", name: "PhET: projectile motion", mime: "text/html", category: "embed", href: phet }]);
+        // There's no file behind it
+        assert.equal((await teacher("GET", `/projects/${own.id}/media/link-1`)).status, 404);
+        const copy = (await teacher("POST", "/projects", { ...project("Copy"), copyOf: own.id })).data.project;
+        assert.equal(copy.media[0].href, phet);
+        assert.equal((await student("PUT", `/projects/${own.id}/links/link-2`, { href: phet, name: "x" })).status, 404);
+    });
+
     test("students make their own assignments, which only they see and can't publish", async () => {
         const created = await student("POST", "/projects", project("My pendulum"));
         assert.equal(created.status, 201);
