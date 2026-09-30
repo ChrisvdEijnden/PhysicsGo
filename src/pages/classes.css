@@ -766,3 +766,86 @@
     font-size: 12px;
     color: var(--color-text-secondary);
 }
+
+/* Actions for one row behind a ⋯ button at its right end (components/RowMenu.tsx). The button shows
+   when the row is hovered or has keyboard focus, and always on touch screens, which can't hover. */
+.row-menu {
+    position: relative;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.row-menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.member-row:hover .row-menu-button, .member-row:focus-within .row-menu-button, .row-menu.open .row-menu-button {
+    opacity: 1;
+}
+
+.row-menu-button:hover, .row-menu.open .row-menu-button {
+    background-color: var(--color-bg-surface);
+}
+
+.row-menu-button:disabled {
+    cursor: default;
+}
+
+@media (hover: none) {
+    .row-menu-button {
+        opacity: 1;
+    }
+}
+
+.row-menu-items {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    min-width: 190px;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 8px 24px var(--color-shadow);
+}
+
+.row-menu-items button {
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.row-menu-items button:hover, .row-menu-items button:focus-visible {
+    background-color: var(--color-bg-app);
+    outline: none;
+}
+
+.row-menu-items button.danger {
+    color: var(--color-danger-text);
+}
+
+.row-menu-items button.armed {
+    background-color: rgba(214, 69, 69, 0.1);
+    font-weight: 600;
+}

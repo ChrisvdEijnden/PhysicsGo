@@ -11,6 +11,7 @@ import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import ConfirmButton from "../components/ConfirmButton";
+import RowMenu from "../components/RowMenu";
 import { useProjects } from "../lib/useProjects";
 import { formatDueDate } from "../lib/formatDueDate";
 import { formatCode } from "../components/CodeInput";
@@ -440,25 +441,16 @@ function Classes() {
                                                             {t("classes.joinedOn", { date: formatDate(s.joinedAt) })}
                                                         </p>
                                                         {!archived && (
-                                                            <>
-                                                                <button type="button" className="class-button" disabled={busy}
-                                                                        onClick={() => makeResetCode(s.id)}>
-                                                                    {t("classes.resetPassword")}
-                                                                </button>
-                                                                <ConfirmButton
-                                                                    className="class-button danger"
-                                                                    label={t("classes.remove")}
-                                                                    disabled={busy}
-                                                                    onConfirm={() => mutate(`/students/${s.id}`, "DELETE")}
-                                                                />
-                                                                {/* The account and all its work, e.g. for a student who left school */}
-                                                                <ConfirmButton
-                                                                    className="class-button danger"
-                                                                    label={t("classes.deleteAccount")}
-                                                                    disabled={busy}
-                                                                    onConfirm={() => mutate(`/students/${s.id}/account`, "DELETE")}
-                                                                />
-                                                            </>
+                                                            <RowMenu
+                                                                label={t("classes.studentActions", { name: s.name })}
+                                                                disabled={busy}
+                                                                items={[
+                                                                    { label: t("classes.resetPassword"), onSelect: () => makeResetCode(s.id) },
+                                                                    { label: t("classes.removeFromClass"), danger: true, onSelect: () => mutate(`/students/${s.id}`, "DELETE") },
+                                                                    // The account and all its work, e.g. for a student who left school
+                                                                    { label: t("classes.deleteAccount"), danger: true, onSelect: () => mutate(`/students/${s.id}/account`, "DELETE") },
+                                                                ]}
+                                                            />
                                                         )}
                                                     </div>
                                                     {resetCode?.studentId === s.id && (
