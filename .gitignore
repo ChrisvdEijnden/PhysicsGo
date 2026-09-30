@@ -26,8 +26,10 @@ dist-ssr
 *.sw?
 
 # Local SQLite database (accounts, sessions)
-server/physicsgo.db
-server/physicsgo.db-*
+# Any database file, also copies such as "physicsgo 2.db": it holds accounts and students' work
+server/*.db
+server/*.db-*
+server/*.sqlite*
 
 # Uploaded media files (videos, photos) and database backups from the local server
 server/media/
