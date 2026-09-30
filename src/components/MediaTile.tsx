@@ -26,15 +26,20 @@ export const DEFAULT_POINT_STEP = 1 / 30;
 const DEFAULT_FPS = 30;
 const SPEEDS = [0.25, 0.5, 1];
 
-// Axes a media's points can be plotted on: photos have no time
-export const pointAxes = (item: SavedMedia) => (item.category === "photo" ? ["x", "y"] : ["t", "x", "y"]);
+// Points with a real time: a video's, or a stroboscopic photo's once it has the time between flashes
+export const hasTime = (item: SavedMedia) => item.category === "video" || (item.category === "photo" && (item.interval ?? 0) > 0);
 
-// Only video points have a real time, so only they become variables in the code;
-// they're in the media's calibrated units, or pixels without a calibration. With a calibration
-// the pixel positions stay available too, as x_video1_px and y_video1_px.
+// Axes a media's points can be plotted on: an ordinary photo has no time
+export const pointAxes = (item: SavedMedia) => (item.category === "photo" && !hasTime(item) ? ["x", "y"] : ["t", "x", "y"]);
+
+// Only points with a real time become variables in the code; they're in the media's calibrated
+// units, or pixels without a calibration. With a calibration the pixel positions stay available too,
+// as x_video1_px and y_video1_px.
 export function pointSeries(item: SavedMedia) {
-    if (item.category !== "video" || item.points.length === 0) return [];
-    const byTime = <P extends MediaPoint>(points: P[]) => [...points].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    if (!hasTime(item) || item.points.length === 0) return [];
+    // A photo's points are already in time order: the order they were plotted in
+    const byTime = <P extends MediaPoint>(points: P[]) =>
+        item.category === "photo" ? points : [...points].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
     const real = byTime(realPoints(item));
     const t = real.map((p) => p.t ?? 0);
     const series = [
@@ -114,6 +119,14 @@ export default function MediaTile({
 
     const [pointMode, setPointMode] = useState(false);
     const [showGraph, setShowGraph] = useState(false);
+    // While plotting, an existing point can be selected (its index), then dragged, nudged or deleted
+    const [selected, setSelected] = useState<number | null>(null);
+    const [dragged, setDragged] = useState<{ index: number; x: number; y: number } | null>(null);
+    const dragStart = useRef<{ clientX: number; clientY: number; moved: boolean } | null>(null);
+    const editable = pointMode && !readOnly;
+    const selectedPoint = selected !== null ? item.points[selected] : undefined;
+    const [intervalDraft, setIntervalDraft] = useState(item.interval ? String(item.interval) : "");
+    useEffect(() => setIntervalDraft(item.interval ? String(item.interval) : ""), [item.interval]);
     // Size of the original file in pixels; points are stored in these coordinates
     const [size, setSize] = useState<{ width: number; height: number } | null>(null);
     const [stepDraft, setStepDraft] = useState(String(round(item.step, 4)));
@@ -219,6 +232,7 @@ export default function MediaTile({
     function togglePointMode() {
         const next = !pointMode;
         setPointMode(next);
+        setSelected(null);
         if (next) {
             setShowGraph(false);
             setCalibrating(null);
@@ -262,18 +276,27 @@ export default function MediaTile({
         cancelCalibration();
     }
 
+    // A position on screen in pixels of the original file, y up from the bottom; null outside the
+    // media (on the empty bands around it), unless `clamp` pulls it back to the edge
+    function mediaPosition(svg: SVGSVGElement, clientX: number, clientY: number, clamp = false) {
+        const matrix = svg.getScreenCTM();
+        if (!matrix || !size) return null;
+        let { x, y } = new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
+        if (clamp) {
+            x = Math.min(Math.max(x, 0), size.width);
+            y = Math.min(Math.max(y, 0), size.height);
+        }
+        if (x < 0 || y < 0 || x > size.width || y > size.height) return null;
+        return { x: round(x, 1), y: round(size.height - y, 1) };
+    }
+
     // Click on the media: store the position in pixels of the original file, y up from the bottom
     function handlePlot(e: React.MouseEvent<SVGSVGElement>) {
         if ((!pointMode && calibrating !== "ends" && calibrating !== "origin") || !size) return;
-        const svg = e.currentTarget;
-        const matrix = svg.getScreenCTM();
-        if (!matrix) return;
-        const at = new DOMPoint(e.clientX, e.clientY).matrixTransform(matrix.inverse());
-        // Clicks on the empty bands around the media don't count
-        if (at.x < 0 || at.y < 0 || at.x > size.width || at.y > size.height) return;
-
-        const x = round(at.x, 1);
-        const y = round(size.height - at.y, 1);
+        const at = mediaPosition(e.currentTarget, e.clientX, e.clientY);
+        if (!at) return;
+        const { x, y } = at;
+        setSelected(null);
         const video = videoRef.current;
 
         if (calibrating === "ends") {
@@ -303,12 +326,77 @@ export default function MediaTile({
         }
     }
 
+    function movePoint(index: number, x: number, y: number) {
+        onChange({ ...item, points: item.points.map((p, i) => (i === index ? { ...p, x, y } : p)) });
+    }
+
+    function deletePoint(index: number) {
+        onChange({ ...item, points: item.points.filter((_, i) => i !== index) });
+        setSelected(null);
+    }
+
+    // Pressing on a point selects it (a video goes to its frame); moving while pressed drags it
+    function pointPointerDown(e: React.PointerEvent<SVGCircleElement>, index: number) {
+        e.stopPropagation();
+        e.currentTarget.focus();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        setSelected(index);
+        dragStart.current = { clientX: e.clientX, clientY: e.clientY, moved: false };
+        const t = item.points[index].t;
+        if (isVideo && t !== null) seekToFrame(frameAt(t));
+    }
+
+    function pointPointerMove(e: React.PointerEvent<SVGCircleElement>, index: number) {
+        const start = dragStart.current;
+        const svg = e.currentTarget.ownerSVGElement;
+        if (!start || !svg) return;
+        // A little wobble while clicking isn't a drag
+        if (!start.moved && Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < 3) return;
+        start.moved = true;
+        const at = mediaPosition(svg, e.clientX, e.clientY, true);
+        if (at) setDragged({ index, ...at });
+    }
+
+    function pointPointerUp() {
+        if (dragStart.current?.moved && dragged) movePoint(dragged.index, dragged.x, dragged.y);
+        dragStart.current = null;
+        setDragged(null);
+    }
+
+    // A selected point: arrow keys nudge it a pixel (ten with Shift), Delete removes it
+    function pointKeyDown(e: React.KeyboardEvent<SVGCircleElement>, index: number) {
+        const p = item.points[index];
+        const step = e.shiftKey ? 10 : 1;
+        const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
+        if (moves[e.key] && size) {
+            e.preventDefault();
+            e.stopPropagation();
+            const [dx, dy] = moves[e.key];
+            movePoint(index, round(Math.min(Math.max(p.x + dx, 0), size.width), 1), round(Math.min(Math.max(p.y + dy, 0), size.height), 1));
+        } else if (e.key === "Delete" || e.key === "Backspace") {
+            e.preventDefault();
+            e.stopPropagation();
+            deletePoint(index);
+        } else if (e.key === "Escape") {
+            e.stopPropagation();
+            setSelected(null);
+            e.currentTarget.blur();
+        }
+    }
+
+    function commitInterval(value: string) {
+        const next = Number(value.replace(",", "."));
+        if (value.trim() === "") onChange({ ...item, interval: undefined });
+        else if (next > 0 && next <= 3600) onChange({ ...item, interval: next });
+        else setIntervalDraft(item.interval ? String(item.interval) : "");
+    }
+
     // The plotted points as a spreadsheet, named like the code's variables: in the calibrated unit,
     // with the pixel positions too once there's a scale; in time (or click) order
     function exportPoints() {
         const c = item.calibration;
         const unit = c ? c.unit : "px";
-        const time = item.category === "video" ? "t (s)" : item.category === "animation" ? "n" : null;
+        const time = item.category === "animation" ? "n" : hasTime(item) ? "t (s)" : null;
         const headers = [
             ...(time ? [time] : []),
             `x_${item.varName} (${unit})`,
@@ -318,7 +406,7 @@ export default function MediaTile({
         const real = realPoints(item);
         const rows: CsvCell[][] = item.points
             .map((p, i) => ({ pixels: p, real: real[i] }))
-            .sort((a, b) => (a.pixels.t ?? 0) - (b.pixels.t ?? 0))
+            .sort((a, b) => (a.real.t ?? 0) - (b.real.t ?? 0))
             .map(({ pixels, real }) => [
                 ...(time ? [real.t] : []),
                 real.x,
@@ -363,6 +451,9 @@ export default function MediaTile({
         ? item.points.find((p) => Math.abs((p.t ?? 0) - timeSec) < item.step / 2)
         : undefined;
 
+    // Where each point is drawn: where it's being dragged to, or where it is
+    const shownPoints = item.points.map((p, i) => (dragged?.index === i ? { ...p, x: dragged.x, y: dragged.y } : p));
+
     // The reference line: the one being drawn while calibrating, otherwise the saved one
     const shownRuler = calibrating ? ruler : calibration;
     const clicking = pointMode || calibrating === "ends" || calibrating === "origin";
@@ -399,22 +490,38 @@ export default function MediaTile({
                           fontSize={dotRadius * 3}>y</text>
                 </g>
             )}
-            {item.points.length > 1 && (
+            {shownPoints.length > 1 && (
                 <polyline
                     className="media-points-path"
-                    points={item.points.map((p) => `${p.x},${size.height - p.y}`).join(" ")}
+                    points={shownPoints.map((p) => `${p.x},${size.height - p.y}`).join(" ")}
                     strokeWidth={dotRadius / 2}
                 />
             )}
-            {item.points.map((p, i) => (
-                <circle
-                    key={`${p.t}-${i}`}
-                    className={`media-point${p === currentPoint ? " current" : ""}`}
-                    cx={p.x}
-                    cy={size.height - p.y}
-                    r={p === currentPoint ? dotRadius * 1.5 : dotRadius}
-                />
-            ))}
+            {shownPoints.map((p, i) => {
+                const emphasised = item.points[i] === currentPoint || i === selected;
+                return (
+                    <circle
+                        key={`${item.points[i].t}-${i}`}
+                        className={`media-point${item.points[i] === currentPoint ? " current" : ""}${i === selected ? " selected" : ""}`}
+                        cx={p.x}
+                        cy={size.height - p.y}
+                        r={emphasised ? dotRadius * 1.5 : dotRadius}
+                        {...(editable && {
+                            tabIndex: 0,
+                            role: "button",
+                            "aria-label": t("modeling.pointLabel", { n: i + 1, x: p.x, y: p.y }),
+                            onPointerDown: (e: React.PointerEvent<SVGCircleElement>) => pointPointerDown(e, i),
+                            onPointerMove: (e: React.PointerEvent<SVGCircleElement>) => pointPointerMove(e, i),
+                            onPointerUp: pointPointerUp,
+                            onPointerCancel: pointPointerUp,
+                            // The press already selected it; it mustn't also plot a new point underneath
+                            onClick: (e: React.MouseEvent) => e.stopPropagation(),
+                            onFocus: () => setSelected(i),
+                            onKeyDown: (e: React.KeyboardEvent<SVGCircleElement>) => pointKeyDown(e, i),
+                        })}
+                    />
+                );
+            })}
         </svg>
     );
 
@@ -689,6 +796,22 @@ export default function MediaTile({
                                     ? t("modeling.pointCountOne")
                                     : t("modeling.pointCount", { count: item.points.length })}
                             </span>
+                            {item.category === "photo" && (
+                                <label className="points-step" title={t("modeling.strobeHint")}>
+                                    Δt
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="–"
+                                        aria-label={t("modeling.strobeInterval")}
+                                        value={intervalDraft}
+                                        onChange={(e) => setIntervalDraft(e.target.value)}
+                                        onBlur={(e) => commitInterval(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                                    />
+                                    s
+                                </label>
+                            )}
                             {isVideo && (
                                 <label className="points-step">
                                     {t("modeling.pointStep")}
@@ -703,6 +826,11 @@ export default function MediaTile({
                                     />
                                     s
                                 </label>
+                            )}
+                            {selectedPoint && selected !== null && (
+                                <button type="button" className="calibration-btn" onClick={() => deletePoint(selected)}>
+                                    {t("modeling.deletePoint", { n: selected + 1 })}
+                                </button>
                             )}
                             <button
                                 type="button"

@@ -617,6 +617,8 @@
 .media-points.plotting {
     pointer-events: auto;
     cursor: crosshair;
+    /* Dragging a point on a touch screen mustn't scroll the page */
+    touch-action: none;
 }
 
 .media-point {
@@ -628,6 +630,29 @@
 
 .media-point.current {
     fill: var(--color-brand);
+}
+
+/* While plotting, points can be picked up and moved */
+.media-points.plotting .media-point {
+    cursor: grab;
+}
+
+.media-points.plotting .media-point:active {
+    cursor: grabbing;
+}
+
+.media-point.selected {
+    stroke: var(--color-brand);
+    stroke-width: 3px;
+}
+
+.media-point:focus {
+    outline: none;
+}
+
+.media-point:focus-visible {
+    stroke: var(--color-brand);
+    stroke-width: 4px;
 }
 
 .media-points-path {

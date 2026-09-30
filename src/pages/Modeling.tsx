@@ -20,7 +20,7 @@ import Graph, { lineColor } from "../components/Graph.tsx";
 import ExportMenu from "../components/ExportMenu";
 import { runCsv } from "../lib/csv";
 import { chartImage, chartPng } from "../lib/chartImage";
-import MediaTile, { DEFAULT_POINT_STEP, pointSeries } from "../components/MediaTile.tsx";
+import MediaTile, { DEFAULT_POINT_STEP, hasTime, pointSeries } from "../components/MediaTile.tsx";
 import type { MediaItem } from "../components/MediaTile.tsx";
 import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../lib/mediaStore";
 import { realPoints } from "../lib/calibration";
@@ -594,10 +594,10 @@ function ModelingWorkspace({ project, opened, onReload, review, preview = false 
     }, [start, model, history, measuredData]);
 
     // The measured points themselves (in calibrated units), drawn as dots with the line of their variable when
-    // the graph's X is t or the same video's other coordinate
+    // the graph's X is t or the same media's other coordinate
     const markersFor = useCallback((x: string, y: string): ChartPoint[] => {
         for (const item of mediaItems) {
-            if (item.category !== "video") continue;
+            if (!hasTime(item)) continue;
             const [xName, yName] = [`x_${item.varName}`, `y_${item.varName}`];
             const pick = (axis: string): "t" | "x" | "y" | null =>
                 axis === "t" ? "t" : axis === xName ? "x" : axis === yName ? "y" : null;

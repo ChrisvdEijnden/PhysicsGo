@@ -118,6 +118,9 @@ export interface SavedMedia {
     fps?: number;
     // Videos: the time in the recording that counts as t = 0 for its points (0 when not set)
     timeZero?: number;
+    // Photos (stroboscopic): seconds between two flashes. The points then get t = 0, Δt, 2Δt… in the
+    // order they were plotted, and become variables in the code like a video's.
+    interval?: number;
     // "project": starter media from the project, whose file is the project's, not the student's
     source?: "project";
 }
