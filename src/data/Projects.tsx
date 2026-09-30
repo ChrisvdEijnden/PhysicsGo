@@ -60,11 +60,13 @@ function readStore<T>(key: string): Record<string, T> {
     }
 }
 
+// Whether it was written: storage can be full or unavailable, and the change then lasts until the app reloads
 function writeStore<T>(key: string, id: string, value: T) {
     try {
         localStorage.setItem(key, JSON.stringify({ ...readStore<T>(key), [id]: value }));
+        return true;
     } catch {
-        // Storage can be unavailable; the change then lasts until the app reloads
+        return false;
     }
 }
 
@@ -255,13 +257,13 @@ export function loadSyncState(id: string): SyncState | undefined {
 }
 
 export function saveSyncState(id: string, state: SyncState) {
-    if (storageScope()) writeStore(scoped(SYNC_KEY), id, state);
+    return storageScope() !== null && writeStore(scoped(SYNC_KEY), id, state);
 }
 
-// Only the given fields change; the rest of the saved work is kept
+// Only the given fields change; the rest of the saved work is kept. Returns whether it was written.
 export function saveProjectWork(id: string, changes: Partial<ProjectWork>) {
-    if (!storageScope()) return;
+    if (!storageScope()) return false;
     // The old single code text is replaced by start and model once they're saved
     const { code: _legacy, ...current } = readStore<StoredWork>(scoped(WORK_KEY))[id] ?? {};
-    writeStore(scoped(WORK_KEY), id, { ...current, ...changes });
+    return writeStore(scoped(WORK_KEY), id, { ...current, ...changes });
 }

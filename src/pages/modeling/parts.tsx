@@ -161,14 +161,14 @@ export function TitleField({ title, onSave }: { title: string; onSave: (title: s
     );
 }
 
-// Whether the project's latest changes are saved on the server
-export function SaveIndicator({ status }: { status: SaveStatus }) {
+// Whether the project's latest changes are saved on the server, and otherwise whether this device has them
+export function SaveIndicator({ status, localFailed }: { status: SaveStatus; localFailed: boolean }) {
     const { t } = useTranslation();
     const text = {
         saved: t("modeling.saveSaved"),
         saving: t("modeling.saveSaving"),
-        offline: t("modeling.saveOffline"),
-        error: t("modeling.saveError"),
+        offline: t(localFailed ? "modeling.saveOfflineNotKept" : "modeling.saveOffline"),
+        error: t(localFailed ? "modeling.saveErrorNotKept" : "modeling.saveError"),
         conflict: t("modeling.saveConflict"),
     }[status];
     return <span className={`save-indicator ${status}`} role="status">{text}</span>;

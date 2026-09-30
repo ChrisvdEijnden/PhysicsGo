@@ -35,7 +35,8 @@ export function useMediaPanels({ project, initialMedia, reviewedStudent, noSavin
     const loaded = useRef(!project);
     const itemsRef = useRef<MediaItem[]>([]);
     // Media that couldn't be stored on the server, and why; it's still kept in this browser
-    const [mediaError, setMediaError] = useState<{ name: string; error: string } | null>(null);
+    // A file that couldn't be stored online; kept: whether this browser could keep it instead
+    const [mediaError, setMediaError] = useState<{ name: string; error: string; kept: boolean } | null>(null);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const panelCount = graphCount + mediaItems.length;
@@ -137,11 +138,11 @@ export function useMediaPanels({ project, initialMedia, reviewedStudent, noSavin
         setMedia([...mediaItems, item]);
         if (!project) return;
         const projectId = project.id;
-        saveMediaFile(mediaKey(projectId, item.id), file).catch(() => undefined);
         setMediaError(null);
-        uploadMedia(projectId, item.id, file).then((res) => {
-            // Offline uploads happen the next time the project opens; other failures are shown
-            if (!res.ok && res.error !== "network") setMediaError({ name: file.name, error: res.error });
+        const kept = saveMediaFile(mediaKey(projectId, item.id), file).then(() => true, () => false);
+        Promise.all([kept, uploadMedia(projectId, item.id, file)]).then(([kept, res]) => {
+            // Offline, a file this browser keeps is uploaded the next time the project opens; other failures are shown
+            if (!res.ok && (res.error !== "network" || !kept)) setMediaError({ name: file.name, error: res.error, kept });
         });
     }
 

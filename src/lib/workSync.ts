@@ -124,23 +124,31 @@ export function resumeSaving() {
     syncLocalWork();
 }
 
+// This browser's copy is written after a brief pause (rewriting it on every keystroke made typing
+// slow with a lot of work stored), and right away when the page is left or hidden
+const LOCAL_DELAY_MS = 300;
 const SAVE_DELAY_MS = 800;
 const RETRY_MS = 10_000;
 
-// Saves a project's work in the background: straight to this browser, then to the server
-// after a short pause in typing. Another tab or device saving in between is a conflict.
+// Saves a project's work in the background: to this browser, then to the server after a short
+// pause in typing. Another tab or device saving in between is a conflict.
 export function useWorkSync(projectId: string | null, opened: OpenedWork) {
     // Opening with a conflict starts out asking which version to keep, with this browser's as pending
     const [status, setStatus] = useState<SaveStatus>(opened.conflictWith ? "conflict" : "saved");
     const [conflict, setConflict] = useState<Conflict | null>(opened.conflictWith);
     // The latest version saved on the server
     const [version, setVersion] = useState(opened.version);
+    // This browser's storage is full (or blocked), so work that isn't on the server yet isn't kept anywhere
+    const [localFailed, setLocalFailed] = useState(false);
     const sync = useRef({
         version: opened.version,
         pending: opened.conflictWith ? opened.work : null as ProjectWork | null,
         inFlight: false,
         timer: 0,
         blocked: opened.conflictWith !== null,
+        // Work not written to this browser yet
+        unwritten: null as ProjectWork | null,
+        localTimer: 0,
     });
 
     useEffect(() => {
@@ -151,9 +159,21 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         };
     }, [projectId]);
 
+    // Writes the latest change to this browser's copy, marked as not on the server yet
+    const writeLocal = useCallback(() => {
+        const s = sync.current;
+        window.clearTimeout(s.localTimer);
+        if (!projectId || !s.unwritten) return;
+        const written = saveProjectWork(projectId, s.unwritten) && saveSyncState(projectId, { version: s.version, dirty: true });
+        s.unwritten = null;
+        setLocalFailed(!written);
+    }, [projectId]);
+
     const flush = useCallback(async () => {
         const s = sync.current;
         window.clearTimeout(s.timer);
+        // The local copy goes first, so it's never marked unsaved after the server has it
+        writeLocal();
         if (!projectId || s.inFlight || s.blocked || !s.pending) return;
 
         const work = s.pending;
@@ -184,19 +204,20 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         }
         setStatus(data.error === "network" ? "offline" : "error");
         s.timer = window.setTimeout(flush, RETRY_MS);
-    }, [projectId]);
+    }, [projectId, writeLocal]);
 
     const save = useCallback((work: ProjectWork) => {
         if (!projectId) return;
         const s = sync.current;
-        saveProjectWork(projectId, work);
-        saveSyncState(projectId, { version: s.version, dirty: true });
+        s.unwritten = work;
+        window.clearTimeout(s.localTimer);
+        s.localTimer = window.setTimeout(writeLocal, LOCAL_DELAY_MS);
         s.pending = work;
         if (s.blocked) return;
         setStatus((current) => (current === "offline" || current === "error" ? current : "saving"));
         window.clearTimeout(s.timer);
         s.timer = window.setTimeout(flush, SAVE_DELAY_MS);
-    }, [projectId, flush]);
+    }, [projectId, flush, writeLocal]);
 
     // Saves what's waiting right away; resolves with whether everything is on the server
     const saveNow = useCallback(async () => {
@@ -221,21 +242,33 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
     // "Use the other version": this browser's copy becomes the server's; the caller reloads it
     const takeTheirs = useCallback(() => {
         if (!projectId || !conflict) return;
+        const s = sync.current;
+        // This browser's changes waiting to be written are dropped too
+        window.clearTimeout(s.localTimer);
+        s.unwritten = null;
+        s.pending = null;
         saveProjectWork(projectId, conflict.work);
         saveSyncState(projectId, { version: conflict.version, dirty: false });
-        sync.current.pending = null;
     }, [projectId, conflict]);
 
-    // Back online or signed in again: send what's waiting. Leaving the page: send it now rather than after the pause.
+    // Back online or signed in again: send what's waiting. Leaving the page, closing the tab or
+    // switching away from it: keep and send it now rather than after the pause.
     useEffect(() => {
+        const onHidden = () => {
+            if (document.visibilityState === "hidden") flush();
+        };
         window.addEventListener("online", flush);
         window.addEventListener(RESUME_EVENT, flush);
+        window.addEventListener("pagehide", flush);
+        document.addEventListener("visibilitychange", onHidden);
         return () => {
             window.removeEventListener("online", flush);
             window.removeEventListener(RESUME_EVENT, flush);
+            window.removeEventListener("pagehide", flush);
+            document.removeEventListener("visibilitychange", onHidden);
             flush();
         };
     }, [flush]);
 
-    return { status, conflict, version, save, saveNow, keepMine, takeTheirs };
+    return { status, conflict, version, localFailed, save, saveNow, keepMine, takeTheirs };
 }

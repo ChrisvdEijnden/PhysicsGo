@@ -116,6 +116,8 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     // The handed-in copy of this work, if any (students)
     const [submission, setSubmission] = useState<Submission | null>(opened.submission);
     const [handInOpen, setHandInOpen] = useState(false);
+    // Why deleting the student's own assignment failed
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     // New work starts from the project's starter code. Code is shown with the keywords of the
     // interface's language (both run), and follows it when the language changes.
     const [start, setStart] = useState(() => translateCode(
@@ -200,7 +202,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
         await sync.saveNow();
         const res = await deleteProject(project.id);
         if (res.ok) navigate("/dashboard", { replace: true });
-        else media.setMediaError({ name: project.title, error: res.error });
+        else setDeleteError(res.error);
     }
 
     // Hands in the work as it is now: the latest changes are saved first, so the teacher sees exactly this
@@ -253,7 +255,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                 title={ownAssignment && project
                     ? <TitleField title={project.title} onSave={(title) => updateProject(project.id, { title })}/>
                     : project?.title ?? ""}
-                after={project && !noSaving && <SaveIndicator status={sync.status}/>}
+                after={project && !noSaving && <SaveIndicator status={sync.status} localFailed={sync.localFailed}/>}
             >
                 {review ? (
                     <ReviewBar review={review}/>
@@ -375,9 +377,27 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                     </button>
                 </div>
             )}
+            {sync.localFailed && (sync.status === "offline" || sync.status === "error") && (
+                <div className="modeling-banner" role="alert">
+                    <p>{t("modeling.storageFull")}</p>
+                </div>
+            )}
+            {deleteError && (
+                <div className="modeling-banner" role="alert">
+                    <p>{t("modeling.deleteOwnFailed", { reason: t(authErrorKey(deleteError)) })}</p>
+                    <button type="button" className="modeling-banner-btn" onClick={() => setDeleteError(null)}>
+                        {t("classes.close")}
+                    </button>
+                </div>
+            )}
             {media.mediaError && (
                 <div className="modeling-banner" role="alert">
-                    <p>{t("modeling.mediaNotUploaded", { name: media.mediaError.name, reason: t(authErrorKey(media.mediaError.error)) })}</p>
+                    <p>
+                        {t(media.mediaError.kept ? "modeling.mediaNotUploaded" : "modeling.mediaNotKept", {
+                            name: media.mediaError.name,
+                            reason: t(authErrorKey(media.mediaError.error)),
+                        })}
+                    </p>
                     <button type="button" className="modeling-banner-btn" onClick={() => media.setMediaError(null)}>
                         {t("classes.close")}
                     </button>
