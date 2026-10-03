@@ -186,7 +186,8 @@ export interface SavedMedia {
 
 export type LengthUnit = "m" | "cm" | "mm";
 
-// A line between two points (pixels, y up) known to be `length` long, and where (0, 0) is
+// A line between two points (pixels, y up) known to be `length` long, where (0, 0) is, and the
+// direction of the x-axis
 export interface Calibration {
     ax: number;
     ay: number;
@@ -196,6 +197,9 @@ export interface Calibration {
     unit: LengthUnit;
     originX: number;
     originY: number;
+    // Degrees counterclockwise from the picture's horizontal, e.g. along a slope; none means level.
+    // The y-axis is a quarter turn further.
+    angle?: number;
 }
 
 // A line on a graph: its Y variable and its colour (an index into the graph palette),

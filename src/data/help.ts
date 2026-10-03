@@ -113,7 +113,7 @@ export const HELP: Record<Language, HelpText> = {
                     {
                         list: [
                             "Their value is the measurement at the model's current `t`; between two points it lies on the straight line between them. Before the first and after the last point there is no value.",
-                            "With a scale set on the video they are in metres (or the unit you chose), otherwise in pixels. With a scale, the pixel positions are there too: `x_video1_px` and `y_video1_px`.",
+                            "With a scale set on the video they are in metres (or the unit you chose), otherwise in pixels, measured from the origin you clicked. Rotate the axes to measure along a slope: x then runs the way you chose. With a scale, the pixel positions are there too: `x_video1_px` and `y_video1_px`.",
                             "Compare the model with the measurement in a rule, like `difference = h - y_video1`, or show both in one graph.",
                         ],
                     },
@@ -230,7 +230,7 @@ export const HELP: Record<Language, HelpText> = {
                     {
                         list: [
                             "Hun waarde is de meting op de huidige `t` van het model; tussen twee punten ligt die op de rechte lijn ertussen. Vóór het eerste en na het laatste punt is er geen waarde.",
-                            "Met een schaal op de video zijn ze in meters (of de eenheid die je koos), anders in pixels. Met een schaal zijn de pixelposities er ook: `x_video1_px` en `y_video1_px`.",
+                            "Met een schaal op de video zijn ze in meters (of de eenheid die je koos), anders in pixels, gemeten vanaf de oorsprong die je aanklikte. Draai de assen om langs een helling te meten: x loopt dan in de richting die je koos. Met een schaal zijn de pixelposities er ook: `x_video1_px` en `y_video1_px`.",
                             "Vergelijk het model met de meting in een regel, zoals `verschil = h - y_video1`, of laat beide zien in één grafiek.",
                         ],
                     },

@@ -9,7 +9,7 @@ import Graph from "./Graph.tsx";
 import ConfirmButton from "./ConfirmButton";
 import type { LengthUnit, MediaPoint, SavedMedia } from "../data/Projects.tsx";
 import { useTranslation } from "../lib/useTranslations";
-import { realPoints, unitsPerPixel } from "../lib/calibration";
+import { directionDegrees, realPoints, unitsPerPixel } from "../lib/calibration";
 import ExportMenu from "./ExportMenu";
 import { DocumentGlyph, DownloadView, EmbedView, PdfView, isPdfMime } from "./DocumentView";
 import ExternalIcon18px from "../assets/icons/external-18px.svg";
@@ -80,8 +80,9 @@ const round = (value: number, decimals: number) => Math.round(value * 10 ** deci
 
 const UNITS: LengthUnit[] = ["m", "cm", "mm"];
 
-// Setting a scale: click both ends of something of known length, type that length, then click the origin
-type CalibrationStep = "ends" | "length" | "origin";
+// Setting a scale: click both ends of something of known length, type that length, then click the origin.
+// Afterwards the axes can be turned ("axis"): click a point on the positive x-axis.
+type CalibrationStep = "ends" | "length" | "origin" | "axis";
 
 export default function MediaTile({
     item,
@@ -269,10 +270,30 @@ export default function MediaTile({
     function finishCalibration(originX: number, originY: number) {
         const length = Number(lengthDraft.replace(",", "."));
         if (!ruler || ruler.bx === undefined || ruler.by === undefined || !(length > 0)) return cancelCalibration();
+        // A new scale and origin keep the axes' direction, which the footer shows
         onChange({
             ...item,
-            calibration: { ax: ruler.ax, ay: ruler.ay, bx: ruler.bx, by: ruler.by, length, unit: unitDraft, originX, originY },
+            calibration: {
+                ax: ruler.ax, ay: ruler.ay, bx: ruler.bx, by: ruler.by, length, unit: unitDraft, originX, originY,
+                ...(calibration?.angle ? { angle: calibration.angle } : {}),
+            },
         });
+        cancelCalibration();
+    }
+
+    // Turning the axes, e.g. so x runs along a slope: a click on the positive x-axis, or along the reference line
+    function startAxis() {
+        setPointMode(false);
+        setShowGraph(false);
+        videoRef.current?.pause();
+        setRuler(null);
+        setCalibrating("axis");
+    }
+
+    function setAxisAngle(angle: number) {
+        if (!calibration) return cancelCalibration();
+        const { angle: _old, ...rest } = calibration;
+        onChange({ ...item, calibration: angle === 0 ? rest : { ...rest, angle } });
         cancelCalibration();
     }
 
@@ -297,7 +318,7 @@ export default function MediaTile({
 
     // Click on the media: store the position in pixels of the original file, y up from the bottom
     function handlePlot(e: React.MouseEvent<SVGSVGElement>) {
-        if ((!pointMode && calibrating !== "ends" && calibrating !== "origin") || !size) return;
+        if ((!pointMode && calibrating !== "ends" && calibrating !== "origin" && calibrating !== "axis") || !size) return;
         const at = mediaPosition(e.currentTarget, e.clientX, e.clientY);
         if (!at) return;
         const { x, y } = at;
@@ -312,6 +333,12 @@ export default function MediaTile({
             return setCalibrating("length");
         }
         if (calibrating === "origin") return finishCalibration(x, y);
+        if (calibrating === "axis") {
+            if (calibration && (x !== calibration.originX || y !== calibration.originY)) {
+                setAxisAngle(directionDegrees(calibration.originX, calibration.originY, x, y));
+            }
+            return;
+        }
 
         if (isVideo && video) {
             // A point belongs to the frame on screen, at that frame's time
@@ -465,9 +492,20 @@ export default function MediaTile({
     const shownPoints = item.points.map((p, i) => (dragged?.index === i ? { ...p, x: dragged.x, y: dragged.y } : p));
 
     // The reference line: the one being drawn while calibrating, otherwise the saved one
-    const shownRuler = calibrating ? ruler : calibration;
-    const clicking = pointMode || calibrating === "ends" || calibrating === "origin";
+    const shownRuler = calibrating && calibrating !== "axis" ? ruler : calibration;
+    const clicking = pointMode || calibrating === "ends" || calibrating === "origin" || calibrating === "axis";
     const axisLength = size ? Math.min(size.width, size.height) / 8 : 0;
+    // The axes from the origin, turned by the calibration's angle (pixels, y up; drawn with y down)
+    const axes = calibration && size && (() => {
+        const radians = ((calibration.angle ?? 0) * Math.PI) / 180;
+        const [cos, sin] = [Math.cos(radians), Math.sin(radians)];
+        const at = (along: number, across: number) => ({
+            x: calibration.originX + along * cos - across * sin,
+            y: size.height - (calibration.originY + along * sin + across * cos),
+        });
+        const label = axisLength + dotRadius * 3;
+        return { origin: at(0, 0), x: at(axisLength, 0), y: at(0, axisLength), xLabel: at(label, 0), yLabel: at(0, label) };
+    })();
 
     const overlay = size && (
         <svg
@@ -488,16 +526,12 @@ export default function MediaTile({
                     )}
                 </g>
             )}
-            {calibration && !calibrating && (
+            {axes && (!calibrating || calibrating === "axis") && (
                 <g className="media-origin" strokeWidth={dotRadius / 2}>
-                    <line x1={calibration.originX} y1={size.height - calibration.originY}
-                          x2={calibration.originX + axisLength} y2={size.height - calibration.originY}/>
-                    <line x1={calibration.originX} y1={size.height - calibration.originY}
-                          x2={calibration.originX} y2={size.height - calibration.originY - axisLength}/>
-                    <text x={calibration.originX + axisLength} y={size.height - calibration.originY + dotRadius * 3}
-                          fontSize={dotRadius * 3}>x</text>
-                    <text x={calibration.originX - dotRadius * 3} y={size.height - calibration.originY - axisLength}
-                          fontSize={dotRadius * 3}>y</text>
+                    <line x1={axes.origin.x} y1={axes.origin.y} x2={axes.x.x} y2={axes.x.y}/>
+                    <line x1={axes.origin.x} y1={axes.origin.y} x2={axes.y.x} y2={axes.y.y}/>
+                    <text x={axes.xLabel.x} y={axes.xLabel.y} fontSize={dotRadius * 3} textAnchor="middle" dominantBaseline="middle">x</text>
+                    <text x={axes.yLabel.x} y={axes.yLabel.y} fontSize={dotRadius * 3} textAnchor="middle" dominantBaseline="middle">y</text>
                 </g>
             )}
             {shownPoints.length > 1 && (
@@ -782,6 +816,18 @@ export default function MediaTile({
                                     {t("modeling.calibrateCorner")}
                                 </button>
                             )}
+                            {calibrating === "axis" && <span>{t("modeling.axisHint")}</span>}
+                            {calibrating === "axis" && calibration && (
+                                <button type="button" className="calibration-btn"
+                                        onClick={() => setAxisAngle(directionDegrees(calibration.ax, calibration.ay, calibration.bx, calibration.by))}>
+                                    {t("modeling.axisAlongRuler")}
+                                </button>
+                            )}
+                            {calibrating === "axis" && (calibration?.angle ?? 0) !== 0 && (
+                                <button type="button" className="calibration-btn" onClick={() => setAxisAngle(0)}>
+                                    {t("modeling.axisLevel")}
+                                </button>
+                            )}
                             {calibration && calibrating === "ends" && (
                                 <button type="button" className="calibration-btn" onClick={removeCalibration}>
                                     {t("modeling.calibrateRemove")}
@@ -800,7 +846,14 @@ export default function MediaTile({
                                     pixels: round(calibration.length / unitsPerPixel(calibration), 1),
                                 })
                                 : t("modeling.pixelsHint")}
+                            {calibration && (calibration.angle ?? 0) !== 0
+                                && ` · ${t("modeling.axisInfo", { angle: (calibration.angle ?? 0).toLocaleString(language, { maximumFractionDigits: 1 }) })}`}
                         </span>
+                    )}
+                    {!calibrating && calibration && !readOnly && (
+                        <button type="button" className="calibration-btn" onClick={startAxis} title={t("modeling.rotateAxesHint")}>
+                            {t("modeling.rotateAxes")}
+                        </button>
                     )}
                     {isVideo && (
                         <span className="media-footer-time">

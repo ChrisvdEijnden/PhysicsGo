@@ -615,6 +615,12 @@ export const translations = {
         "modeling.embedAskTitle": "Website added by the student",
         "modeling.embedAsk": "This panel shows {{host}}, a website the student added. It isn't part of PhysicsGo: never enter your password there.",
         "modeling.embedShow": "Show website",
+        "modeling.rotateAxes": "Rotate axes",
+        "modeling.rotateAxesHint": "Turn the axes, for example so x runs along a slope",
+        "modeling.axisHint": "Click a point on the positive x-axis, for example further along a slope.",
+        "modeling.axisAlongRuler": "Along the reference line",
+        "modeling.axisLevel": "Level",
+        "modeling.axisInfo": "x-axis at {{angle}}°",
     },
     nl: {
         "nav.dashboard": "Dashboard",
@@ -1231,6 +1237,12 @@ export const translations = {
         "modeling.embedAskTitle": "Website toegevoegd door de leerling",
         "modeling.embedAsk": "Dit paneel toont {{host}}, een website die de leerling heeft toegevoegd. Die hoort niet bij PhysicsGo: vul daar nooit je wachtwoord in.",
         "modeling.embedShow": "Website tonen",
+        "modeling.rotateAxes": "Assen draaien",
+        "modeling.rotateAxesHint": "Draai de assen, bijvoorbeeld zodat x langs een helling loopt",
+        "modeling.axisHint": "Klik op een punt op de positieve x-as, bijvoorbeeld verderop langs een helling.",
+        "modeling.axisAlongRuler": "Langs de referentielijn",
+        "modeling.axisLevel": "Horizontaal",
+        "modeling.axisInfo": "x-as onder {{angle}}°",
     },
 } as const;
 
