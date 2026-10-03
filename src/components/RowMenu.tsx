@@ -9,6 +9,8 @@ export interface RowMenuItem {
     onSelect: () => void;
     // Red, and asks "Confirm?" first: the first choice arms it, the second does it
     danger?: boolean;
+    // A dangerous item that opens a dialog asking for confirmation, so it doesn't arm first
+    opensDialog?: boolean;
 }
 
 // The actions for one row of a list behind a ⋯ button at its right end. The button only shows when
@@ -77,7 +79,7 @@ export default function RowMenu({ label, items, disabled }: {
                             className={`${item.danger ? "danger" : ""}${armed === i ? " armed" : ""}`}
                             autoFocus={i === 0}
                             onClick={() => {
-                                if (item.danger && armed !== i) return setArmed(i);
+                                if (item.danger && !item.opensDialog && armed !== i) return setArmed(i);
                                 close(true);
                                 item.onSelect();
                             }}

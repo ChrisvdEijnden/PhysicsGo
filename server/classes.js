@@ -3,7 +3,7 @@ import db from "./db.js";
 import { generateCode, normalizeCode } from "./codes.js";
 import { createReset } from "./resets.js";
 import { deleteAccount } from "./accounts.js";
-import { readSubmission, readWork } from "./work.js";
+import { readSubmission, readSubmissionHistory, readWork } from "./work.js";
 import { accountLabel, audit } from "./audit.js";
 
 const MAX_CLASS_NAME = 60;
@@ -49,16 +49,6 @@ export function classesOf(user) {
         SELECT c.id, c.name FROM ${table} m JOIN classes c ON c.id = m.class_id
         WHERE m.user_id = ? AND c.archived_at IS NULL ORDER BY c.name COLLATE NOCASE
     `).all(user.id);
-}
-
-// Whether the teacher teaches the student in a class that isn't archived
-export function teachesStudent(teacherId, studentId) {
-    return Boolean(db.prepare(`
-        SELECT 1 FROM class_teachers t
-        JOIN class_students s ON s.class_id = t.class_id
-        JOIN classes c ON c.id = t.class_id
-        WHERE t.user_id = ? AND s.user_id = ? AND c.archived_at IS NULL
-    `).get(teacherId, studentId));
 }
 
 export function purgeArchivedClasses(now = Date.now()) {
@@ -156,7 +146,7 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         `);
         const assignments = db.prepare(`
             SELECT p.id, p.title, pc.due_at AS dueAt FROM project_classes pc JOIN projects p ON p.id = pc.project_id
-            WHERE pc.class_id = ? AND (pc.opens_at IS NULL OR pc.opens_at <= ?)
+            WHERE pc.class_id = ? AND pc.unpublished_at IS NULL AND (pc.opens_at IS NULL OR pc.opens_at <= ?)
             ORDER BY pc.due_at IS NULL, pc.due_at, p.title COLLATE NOCASE
         `);
         const classes = db.prepare(`
@@ -341,12 +331,22 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
         res.status(201).json(reset);
     });
 
-    // Deletes a student's account altogether (e.g. one who left school), with all their work.
-    // Any teacher of one of the student's classes may do this; the app asks twice first.
-    router.delete("/:classId/students/:userId/account", active, wrap(async (req, res) => {
+    // Deletes a student's account altogether (e.g. one who left school), with all their work. Only the
+    // class's owner may, and only when every class the student is in is one they teach: work for other
+    // teachers' classes isn't theirs to delete (they remove the student from their class, or ask an
+    // administrator). The app asks for a confirmation in a dialog first.
+    router.delete("/:classId/students/:userId/account", ownerOnly, active, wrap(async (req, res) => {
         const userId = Number(req.params.userId);
         const inClass = db.prepare("SELECT 1 FROM class_students WHERE class_id = ? AND user_id = ?").get(req.classId, userId);
         if (!inClass) return res.status(404).json({ error: "student_not_found" });
+        const elsewhere = db.prepare(`
+            SELECT c.name FROM class_students s JOIN classes c ON c.id = s.class_id
+            WHERE s.user_id = ? AND NOT EXISTS (SELECT 1 FROM class_teachers t WHERE t.class_id = s.class_id AND t.user_id = ?)
+            ORDER BY c.name COLLATE NOCASE
+        `).all(userId, req.user.id);
+        if (elsewhere.length > 0) {
+            return res.status(409).json({ error: "student_in_other_classes", classes: elsewhere.map((c) => c.name) });
+        }
         const label = accountLabel(db.prepare("SELECT name, email FROM users WHERE id = ?").get(userId));
         await deleteAccount(userId);
         audit(req.user, "class.delete_student", label, { class: req.className });
@@ -354,11 +354,13 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
     }));
 
     // Per assignment in the class (with its due date), where each student is: not started, working,
-    // or handed in, and whether that was after the due date
+    // or handed in, and whether that was after the due date. Assignments taken back from the class are
+    // listed too (published: false), so their hand-ins and marks stay in view.
     router.get("/:classId/progress", (req, res) => {
         const projects = db.prepare(`
-            SELECT project_id AS projectId, opens_at AS opensAt, due_at AS dueAt FROM project_classes
-            WHERE class_id = ? ORDER BY due_at IS NULL, due_at, published_at
+            SELECT project_id AS projectId, opens_at AS opensAt, due_at AS dueAt, unpublished_at IS NULL AS published
+            FROM project_classes
+            WHERE class_id = ? ORDER BY unpublished_at IS NOT NULL, due_at IS NULL, due_at, published_at
         `).all(req.classId);
         const rows = db.prepare(`
             SELECT u.id, u.name, w.updated_at AS updatedAt, sub.submitted_at AS submittedAt,
@@ -369,10 +371,11 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
             WHERE s.class_id = ? ORDER BY u.name COLLATE NOCASE
         `);
         res.json({
-            projects: projects.map(({ projectId, opensAt, dueAt }) => ({
+            projects: projects.map(({ projectId, opensAt, dueAt, published }) => ({
                 projectId,
                 opensAt,
                 dueAt,
+                published: Boolean(published),
                 students: rows.all(projectId, projectId, req.classId).map((r) => ({
                     id: r.id,
                     name: r.name,
@@ -403,6 +406,8 @@ export function classesRouter({ requireAuth, joinLimiter, publicUser }) {
             student: { id: userId, name: allowed.name },
             ...readWork(userId, projectId),
             submission: readSubmission(userId, projectId),
+            // Earlier hand-ins the teacher had reviewed, with that feedback (without their work)
+            history: readSubmissionHistory(userId, projectId),
         });
     });
 

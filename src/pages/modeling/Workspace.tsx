@@ -30,7 +30,7 @@ import { useTranslation } from "../../lib/useTranslations";
 import { useWorkSync } from "../../lib/workSync";
 import { translateCode } from "../../lib/modelLanguage";
 import { codeUnits } from "../../lib/units";
-import type { OpenedWork, Submission } from "../../lib/workSync";
+import type { EarlierHandIn, OpenedWork, Submission } from "../../lib/workSync";
 import CodePanel from "./CodePanel";
 import ExplanationPanel from "./ExplanationPanel";
 import GraphPanel from "./GraphPanel";
@@ -125,8 +125,9 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
     // Viewing a student's work or previewing a project: nothing is saved
     const noSaving = !!review || preview;
     const sync = useWorkSync(noSaving ? null : project?.id ?? null, opened);
-    // The handed-in copy of this work, if any (students)
+    // The handed-in copy of this work, if any (students), and earlier hand-ins the teacher reviewed
     const [submission, setSubmission] = useState<Submission | null>(opened.submission);
+    const [history, setHistory] = useState<EarlierHandIn[]>(opened.history);
     const [handInOpen, setHandInOpen] = useState(false);
     // Why deleting the student's own assignment failed
     const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -245,17 +246,20 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
         if (sync.version === 0) saveWork({}); // nothing saved yet: save the starting state
         const { saved, version } = await sync.saveNow();
         if (!saved) return { ok: false, error: "not_saved" };
-        const { ok, data } = await api<{ submission: Submission }>(`/work/${project.id}/submit`, "POST", { version });
+        const { ok, data } = await api<{ submission: Submission; history: EarlierHandIn[] }>(`/work/${project.id}/submit`, "POST", { version });
         if (!ok || !data.submission) return { ok: false, error: errorOf(data) };
         setSubmission(data.submission);
+        setHistory(data.history ?? []);
         return { ok: true };
     }
 
+    // Taking a hand-in back that replaced a reviewed one makes that one the hand-in again
     async function retractHandIn(): Promise<Result> {
         if (!project) return { ok: false, error: "server_error" };
-        const { ok, data } = await api(`/work/${project.id}/submission`, "DELETE");
+        const { ok, data } = await api<{ submission: Submission | null; history: EarlierHandIn[] }>(`/work/${project.id}/submission`, "DELETE");
         if (!ok) return { ok: false, error: errorOf(data) };
-        setSubmission(null);
+        setSubmission(data.submission ?? null);
+        setHistory(data.history ?? []);
         return { ok: true };
     }
 
@@ -373,10 +377,13 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                                                 && ` · ${t("dashboard.late")}`}
                                         </span>
                                     )}
-                                    <button className="hand-in-btn" onClick={() => setHandInOpen(true)}>
-                                        <img src={arrowIcon14px} alt=""/>
-                                        <p>{submission ? t("modeling.handInAgain") : t("modeling.handInAssignment")}</p>
-                                    </button>
+                                    {/* An approved hand-in is final; the teacher can return it to allow another one */}
+                                    {submission?.status !== "approved" && (
+                                        <button className="hand-in-btn" onClick={() => setHandInOpen(true)}>
+                                            <img src={arrowIcon14px} alt=""/>
+                                            <p>{submission ? t("modeling.handInAgain") : t("modeling.handInAssignment")}</p>
+                                        </button>
+                                    )}
                                 </>
                             )
                         )}
@@ -426,6 +433,11 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                     </button>
                 </div>
             )}
+            {sync.problem && sync.status === "error" && (
+                <div className="modeling-banner" role="alert">
+                    <p>{t(sync.problem === "storage_full" ? "modeling.saveStorageFull" : "modeling.saveNotAvailable")}</p>
+                </div>
+            )}
             {sync.localFailed && (sync.status === "offline" || sync.status === "error") && (
                 <div className="modeling-banner" role="alert">
                     <p>{t("modeling.storageFull")}</p>
@@ -462,6 +474,7 @@ export default function ModelingWorkspace({ project, opened, onReload, review, p
                     review={review}
                     student={!isTeacher && !review}
                     submission={submission}
+                    history={history}
                     publications={project ? published[project.id] ?? [] : []}
                 />
 

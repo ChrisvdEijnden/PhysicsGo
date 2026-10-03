@@ -45,6 +45,8 @@ const MAP: Record<string, TranslationKey> = {
     school_required: "admin.errSchoolRequired",
     has_classes: "admin.errHasClasses",
     invalid_link: "embed.invalid",
+    already_approved: "handIn.errAlreadyApproved",
+    assignment_has_work: "projectEditor.errHasWork",
 };
 
 export const authErrorKey = (error: string): TranslationKey => MAP[error] ?? "auth.errGeneric";

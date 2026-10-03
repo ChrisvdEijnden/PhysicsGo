@@ -11,6 +11,7 @@ import { useAuth } from "../lib/useAuth";
 import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import ConfirmButton from "../components/ConfirmButton";
+import Dialog from "../components/Dialog";
 import RowMenu from "../components/RowMenu";
 import { useProjects } from "../lib/useProjects";
 import { formatDueDate } from "../lib/formatDueDate";
@@ -95,6 +96,8 @@ interface ProjectProgress {
     projectId: string;
     opensAt: number | null;
     dueAt: number | null;
+    // False once it's taken back from the class: students no longer see it, its hand-ins stay here
+    published: boolean;
     students: {
         id: number;
         name: string;
@@ -128,6 +131,54 @@ const summarize = (c: ClassDetail): ClassSummary => ({
     teacherCount: c.teachers.length,
 });
 
+// Deleting a student's account is permanent and takes their work in every class along, so it asks in a
+// dialog. The server refuses when the student is also in classes of other teachers.
+function DeleteStudentDialog({ name, onDelete, onClose }: {
+    name: string;
+    onDelete: () => Promise<{ ok: true } | { ok: false; error: string; classes: string[] }>;
+    onClose: () => void;
+}) {
+    const { t } = useTranslation();
+    const [understood, setUnderstood] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<{ error: string; classes: string[] } | null>(null);
+
+    async function remove() {
+        setBusy(true);
+        setError(null);
+        const res = await onDelete();
+        setBusy(false);
+        if (res.ok) onClose();
+        else setError(res);
+    }
+
+    return (
+        <Dialog labelledBy="delete-student-title" describedBy="delete-student-description" onClose={onClose}>
+            <div className="dialog-header">
+                <h2 id="delete-student-title">{t("classes.deleteAccountTitle", { name })}</h2>
+                <p id="delete-student-description">{t("classes.deleteAccountDescription", { name })}</p>
+            </div>
+            <label className="dialog-check">
+                <input type="checkbox" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} data-autofocus/>
+                <span>{t("classes.deleteAccountConfirm", { name })}</span>
+            </label>
+            {error && (
+                <p className="auth-error class-error" role="alert">
+                    {error.error === "student_in_other_classes"
+                        ? t("classes.errStudentInOtherClasses", { name, classes: error.classes.join(", ") })
+                        : t(authErrorKey(error.error))}
+                </p>
+            )}
+            <div className="dialog-actions">
+                <button type="button" className="class-button" onClick={onClose}>{t("publish.cancel")}</button>
+                <button type="button" className="class-button danger" disabled={!understood || busy} onClick={remove}>
+                    {t("classes.deleteAccount")}
+                </button>
+            </div>
+        </Dialog>
+    );
+}
+
 function Classes() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -152,6 +203,8 @@ function Classes() {
     const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
     // A one-time code a student uses to choose a new password, shown until closed
     const [resetCode, setResetCode] = useState<{ studentId: number; code: string; expiresAt: number } | null>(null);
+    // The student whose account the dialog asks to delete
+    const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
     const [copied, setCopied] = useState(false);
     const [busy, setBusy] = useState(false);
     // Which part of the selected class is shown; coming back from a student's work, its assignments
@@ -330,6 +383,19 @@ function Classes() {
         else setDetailError(errorOf(data));
     };
 
+    // Only the owner, and not for a student other teachers also teach (the server says which classes)
+    const deleteStudentAccount = async (studentId: number) => {
+        if (!detail) return { ok: false as const, error: "not_found", classes: [] };
+        const { ok, data } = await api<{ class: ClassDetail; classes: string[] }>(
+            `/classes/${detail.id}/students/${studentId}/account`, "DELETE"
+        );
+        if (ok && data.class) {
+            showDetail(data.class);
+            return { ok: true as const };
+        }
+        return { ok: false as const, error: errorOf(data), classes: data.classes ?? [] };
+    };
+
     const answerInvitation = async (classId: number, answer: "accept" | "decline") => {
         if (busy) return;
         setBusy(true);
@@ -394,7 +460,9 @@ function Classes() {
                 <h3>{c.name}</h3>
                 <p>{studentCount(c.studentCount)}</p>
             </div>
-            {c.archivedAt !== null && <span className="class-badge">{t("classes.archivedBadge")}</span>}
+            {c.archivedAt !== null
+                ? <span className="class-badge">{t("classes.archivedBadge")}</span>
+                : !c.joinOpen && <span className="class-badge">{t("classes.closedBadge")}</span>}
         </button>
     );
 
@@ -509,7 +577,7 @@ function Classes() {
                                         <h3>{t("classes.studentCode")}</h3>
                                     </div>
                                     <div className="code-row">
-                                        <span className="class-code">{formatCode(detail.code)}</span>
+                                        <span className={`class-code${detail.joinOpen ? "" : " closed"}`}>{formatCode(detail.code)}</span>
                                         <button type="button" className="icon-button" onClick={copyCode}
                                                 aria-label={copied ? t("classes.copied") : t("classes.copy")}
                                                 title={copied ? t("classes.copied") : t("classes.copy")}>
@@ -517,6 +585,7 @@ function Classes() {
                                         </button>
                                         <span className="visually-hidden" role="status">{copied ? t("classes.copied") : ""}</span>
                                     </div>
+                                    {!detail.joinOpen && <p className="section-hint">{t("classes.joinClosed")}</p>}
                                 </section>
                             )}
 
@@ -557,8 +626,14 @@ function Classes() {
                                                                 items={[
                                                                     { label: t("classes.resetPassword"), onSelect: () => makeResetCode(s.id) },
                                                                     { label: t("classes.removeFromClass"), danger: true, onSelect: () => mutate(`/students/${s.id}`, "DELETE") },
-                                                                    // The account and all its work, e.g. for a student who left school
-                                                                    { label: t("classes.deleteAccount"), danger: true, onSelect: () => mutate(`/students/${s.id}/account`, "DELETE") },
+                                                                    // The account and all its work, e.g. for a student who left school: only the
+                                                                    // owner, after a dialog
+                                                                    ...(detail.youAreOwner ? [{
+                                                                        label: t("classes.deleteAccountMenu"),
+                                                                        danger: true,
+                                                                        opensDialog: true,
+                                                                        onSelect: () => setDeleting({ id: s.id, name: s.name }),
+                                                                    }] : []),
                                                                 ]}
                                                             />
                                                         )}
@@ -613,6 +688,7 @@ function Classes() {
                                                             </p>
                                                         )}
                                                     </div>
+                                                    {!p.published && <span className="class-badge">{t("classes.notPublished")}</span>}
                                                     {p.students.length > 0 && (
                                                         <button type="button" className="class-button" aria-expanded={expanded}
                                                                 onClick={() => setOpenProject(expanded ? null : p.projectId)}>
@@ -731,6 +807,34 @@ function Classes() {
                             </div>}
 
                             {shownTab === "settings" && <div className="class-tab-panel" role="tabpanel" id="class-panel-settings" aria-labelledby="class-tab-settings">
+                            {/* Stopping a code that got around: close joining, or give the class a new code */}
+                            {!archived && (
+                                <section className="class-section">
+                                    <div className="setting-row">
+                                        <p className="section-hint">{detail.joinOpen ? t("classes.joinOpen") : t("classes.joinClosed")}</p>
+                                        <button
+                                            type="button"
+                                            className="class-switch"
+                                            role="switch"
+                                            aria-checked={detail.joinOpen}
+                                            aria-label={t("classes.toggleJoin")}
+                                            disabled={busy}
+                                            onClick={() => mutate("", "PATCH", { joinOpen: !detail.joinOpen })}
+                                        >
+                                            <span className="class-switch-thumb"/>
+                                        </button>
+                                    </div>
+                                    <div className="setting-row">
+                                        <p className="section-hint">{t("classes.regenerateHint")}</p>
+                                        <ConfirmButton
+                                            className="class-button"
+                                            label={t("classes.regenerate")}
+                                            disabled={busy}
+                                            onConfirm={() => mutate("/code", "POST")}
+                                        />
+                                    </div>
+                                </section>
+                            )}
                             <section className="class-section">
                                 {/* The owner hands the class over before leaving; co-teachers can always leave */}
                                 {!detail.youAreOwner && (
@@ -763,6 +867,13 @@ function Classes() {
                     )}
                 </div>}
             </div>
+            {deleting && (
+                <DeleteStudentDialog
+                    name={deleting.name}
+                    onDelete={() => deleteStudentAccount(deleting.id)}
+                    onClose={() => setDeleting(null)}
+                />
+            )}
         </div>
     );
 }

@@ -11,7 +11,7 @@ import { useAuth } from "../lib/useAuth";
 import { useProjects } from "../lib/useProjects";
 import { useTranslation } from "../lib/useTranslations";
 import { openWork } from "../lib/workSync";
-import type { OpenedWork } from "../lib/workSync";
+import type { EarlierHandIn, OpenedWork } from "../lib/workSync";
 import ModelingWorkspace from "./modeling/Workspace";
 import type { ReviewedSubmission } from "./modeling/parts";
 
@@ -19,7 +19,7 @@ import type { ReviewedSubmission } from "./modeling/parts";
 // own work on an assignment, a teacher reviewing a student's work, and a teacher previewing an
 // assignment the way students first see it.
 
-const NO_WORK: OpenedWork = { work: null, submission: null, version: 0, unsynced: false, offline: false, conflictWith: null };
+const NO_WORK: OpenedWork = { work: null, submission: null, history: [], version: 0, unsynced: false, offline: false, conflictWith: null };
 
 // The assignment comes from the address (/modeling/<id>), so it can be linked, bookmarked and opened in a
 // new tab; /modeling alone is an empty workspace. Work is saved per account, so the workspace only opens
@@ -79,17 +79,17 @@ export function ReviewWork() {
     const studentId = Number(params.userId);
     const { projects, byId } = useProjects();
     const project = byId(params.projectId);
-    const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null } | null>(null);
+    const [data, setData] = useState<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null; history: EarlierHandIn[] } | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [showing, setShowing] = useState<"submission" | "work">("submission");
 
     useEffect(() => {
         if (user?.role !== "teacher" || !project) return;
-        api<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null }>(
+        api<{ student: { name: string }; work: unknown; submission: ReviewedSubmission | null; history: EarlierHandIn[] }>(
             `/classes/${classId}/students/${studentId}/work/${project.id}`
         ).then(({ ok, data }) => {
             if (!ok || !data.student) return setError(errorOf(data));
-            setData({ student: data.student, work: data.work ?? null, submission: data.submission ?? null });
+            setData({ student: data.student, work: data.work ?? null, submission: data.submission ?? null, history: data.history ?? [] });
             setShowing(data.submission ? "submission" : "work");
         });
     }, [user, project, classId, studentId]);
@@ -113,6 +113,7 @@ export function ReviewWork() {
                 studentName: data.student.name,
                 submittedAt: data.submission?.submittedAt ?? null,
                 feedback: data.submission,
+                history: data.history,
                 feedbackUrl: `/classes/${classId}/students/${studentId}/work/${project.id}/feedback`,
                 onFeedback: (feedback) => setData((d) => d && d.submission ? { ...d, submission: { ...d.submission, ...feedback } } : d),
                 showing,

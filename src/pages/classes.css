@@ -215,6 +215,47 @@
     user-select: all;
 }
 
+/* Joining is closed: the code isn't accepted */
+.class-code.closed {
+    color: var(--color-text-tertiary);
+    text-decoration: line-through;
+}
+
+/* On/off switch, e.g. whether students can join with the code */
+.class-switch {
+    position: relative;
+    flex-shrink: 0;
+    width: 44px;
+    height: 24px;
+    padding: 0;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.class-switch[aria-checked="true"] {
+    background-color: var(--color-brand);
+    border-color: var(--color-brand);
+}
+
+.class-switch-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--color-bg-surface);
+    box-shadow: 0 1px 2px var(--color-shadow);
+    transition: transform 0.2s ease;
+}
+
+.class-switch[aria-checked="true"] .class-switch-thumb {
+    transform: translateX(20px);
+}
+
 /* Copy: just the icon, no background or border */
 .icon-button {
     display: flex;
@@ -504,6 +545,26 @@
 
 .publish-starter label + p {
     padding-left: 24px;
+}
+
+/* A checkbox that has to be ticked before a dangerous action, e.g. deleting a student's account */
+.dialog-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-family: "Figtree", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.dialog-check input {
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    flex: none;
+    accent-color: var(--color-danger-text);
 }
 
 .dialog.publish-dialog {

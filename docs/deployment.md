@@ -59,6 +59,7 @@ After that, administrators add schools, invite teachers and manage accounts on t
 | `PHYSICSGO_STATIC` | `dist` | The built app; the server only serves the API when it isn't there |
 | `PHYSICSGO_MEDIA_MAX_MB` | `200` | Largest upload |
 | `PHYSICSGO_MEDIA_QUOTA_MB` | `2048` | Storage per account |
+| `PHYSICSGO_WORK_QUOTA_MB` | `50` | Saved work (code, graphs, points) per account |
 | `SESSION_IDLE_HOURS` | `8` | Signed out after this long without use |
 | `ACCOUNT_RETENTION_DAYS` | `730` | Unused accounts are deleted after this long; `0` keeps them |
 | `AUDIT_RETENTION_DAYS` | `365` | How long the audit log (Administration → Activity) is kept; `0` keeps it |

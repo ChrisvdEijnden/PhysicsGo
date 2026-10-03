@@ -92,6 +92,7 @@ Set these environment variables for the API (all optional):
 | `PHYSICSGO_MEDIA_DIR` | `server/media` | Where uploaded videos and photos are stored |
 | `PHYSICSGO_MEDIA_MAX_MB` | `200` | Largest upload |
 | `PHYSICSGO_MEDIA_QUOTA_MB` | `2048` | Storage per account |
+| `PHYSICSGO_WORK_QUOTA_MB` | `50` | Saved work (code, graphs, points) per account, all assignments together |
 | `PHYSICSGO_BACKUP_DIR` | `server/backups` | Daily database copies (the last `PHYSICSGO_BACKUPS`, default 14, are kept; `0` turns them off) |
 | `PHYSICSGO_STATIC` | `dist` | The built app, served by the same server when it's there |
 | `ACCOUNT_RETENTION_DAYS` | `730` | Accounts not used for this many days are deleted (administrators, and teachers who are a class's only teacher, are kept); `0` keeps them |

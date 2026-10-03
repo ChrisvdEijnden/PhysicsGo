@@ -5,7 +5,7 @@ import { useState } from "react";
 import { api, errorOf } from "../lib/api";
 import { authErrorKey } from "../lib/authErrors";
 import { useTranslation } from "../lib/useTranslations";
-import type { Feedback, ReviewStatus } from "../lib/workSync";
+import type { EarlierHandIn, Feedback, ReviewStatus } from "../lib/workSync";
 
 const STATUSES: ReviewStatus[] = ["handed_in", "returned", "approved"];
 
@@ -88,6 +88,34 @@ export function FeedbackForm({ url, initial, onSaved }: {
                 <button type="submit" className="class-button primary" disabled={busy}>{t("feedback.save")}</button>
             </div>
         </form>
+    );
+}
+
+// Hand-ins the teacher reviewed before the student handed in again, newest first, with that review:
+// for the student and for the teacher reviewing the new hand-in
+export function EarlierFeedback({ history }: { history: EarlierHandIn[] }) {
+    const { t, language } = useTranslation();
+    if (history.length === 0) return null;
+    const when = (ms: number) => new Date(ms).toLocaleString(language, { dateStyle: "medium", timeStyle: "short" });
+    return (
+        <div className="feedback-history">
+            <p className="feedback-title">{t("feedback.earlierTitle")}</p>
+            <ul>
+                {history.map((h) => (
+                    <li key={h.submittedAt}>
+                        <p className="feedback-history-head">
+                            {t("feedback.earlierHandedIn", { time: when(h.submittedAt) })}
+                            {` · ${statusLabel(h.status, t)}`}
+                            {h.mark !== null && ` · ${formatMark(h.mark, language)}`}
+                        </p>
+                        {h.feedback && <p className="feedback-text">{h.feedback}</p>}
+                        {h.reviewedBy && h.reviewedAt !== null && (
+                            <p className="feedback-by">{t("feedback.by", { name: h.reviewedBy, time: when(h.reviewedAt) })}</p>
+                        )}
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 }
 

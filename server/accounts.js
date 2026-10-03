@@ -14,14 +14,18 @@ export function classesOnlyTaughtBy(userId) {
 }
 
 // Deletes an account and what is only theirs: sessions, class memberships, saved and handed-in work,
-// uploaded files (the tables cascade), and assignments they wrote that no class uses (a student's own
-// assignments, a teacher's unpublished ones). Assignments published to a class stay for that class.
+// uploaded files (the tables cascade), and assignments they wrote that no class uses and nobody else
+// worked on (a student's own assignments, a teacher's unpublished ones). Assignments that were published
+// to a class, or that other students have work for, stay for them.
 export async function deleteAccount(userId) {
     const removedProjects = db.transaction(() => {
         const unused = db.prepare(`
             SELECT id FROM projects p
-            WHERE p.author_id = ? AND NOT EXISTS (SELECT 1 FROM project_classes pc WHERE pc.project_id = p.id)
-        `).all(userId).map((p) => p.id);
+            WHERE p.author_id = @user
+              AND NOT EXISTS (SELECT 1 FROM project_classes pc WHERE pc.project_id = p.id)
+              AND NOT EXISTS (SELECT 1 FROM project_work w WHERE w.project_id = p.id AND w.user_id != @user)
+              AND NOT EXISTS (SELECT 1 FROM submissions s WHERE s.project_id = p.id AND s.user_id != @user)
+        `).all({ user: userId }).map((p) => p.id);
         for (const id of unused) db.prepare("DELETE FROM projects WHERE id = ?").run(id);
         db.prepare("DELETE FROM users WHERE id = ?").run(userId);
         return unused;
@@ -59,6 +63,13 @@ export function exportAccount(userId) {
     };
     const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
     const title = "(SELECT title FROM projects p WHERE p.id = x.project_id) AS title";
+    const review = (h) => ({
+        status: h.status,
+        feedback: h.feedback || null,
+        mark: h.mark,
+        reviewedAt: iso(h.reviewed_at),
+        reviewedBy: h.reviewer ?? null,
+    });
     return {
         exportedAt: iso(Date.now()),
         account: {
@@ -101,8 +112,21 @@ export function exportAccount(userId) {
                 savedAt: iso(w.updated_at),
                 work: json(w.data),
             })),
-        handedIn: db.prepare(`SELECT x.project_id, ${title}, x.submitted_at, x.data FROM submissions x WHERE x.user_id = ?`)
-            .all(userId).map((h) => ({ assignment: h.title ?? h.project_id, handedInAt: iso(h.submitted_at), work: json(h.data) })),
+        // With the teacher's review of each hand-in: status, comment, mark, who and when
+        handedIn: db.prepare(`
+            SELECT x.*, ${title}, u.name AS reviewer FROM submissions x LEFT JOIN users u ON u.id = x.reviewed_by WHERE x.user_id = ?
+        `).all(userId).map((h) => ({ assignment: h.title ?? h.project_id, handedInAt: iso(h.submitted_at), ...review(h), work: json(h.data) })),
+        // Hand-ins the teacher had reviewed before the student handed in again, with that review
+        earlierHandIns: db.prepare(`
+            SELECT x.*, ${title}, u.name AS reviewer FROM submission_history x LEFT JOIN users u ON u.id = x.reviewed_by
+            WHERE x.user_id = ? ORDER BY x.submitted_at
+        `).all(userId).map((h) => ({
+            assignment: h.title ?? h.project_id,
+            handedInAt: iso(h.submitted_at),
+            ...review(h),
+            replacedAt: iso(h.replaced_at),
+            work: json(h.data),
+        })),
         uploadedFiles: db.prepare(`SELECT x.project_id, ${title}, x.media_id, x.mime, x.size, x.created_at FROM media_files x WHERE x.user_id = ?`)
             .all(userId).map((f) => ({
                 assignment: f.title ?? f.project_id,

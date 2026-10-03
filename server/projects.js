@@ -47,7 +47,8 @@ function assignmentSettings(value) {
 
 // The classes the user belongs to (as teacher or student) that the project is published to, with each
 // class's instructions, opening time and due date. Archived classes are left out (their publications
-// come back if the class is restored), and students don't see an assignment before it opens.
+// come back if the class is restored), and so are classes it was taken back from; students don't see
+// an assignment before it opens.
 function publishedClasses(user) {
     const teacher = user.role === "teacher";
     const rows = db.prepare(`
@@ -55,7 +56,7 @@ function publishedClasses(user) {
         FROM project_classes pc
         JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
         JOIN ${teacher ? "class_teachers" : "class_students"} m ON m.class_id = c.id AND m.user_id = ?
-        WHERE ? OR pc.opens_at IS NULL OR pc.opens_at <= ?
+        WHERE pc.unpublished_at IS NULL AND (? OR pc.opens_at IS NULL OR pc.opens_at <= ?)
         ORDER BY c.name COLLATE NOCASE
     `).all(user.id, teacher ? 1 : 0, Date.now());
 
@@ -85,27 +86,30 @@ function toProject(row, viewerId) {
     };
 }
 
-// Teachers see the built-in presets, their own projects and those published to classes they teach;
-// students see what's published to their classes and the assignments they made themselves
+// Which projects (`p`) a user can open. Teachers: the built-in presets, their own projects and those
+// published to classes they teach (also ones taken back since, so their hand-ins can still be reviewed).
+// Students: what's published to their classes and open by now, and the assignments they made themselves.
+const TEACHER_CAN_OPEN = `(p.built_in = 1 OR p.author_id = @user OR EXISTS (
+    SELECT 1 FROM project_classes pc JOIN class_teachers t ON t.class_id = pc.class_id
+    WHERE pc.project_id = p.id AND t.user_id = @user))`;
+const STUDENT_CAN_OPEN = `(p.author_id = @user OR EXISTS (
+    SELECT 1 FROM project_classes pc
+    JOIN class_students s ON s.class_id = pc.class_id
+    JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
+    WHERE pc.project_id = p.id AND s.user_id = @user AND pc.unpublished_at IS NULL
+      AND (pc.opens_at IS NULL OR pc.opens_at <= @now)))`;
+const canOpen = (user) => (user.role === "teacher" ? TEACHER_CAN_OPEN : STUDENT_CAN_OPEN);
+
 function visibleProjects(user) {
-    const rows = user.role === "teacher"
-        ? db.prepare(`
-            SELECT p.* FROM projects p
-            WHERE p.built_in = 1 OR p.author_id = ? OR EXISTS (
-                SELECT 1 FROM project_classes pc JOIN class_teachers t ON t.class_id = pc.class_id
-                WHERE pc.project_id = p.id AND t.user_id = ?)
-            ORDER BY p.title COLLATE NOCASE
-        `).all(user.id, user.id)
-        : db.prepare(`
-            SELECT p.* FROM projects p
-            WHERE p.author_id = ? OR EXISTS (
-                SELECT 1 FROM project_classes pc
-                JOIN class_students s ON s.class_id = pc.class_id
-                JOIN classes c ON c.id = pc.class_id AND c.archived_at IS NULL
-                WHERE pc.project_id = p.id AND s.user_id = ? AND (pc.opens_at IS NULL OR pc.opens_at <= ?))
-            ORDER BY p.title COLLATE NOCASE
-        `).all(user.id, user.id, Date.now());
-    return rows.map((row) => toProject(row, user.id));
+    return db.prepare(`SELECT p.* FROM projects p WHERE ${canOpen(user)} ORDER BY p.title COLLATE NOCASE`)
+        .all({ user: user.id, now: Date.now() })
+        .map((row) => toProject(row, user.id));
+}
+
+// Whether the user can open the project (it's among their visibleProjects), e.g. to save work on it
+export function canOpenProject(user, projectId) {
+    return Boolean(db.prepare(`SELECT 1 FROM projects p WHERE p.id = @id AND ${canOpen(user)}`)
+        .get({ id: projectId, user: user.id, now: Date.now() }));
 }
 
 // A project's fields from a request (column names); with `partial`, only those present. Null when invalid.
@@ -223,14 +227,21 @@ export function projectsRouter({ requireAuth }) {
     });
 
     // Deleting also unpublishes it and removes its starter media, and the author's own work on it (for a
-    // student's own assignment, that's all of it). Other students' saved work stays in their accounts.
+    // student's own assignment, that's all of it). An assignment other students saved or handed in work
+    // for can't be deleted: their work, hand-ins and marks would be left without it. Its author takes it
+    // back from the classes instead (PUT /:projectId/classes), which keeps all of that for the teachers.
     router.delete("/:projectId", wrap(async (req, res) => {
         const { projectId } = req.params;
         const project = authored(req);
         if (!project) return res.status(404).json({ error: "not_found" });
+        const { used } = db.prepare(`
+            SELECT EXISTS (SELECT 1 FROM project_work WHERE project_id = @id AND user_id != @user)
+                OR EXISTS (SELECT 1 FROM submissions WHERE project_id = @id AND user_id != @user) AS used
+        `).get({ id: projectId, user: req.user.id });
+        if (used) return res.status(409).json({ error: "assignment_has_work" });
         db.transaction(() => {
             db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
-            for (const table of ["project_work", "media_files", "submissions"]) {
+            for (const table of ["project_work", "media_files", "submissions", "submission_history"]) {
                 db.prepare(`DELETE FROM ${table} WHERE user_id = ? AND project_id = ?`).run(req.user.id, projectId);
             }
         })();
@@ -306,7 +317,9 @@ export function projectsRouter({ requireAuth }) {
     }));
 
     // Teachers set which of their active classes a project is open to. Classes they don't teach,
-    // and archived ones, are left alone, so co-teachers' other classes aren't affected.
+    // and archived ones, are left alone, so co-teachers' other classes aren't affected. A class left out
+    // is only marked as taken back: students no longer see the assignment, but its hand-ins and marks
+    // stay with the class, and publishing it there again brings back its instructions and dates.
     router.put("/:projectId/classes", (req, res) => {
         if (req.user.role !== "teacher") return res.status(403).json({ error: "forbidden" });
 
@@ -342,14 +355,24 @@ export function projectsRouter({ requireAuth }) {
                 INSERT OR IGNORE INTO project_classes (project_id, class_id, published_by, published_at)
                 VALUES (?, ?, ?, ?)
             `);
-            const remove = db.prepare("DELETE FROM project_classes WHERE project_id = ? AND class_id = ?");
+            const republish = db.prepare(`
+                UPDATE project_classes SET unpublished_at = NULL, published_by = ?, published_at = ?
+                WHERE project_id = ? AND class_id = ? AND unpublished_at IS NOT NULL
+            `);
+            const unpublish = db.prepare(`
+                UPDATE project_classes SET unpublished_at = ? WHERE project_id = ? AND class_id = ? AND unpublished_at IS NULL
+            `);
             const update = db.prepare(`
                 UPDATE project_classes SET instructions = ?, opens_at = ?, due_at = ? WHERE project_id = ? AND class_id = ?
             `);
             const now = Date.now();
             for (const classId of mine) {
-                if (wanted.has(classId)) add.run(projectId, classId, req.user.id, now);
-                else remove.run(projectId, classId);
+                if (wanted.has(classId)) {
+                    add.run(projectId, classId, req.user.id, now);
+                    republish.run(req.user.id, now, projectId, classId);
+                } else {
+                    unpublish.run(now, projectId, classId);
+                }
             }
             for (const [classId, { instructions, opensAt, dueAt }] of updates) {
                 update.run(instructions, opensAt, dueAt, projectId, classId);

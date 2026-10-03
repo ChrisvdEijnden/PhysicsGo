@@ -18,7 +18,7 @@ Physics modelling lessons: students sign in, work on assignments and hand them i
 | Students and teachers | Name, email address, role, school, password hash (argon2id), account created, last active, administrator flag, deactivated | `users`, `schools` |
 | Students and teachers | Class memberships and when they started; teachers' invitations of colleagues (email address) | `class_students`, `class_teachers`, `class_teacher_invites` |
 | Students (and teachers trying assignments) | Saved work: start values, model rules, graphs, measured points | `project_work` |
-| Students | Handed-in copies of their work, with the time | `submissions` |
+| Students | Handed-in copies of their work, with the time and the teacher's status, comment and mark; earlier hand-ins the teacher reviewed before the student handed in again | `submissions`, `submission_history` |
 | Students and teachers | Photos, videos, PDFs and Word files added to assignments | files under `PHYSICSGO_MEDIA_DIR`, listed in `media_files` |
 | Students and teachers | Addresses of websites shown in assignments (with the work, or as a teacher's starter media) | `project_work`, `project_media.href` |
 | Teachers | Assignments they wrote, due dates and instructions per class | `projects`, `project_classes` |
@@ -53,7 +53,7 @@ No special categories of personal data are processed. Most users are minors; the
 
 ## Rights of data subjects
 
-- Access and portability: *Settings → Download my data* gives a JSON file with everything stored about the user (uploaded files are listed and can be downloaded from the assignments).
+- Access and portability: *Settings → Download my data* gives a JSON file with everything stored about the user, including the teacher's feedback and marks on hand-ins (uploaded files are listed and can be downloaded from the assignments).
 - Rectification: name and email address on the profile page.
 - Erasure: *Settings → Delete account*; teachers can delete a student's account from their class; administrators can delete any account.
 - Other requests go to the school, which can ask an administrator to act.

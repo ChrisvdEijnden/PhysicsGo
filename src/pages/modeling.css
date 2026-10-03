@@ -1470,6 +1470,44 @@
     color: var(--color-text-secondary);
 }
 
+/* Earlier hand-ins the teacher reviewed, under the current feedback */
+:where(.modeling-page) .feedback-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px dashed var(--color-border);
+    font-family: "Figtree", sans-serif;
+    font-size: 13px;
+    text-align: left;
+    color: var(--color-text-primary);
+}
+
+:where(.modeling-page) .feedback-history p {
+    margin: 0;
+}
+
+:where(.modeling-page) .feedback-history ul {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+:where(.modeling-page) .feedback-history li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+:where(.modeling-page) .feedback-history-head {
+    color: var(--color-text-secondary);
+}
+
 :where(.modeling-page) .feedback-status {
     display: flex;
     flex-wrap: wrap;

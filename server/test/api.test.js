@@ -19,22 +19,26 @@ const env = {
     PHYSICSGO_BACKUP_DIR: path.join(dataDir, "backups"),
     // No built app is served during the tests
     PHYSICSGO_STATIC: path.join(dataDir, "no-app"),
+    // Small, so the test can fill it
+    PHYSICSGO_WORK_QUOTA_MB: "1",
     NODE_ENV: "test",
 };
 const BASE = `http://localhost:${port}/api`;
 let server;
 
-// One browser: remembers its session cookie like a real one
+// One browser: remembers its session cookie like a real one. A body is sent as JSON, or as it is
+// (a file) when it's bytes, with `type` as its content type.
 function client() {
     let cookie = "";
-    return async (method, url, body) => {
+    return async (method, url, body, type) => {
+        const file = body instanceof Uint8Array;
         const res = await fetch(BASE + url, {
             method,
             headers: {
-                ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+                ...(body === undefined ? {} : { "Content-Type": file ? type : "application/json" }),
                 ...(cookie ? { Cookie: cookie } : {}),
             },
-            body: body === undefined ? undefined : JSON.stringify(body),
+            body: body === undefined ? undefined : file ? body : JSON.stringify(body),
         });
         for (const header of res.headers.getSetCookie()) {
             const [pair] = header.split(";");
@@ -53,6 +57,9 @@ function teacherInvite(school) {
 
 const PASSWORD = "correct-horse-battery";
 const project = (title) => ({ title, explanation: "", start: null, model: null, estimatedTime: null, equipment: [] });
+const WORK = { start: "t = 0\n", model: "stop if t >= 1\n", steps: "", graphs: [], media: [] };
+// The start of a PNG file, enough for an upload
+const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 async function signUp(browser, code, name, email) {
     const res = await browser("POST", "/auth/register", { code, name, email, password: PASSWORD });
@@ -217,6 +224,31 @@ describe("classes, assignments and work", () => {
         assert.deepEqual((await student("GET", "/work/standard-freefall")).data.work, work);
     });
 
+    test("work and files are only saved for assignments the user can open, and work within their storage", async () => {
+        const madeUp = await student("PUT", "/work/made-up-assignment", { work: WORK, version: 0 });
+        assert.deepEqual([madeUp.status, madeUp.data.error], [404, "not_found"]);
+        const draft = (await teacher("POST", "/projects", project("Draft"))).data.project;
+        assert.equal((await student("PUT", `/work/${draft.id}`, { work: WORK, version: 0 })).status, 404);
+        assert.equal((await student("PUT", "/media/made-up-assignment/photo-1", PNG, "image/png")).status, 404);
+
+        // The test server allows 1 MB of saved work per account
+        const version = (await student("GET", "/work/standard-freefall")).data.version;
+        const big = await student("PUT", "/work/standard-freefall", { work: { ...WORK, model: "x".repeat(1_200_000) }, version });
+        assert.deepEqual([big.status, big.data.error], [413, "storage_full"]);
+        assert.equal((await student("GET", "/work/standard-freefall")).data.version, version);
+    });
+
+    test("teachers see a student's files only for assignments in their classes", async () => {
+        assert.equal((await student("PUT", "/media/standard-freefall/photo-1", PNG, "image/png")).status, 201);
+        assert.equal((await teacher("GET", `/media/standard-freefall/photo-1?user=${studentId}`)).status, 200);
+
+        const own = (await student("POST", "/projects", project("My own experiment"))).data.project;
+        assert.equal((await student("PUT", `/media/${own.id}/photo-2`, PNG, "image/png")).status, 201);
+        assert.equal((await student("GET", `/media/${own.id}/photo-2`)).status, 200);
+        assert.equal((await teacher("GET", `/media/${own.id}/photo-2?user=${studentId}`)).status, 404);
+        assert.equal((await student("DELETE", `/projects/${own.id}`)).status, 200);
+    });
+
     test("handing in needs the assignment to be published, and the teacher sees the handed-in copy", async () => {
         const own = (await student("POST", "/projects", project("Not an assignment"))).data.project;
         await student("PUT", `/work/${own.id}`, { work: { start: "", model: "", steps: "", graphs: [], media: [] }, version: 0 });
@@ -271,15 +303,63 @@ describe("classes, assignments and work", () => {
         assert.equal((await student("DELETE", "/work/standard-freefall/submission")).data.error, "already_reviewed");
         assert.equal((await student("GET", "/work")).data.work.find((w) => w.projectId === "standard-freefall").status, "returned");
 
-        // Handing in again puts it back to "handed in"; the comment stays until the teacher changes it
+        // Handing in again after a review starts a new hand-in without feedback or mark; the reviewed one
+        // is kept with its review. Taking the new one back makes the reviewed one the hand-in again.
         const version = (await student("GET", "/work/standard-freefall")).data.version;
         const again = await student("POST", "/work/standard-freefall/submit", { version });
-        assert.deepEqual([again.data.submission.status, again.data.submission.feedback], ["handed_in", "Check your units"]);
+        const { status, feedback, mark } = again.data.submission;
+        assert.deepEqual([status, feedback, mark], ["handed_in", "", null]);
+        assert.deepEqual(again.data.history.map((h) => [h.status, h.feedback, h.mark]), [["returned", "Check your units", 7.5]]);
+        const back = await student("DELETE", "/work/standard-freefall/submission");
+        assert.deepEqual([back.data.submission.status, back.data.submission.feedback, back.data.history], ["returned", "Check your units", []]);
+        assert.equal((await student("POST", "/work/standard-freefall/submit", { version })).status, 200);
 
         await teacher("PUT", url, { status: "approved", feedback: "Well done", mark: 8 });
         const progress = (await teacher("GET", `/classes/${classId}/progress`)).data.projects;
         const row = progress.find((p) => p.projectId === "standard-freefall").students.find((s) => s.id === studentId);
         assert.deepEqual([row.status, row.mark], ["approved", 8]);
+
+        // An approved hand-in is final: the mark stays with the work it was given for
+        const changed = await student("PUT", "/work/standard-freefall", { work: { ...WORK, model: "x = 999\n" }, version });
+        const refused = await student("POST", "/work/standard-freefall/submit", { version: changed.data.version });
+        assert.deepEqual([refused.status, refused.data.error], [409, "already_approved"]);
+        const reviewed = (await teacher("GET", `/classes/${classId}/students/${studentId}/work/standard-freefall`)).data;
+        assert.deepEqual([reviewed.submission.mark, reviewed.submission.work.model], [8, "stop als t >= 1\n"]);
+        assert.deepEqual(reviewed.history.map((h) => h.feedback), ["Check your units"]);
+
+        // The student's data export has the reviews too
+        const exported = (await student("GET", "/auth/me/export")).data;
+        const handedIn = exported.handedIn.find((h) => h.assignment === "Standard Freefall");
+        assert.deepEqual([handedIn.status, handedIn.mark, handedIn.feedback, handedIn.reviewedBy], ["approved", 8, "Well done", "Teacher Three"]);
+        assert.deepEqual(exported.earlierHandIns.map((h) => [h.status, h.feedback]), [["returned", "Check your units"]]);
+    });
+
+    test("an assignment taken back keeps its hand-ins and settings; one students worked on can't be deleted", async () => {
+        const own = (await teacher("POST", "/projects", project("Pendulum"))).data.project;
+        const dueAt = Date.now() + 24 * 60 * 60 * 1000;
+        await teacher("PUT", `/projects/${own.id}/classes`, {
+            classIds: [classId], settings: { [classId]: { instructions: "Use a 1 m string", opensAt: null, dueAt } },
+        });
+        const saved = await student("PUT", `/work/${own.id}`, { work: WORK, version: 0 });
+        assert.equal((await student("POST", `/work/${own.id}/submit`, { version: saved.data.version })).status, 200);
+
+        const deleted = await teacher("DELETE", `/projects/${own.id}`);
+        assert.deepEqual([deleted.status, deleted.data.error], [409, "assignment_has_work"]);
+
+        // Taken back: students no longer see it or save to it; the teacher still sees the hand-in
+        await teacher("PUT", `/projects/${own.id}/classes`, { classIds: [] });
+        assert.ok(!(await student("GET", "/projects")).data.projects.some((p) => p.id === own.id));
+        assert.equal((await student("PUT", `/work/${own.id}`, { work: WORK, version: saved.data.version })).status, 404);
+        const listed = (await teacher("GET", `/classes/${classId}/progress`)).data.projects.find((p) => p.projectId === own.id);
+        assert.equal(listed.published, false);
+        assert.equal(listed.students.find((s) => s.id === studentId).status, "handed_in");
+        assert.equal((await teacher("GET", `/classes/${classId}/students/${studentId}/work/${own.id}`)).status, 200);
+
+        // Published again, it's back with its instructions and due date
+        const again = await teacher("PUT", `/projects/${own.id}/classes`, { classIds: [classId] });
+        assert.deepEqual(again.data.classes.map((c) => [c.instructions, c.dueAt]), [["Use a 1 m string", dueAt]]);
+        assert.ok((await student("GET", "/projects")).data.projects.some((p) => p.id === own.id));
+        await teacher("PUT", `/projects/${own.id}/classes`, { classIds: [] });
     });
 
     test("students see their classes with teachers and assignments, and can leave one", async () => {
@@ -297,10 +377,27 @@ describe("classes, assignments and work", () => {
         assert.equal((await student("DELETE", `/classes/mine/${classId}`)).status, 404);
     });
 
-    test("a teacher can delete a student's account from the class, with all their work", async () => {
+    test("a class's owner can delete a student's account, unless other teachers teach that student", async () => {
         const before = await teacher("GET", `/classes/${classId}`);
         const b = before.data.class.students.find((s) => s.email === "b@school.test");
         assert.equal((await classmate("DELETE", `/classes/${classId}/students/${b.id}/account`)).status, 403);
+
+        // A co-teacher isn't the owner
+        const colleague = client();
+        const colleagueId = (await signUp(colleague, teacherInvite(), "Teacher Five", "five@school.test")).id;
+        await teacher("POST", `/classes/${classId}/teachers`, { email: "five@school.test" });
+        await colleague("POST", `/classes/invitations/${classId}/accept`);
+        const notOwner = await colleague("DELETE", `/classes/${classId}/students/${b.id}/account`);
+        assert.deepEqual([notOwner.status, notOwner.data.error], [403, "owner_only"]);
+
+        // The student is also in a class the owner doesn't teach: that work isn't the owner's to delete
+        const other = (await colleague("POST", "/classes", { name: "NLT" })).data.class;
+        await classmate("POST", "/classes/join", { code: other.code });
+        const refused = await teacher("DELETE", `/classes/${classId}/students/${b.id}/account`);
+        assert.deepEqual([refused.status, refused.data.error, refused.data.classes], [409, "student_in_other_classes", ["NLT"]]);
+        await classmate("DELETE", `/classes/mine/${other.id}`);
+        await colleague("DELETE", `/classes/${classId}/teachers/${colleagueId}`);
+
         const res = await teacher("DELETE", `/classes/${classId}/students/${b.id}/account`);
         assert.equal(res.status, 200);
         assert.ok(!res.data.class.students.some((s) => s.id === b.id));

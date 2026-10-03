@@ -27,7 +27,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "Your account: name, email address, your school, whether you're a student or teacher, your password (only as a secure hash, never readable), when you created the account and when you last used it.",
                     "Your classes: the classes you're in and when you joined; for teachers, the classes they teach and the email addresses of colleagues they invited.",
-                    "Your work: start values, model rules, graphs, measured points, the photos, videos, PDFs and web addresses you add, and the work you hand in, with dates.",
+                    "Your work: start values, model rules, graphs, measured points, the photos, videos, PDFs and web addresses you add, and the work you hand in, with dates and your teacher's feedback and marks on it.",
                     "Signed-in browsers: when each one signed in and was last used, and which browser and system it is. Changing your password signs out all other browsers.",
                     "Changes made by teachers and administrators: when a teacher or administrator deletes or changes an account, a class or a school (for example removes a student from a class or makes a password reset code), who did it, when, and the name and email address of the account it was about. Deleting your own account is recorded without your name.",
                 ],
@@ -101,7 +101,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 items: [
                     "Je account: naam, e-mailadres, je school, of je leerling of docent bent, je wachtwoord (alleen als veilige hash, nooit leesbaar), wanneer je het account hebt gemaakt en wanneer je het voor het laatst gebruikte.",
                     "Je klassen: de klassen waarin je zit en sinds wanneer; bij docenten de klassen die ze lesgeven en de e-mailadressen van collega's die ze uitnodigden.",
-                    "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's, video's, pdf's en webadressen die je toevoegt en het werk dat je inlevert, met data.",
+                    "Je werk: startwaarden, modelregels, grafieken, gemeten punten, de foto's, video's, pdf's en webadressen die je toevoegt en het werk dat je inlevert, met data en de feedback en cijfers van je docent daarop.",
                     "Ingelogde browsers: wanneer elke browser inlogde en voor het laatst gebruikt werd, en welke browser en welk systeem het is. Als je je wachtwoord wijzigt, worden alle andere browsers uitgelogd.",
                     "Wijzigingen door docenten en beheerders: als een docent of beheerder een account, klas of school verwijdert of wijzigt (bijvoorbeeld een leerling uit een klas haalt of een herstelcode voor een wachtwoord maakt), wie dat deed, wanneer, en de naam en het e-mailadres van het account waar het om ging. Als je je eigen account verwijdert, wordt dat zonder je naam vastgelegd.",
                 ],

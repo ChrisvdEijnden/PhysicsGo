@@ -30,9 +30,16 @@ export interface Submission extends Feedback {
     submittedAt: number;
 }
 
+// A hand-in the teacher had reviewed before the student handed in again, with that review
+export interface EarlierHandIn extends Submission {
+    replacedAt: number;
+}
+
 export interface OpenedWork {
     work: ProjectWork | null;
     submission: Submission | null;
+    // Earlier reviewed hand-ins, newest first
+    history: EarlierHandIn[];
     // The server version the work is based on
     version: number;
     // This browser has changes the server hasn't got yet; they're sent right away
@@ -49,6 +56,7 @@ interface ServerWork {
     work: unknown;
     version: number;
     submission?: Submission | null;
+    history?: EarlierHandIn[];
 }
 
 export async function openWork(projectId: string): Promise<OpenedWork> {
@@ -56,20 +64,21 @@ export async function openWork(projectId: string): Promise<OpenedWork> {
     const sync = loadSyncState(projectId);
     const { ok, data } = await api<ServerWork>(`/work/${projectId}`);
     if (!ok || typeof data.version !== "number") {
-        return { work: local, submission: null, version: sync?.version ?? 0, unsynced: false, offline: true, conflictWith: null };
+        return { work: local, submission: null, history: [], version: sync?.version ?? 0, unsynced: false, offline: true, conflictWith: null };
     }
 
     // Local changes made on top of the server's current version (e.g. while offline) are the newest.
     // Work saved in this browser before it went to the server counts as such when the server has none.
     const localIsNewer = local && (sync ? sync.dirty && sync.version === data.version : data.version === 0);
     const submission = data.submission ?? null;
-    if (localIsNewer) return { work: local, submission, version: data.version, unsynced: true, offline: false, conflictWith: null };
+    const history = data.history ?? [];
+    if (localIsNewer) return { work: local, submission, history, version: data.version, unsynced: true, offline: false, conflictWith: null };
 
     const work = normalizeWork(data.work);
     // Unsaved local changes on top of an older version: neither copy is thrown away without asking
     if (local && sync?.dirty && work) {
         return {
-            work: local, submission, version: sync.version, unsynced: false, offline: false,
+            work: local, submission, history, version: sync.version, unsynced: false, offline: false,
             conflictWith: { work, version: data.version },
         };
     }
@@ -77,7 +86,7 @@ export async function openWork(projectId: string): Promise<OpenedWork> {
         saveProjectWork(projectId, work);
         saveSyncState(projectId, { version: data.version, dirty: false });
     }
-    return { work, submission, version: data.version, unsynced: false, offline: false, conflictWith: null };
+    return { work, submission, history, version: data.version, unsynced: false, offline: false, conflictWith: null };
 }
 
 // Projects open in a workspace right now; their own useWorkSync saves them
@@ -129,6 +138,10 @@ export function resumeSaving() {
 const LOCAL_DELAY_MS = 300;
 const SAVE_DELAY_MS = 800;
 const RETRY_MS = 10_000;
+// Saving can't succeed for now: the assignment was taken back, or the account's storage is full. It's
+// tried again now and then (space may have been freed), and the changes stay in this browser meanwhile.
+const STUCK_RETRY_MS = 60_000;
+export type SaveProblem = "storage_full" | "not_available";
 
 // Saves a project's work in the background: to this browser, then to the server after a short
 // pause in typing. Another tab or device saving in between is a conflict.
@@ -140,6 +153,8 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
     const [version, setVersion] = useState(opened.version);
     // This browser's storage is full (or blocked), so work that isn't on the server yet isn't kept anywhere
     const [localFailed, setLocalFailed] = useState(false);
+    // Why the server keeps refusing to save, when it's not something that passes by itself
+    const [problem, setProblem] = useState<SaveProblem | null>(null);
     const sync = useRef({
         version: opened.version,
         pending: opened.conflictWith ? opened.work : null as ProjectWork | null,
@@ -185,6 +200,7 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         if (ok && typeof data.version === "number") {
             s.version = data.version;
             setVersion(data.version);
+            setProblem(null);
             if (s.pending === work) {
                 s.pending = null;
                 saveSyncState(projectId, { version: s.version, dirty: false });
@@ -202,8 +218,11 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
             setStatus("conflict");
             return;
         }
+        const stuck: SaveProblem | null = data.error === "storage_full" ? "storage_full"
+            : data.error === "not_found" ? "not_available" : null;
+        setProblem(stuck);
         setStatus(data.error === "network" ? "offline" : "error");
-        s.timer = window.setTimeout(flush, RETRY_MS);
+        s.timer = window.setTimeout(flush, stuck ? STUCK_RETRY_MS : RETRY_MS);
     }, [projectId, writeLocal]);
 
     const save = useCallback((work: ProjectWork) => {
@@ -270,5 +289,5 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         };
     }, [flush]);
 
-    return { status, conflict, version, localFailed, save, saveNow, keepMine, takeTheirs };
+    return { status, conflict, version, localFailed, problem, save, saveNow, keepMine, takeTheirs };
 }

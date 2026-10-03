@@ -2,19 +2,19 @@ import type { CSSProperties } from "react";
 
 import ChevronLeft16px from "../../assets/icons/chevron-left-16px.svg";
 import ChevronRight16px from "../../assets/icons/chevron-right-16px.svg";
-import { FeedbackForm, FeedbackView } from "../../components/Feedback";
+import { EarlierFeedback, FeedbackForm, FeedbackView } from "../../components/Feedback";
 import Markdown from "../../components/Markdown";
 import type { Project } from "../../data/Projects.tsx";
 import type { Publication } from "../../lib/usePublished";
 import { useTranslation } from "../../lib/useTranslations";
-import type { Submission } from "../../lib/workSync";
+import type { EarlierHandIn, Submission } from "../../lib/workSync";
 import { AssignmentInfo } from "./parts";
 import type { Review } from "./parts";
 
 // The left column: the assignment's explanation, with the teacher's feedback (editable when
-// reviewing, read-only for the student) and the student's due date and instructions. It folds away to
-// a narrow strip.
-export default function ExplanationPanel({ project, style, collapsed, onToggle, review, student, submission, publications }: {
+// reviewing, read-only for the student), feedback on earlier hand-ins, and the student's due date and
+// instructions. It folds away to a narrow strip.
+export default function ExplanationPanel({ project, style, collapsed, onToggle, review, student, submission, history, publications }: {
     project: Project | undefined;
     style: CSSProperties | undefined;
     collapsed: boolean;
@@ -23,6 +23,8 @@ export default function ExplanationPanel({ project, style, collapsed, onToggle, 
     // A student working on the assignment (not a teacher, and not reviewing)
     student: boolean;
     submission: Submission | null;
+    // Earlier hand-ins the teacher reviewed (the student's own)
+    history: EarlierHandIn[];
     publications: Publication[];
 }) {
     const { t } = useTranslation();
@@ -43,7 +45,9 @@ export default function ExplanationPanel({ project, style, collapsed, onToggle, 
             </button>
             <div className="explanation" id="explanation-content">
                 {review?.feedback && <FeedbackForm url={review.feedbackUrl} initial={review.feedback} onSaved={review.onFeedback}/>}
+                {review && <EarlierFeedback history={review.history}/>}
                 {project && student && submission && <FeedbackView feedback={submission}/>}
+                {project && student && <EarlierFeedback history={history}/>}
                 {project && student && <AssignmentInfo publications={publications}/>}
                 {project && <Markdown text={project.explanation}/>}
             </div>

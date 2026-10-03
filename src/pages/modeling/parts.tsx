@@ -6,7 +6,7 @@ import type { Result } from "../../lib/api";
 import { formatDueDate } from "../../lib/formatDueDate";
 import type { Publication } from "../../lib/usePublished";
 import { useTranslation } from "../../lib/useTranslations";
-import type { Feedback, SaveStatus } from "../../lib/workSync";
+import type { EarlierHandIn, Feedback, SaveStatus } from "../../lib/workSync";
 
 // Smaller pieces of the modeling page: the tabs on narrow screens, a student's assignment details,
 // the bar above a student's work that a teacher is reviewing, a student's editable assignment name,
@@ -22,6 +22,8 @@ export interface Review {
     submittedAt: number | null;
     // The hand-in's feedback, which the teacher edits in the explanation column
     feedback: Feedback | null;
+    // Hand-ins the teacher reviewed before the student handed in again
+    history: EarlierHandIn[];
     feedbackUrl: string;
     onFeedback: (feedback: Feedback) => void;
     showing: "submission" | "work";

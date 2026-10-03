@@ -322,6 +322,29 @@ const MIGRATIONS = [
     );
     CREATE INDEX audit_log_at ON audit_log(at);
     `,
+    // 19: taking an assignment back from a class keeps its row (with that class's instructions and dates),
+    // so its hand-ins and marks stay reachable and publishing it again brings everything back. A hand-in
+    // that's handed in again after the teacher reviewed it keeps that review in submission_history.
+    // The indexes serve the checks for other students' work on an assignment.
+    `
+    ALTER TABLE project_classes ADD COLUMN unpublished_at INTEGER;
+    CREATE TABLE submission_history (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        project_id TEXT NOT NULL,
+        data TEXT NOT NULL,
+        work_version INTEGER NOT NULL,
+        submitted_at INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        feedback TEXT NOT NULL,
+        mark REAL,
+        reviewed_at INTEGER,
+        reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        replaced_at INTEGER NOT NULL
+    );
+    CREATE INDEX submission_history_work ON submission_history(user_id, project_id);
+    CREATE INDEX project_work_project ON project_work(project_id);
+    CREATE INDEX submissions_project ON submissions(project_id);
+    `,
 ];
 
 const current = db.pragma("user_version", { simple: true });
