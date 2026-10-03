@@ -33,7 +33,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 ],
                 paragraphs: [
                     "The server also keeps a technical log of requests (time, which part of PhysicsGo, whether it worked, how long it took), without names, email addresses, internet addresses or anything else about who made them.",
-                    "Nothing else. PhysicsGo has no advertising, tracking or analytics and uses no services of other companies: fonts and all code come from PhysicsGo itself, except websites added to an assignment (below). It uses one cookie, to keep you signed in. Your language, theme and work that isn't saved yet are kept in your browser.",
+                    "Nothing else. PhysicsGo has no advertising, tracking or analytics and uses no services of other companies: fonts and all code come from PhysicsGo itself, except websites added to an assignment (below). It uses one cookie, to keep you signed in. Your browser keeps your language and theme, and while you're signed in a copy of your work, so nothing is lost if the connection drops. Signing out removes that copy, and so does someone else signing in on the same browser; only changes that couldn't be saved yet stay, until you sign in there again. Photos and videos stay in your browser only until they're uploaded.",
                 ],
             },
             {
@@ -107,7 +107,7 @@ export const PRIVACY: Record<Language, { title: string; intro: string; sections:
                 ],
                 paragraphs: [
                     "De server houdt ook een technisch logboek van verzoeken bij (tijd, welk deel van PhysicsGo, of het lukte, hoe lang het duurde), zonder namen, e-mailadressen, internetadressen of iets anders over wie ze deed.",
-                    "Verder niets. PhysicsGo heeft geen advertenties, tracking of analytics en gebruikt geen diensten van andere bedrijven: lettertypen en alle code komen van PhysicsGo zelf, behalve websites die aan een opdracht zijn toegevoegd (hieronder). Er is één cookie, om je ingelogd te houden. Je taal, weergave en werk dat nog niet is opgeslagen, blijven in je browser.",
+                    "Verder niets. PhysicsGo heeft geen advertenties, tracking of analytics en gebruikt geen diensten van andere bedrijven: lettertypen en alle code komen van PhysicsGo zelf, behalve websites die aan een opdracht zijn toegevoegd (hieronder). Er is één cookie, om je ingelogd te houden. Je browser bewaart je taal en weergave, en zolang je bent ingelogd een kopie van je werk, zodat er niets verloren gaat als de verbinding wegvalt. Uitloggen verwijdert die kopie, en dat gebeurt ook als iemand anders in dezelfde browser inlogt; alleen wijzigingen die nog niet konden worden opgeslagen blijven, tot je daar weer inlogt. Foto's en video's blijven alleen in je browser tot ze zijn geüpload.",
                 ],
             },
             {

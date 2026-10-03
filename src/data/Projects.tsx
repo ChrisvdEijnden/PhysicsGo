@@ -49,7 +49,8 @@ const WORK_KEY = "physicsgo_project_work";
 // Per project: the server version the local copy is based on, and whether it has unsaved changes
 const SYNC_KEY = "physicsgo_project_sync";
 
-const scoped = (key: string) => `${key}:${storageScope()}`;
+const scopedFor = (key: string, scope: string | null) => `${key}:${scope}`;
+const scoped = (key: string) => scopedFor(key, storageScope());
 
 function readStore<T>(key: string): Record<string, T> {
     try {
@@ -96,9 +97,49 @@ export function forgetLocalWork() {
     }
 }
 
-// Switches this browser's saved work to the signed-in account (null when signed out)
+// Removes this browser's copy of an account's (`scope`'s) work where the server has it. Changes the
+// server hasn't got stay: made offline, or from before work was saved online. They're sent when that
+// account signs in on this browser again.
+export function forgetSavedWork(scope: string) {
+    try {
+        const work = readStore<unknown>(scopedFor(WORK_KEY, scope));
+        const sync = readStore<SyncState>(scopedFor(SYNC_KEY, scope));
+        const unsaved = new Set(Object.keys(work).filter((id) => sync[id]?.dirty !== false));
+        const keep = <T,>(entries: Record<string, T>) => Object.fromEntries(Object.entries(entries).filter(([id]) => unsaved.has(id)));
+        for (const [key, kept] of [[WORK_KEY, keep(work)], [SYNC_KEY, keep(sync)]] as const) {
+            if (Object.keys(kept).length > 0) localStorage.setItem(scopedFor(key, scope), JSON.stringify(kept));
+            else localStorage.removeItem(scopedFor(key, scope));
+        }
+    } catch {
+        // Storage unavailable: there's nothing stored either
+    }
+}
+
+// The other accounts that have work kept in this browser
+function otherStorageScopes(current: string | null): string[] {
+    const scopes = new Set<string>();
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i) ?? "";
+            for (const prefix of [WORK_KEY, SYNC_KEY]) {
+                if (key.startsWith(`${prefix}:`)) scopes.add(key.slice(prefix.length + 1));
+            }
+        }
+    } catch {
+        // Storage unavailable: there's nothing stored either
+    }
+    if (current) scopes.delete(current);
+    return [...scopes];
+}
+
+// Switches this browser's saved work to the signed-in account (null when signed out). When it's
+// someone else than before, whatever earlier accounts left here that the server has goes, so on a
+// shared computer the next person doesn't find the previous one's work (also when they didn't sign out).
 export function setStorageUser(userId: number | null) {
-    if (setStorageScope(userId) && userId !== null) adoptLegacyWork();
+    if (setStorageScope(userId) && userId !== null) {
+        adoptLegacyWork();
+        for (const scope of otherStorageScopes(storageScope())) forgetSavedWork(scope);
+    }
 }
 
 // "embed": a website, shown in a frame (href); it has no file

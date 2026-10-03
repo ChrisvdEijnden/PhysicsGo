@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { api } from "./api";
-import { loadMediaFile, mediaKey } from "./mediaStore";
+import { deleteMediaFile, loadMediaFile, mediaKey, scopeMediaKeys } from "./mediaStore";
 import { mediaOnServer, uploadMedia } from "./mediaServer";
 import { loadProjectWork, loadSyncState, localWorkIds, normalizeWork, saveProjectWork, saveSyncState } from "../data/Projects";
 import type { ProjectWork, SavedMedia } from "../data/Projects";
 
-// Work is saved on the server. This browser keeps a copy per account, so work done offline
-// isn't lost and is sent once the server can be reached again.
+// Work is saved on the server. While someone is signed in, this browser keeps a copy of their work, so
+// work done offline isn't lost and is sent once the server can be reached again. Signing out (and someone
+// else signing in) removes the copy of what the server has; media files stay only until they're uploaded.
 
 export type SaveStatus = "saved" | "saving" | "offline" | "error" | "conflict";
 
@@ -91,36 +92,65 @@ export async function openWork(projectId: string): Promise<OpenedWork> {
 
 // Projects open in a workspace right now; their own useWorkSync saves them
 const openProjects = new Set<string>();
-let syncingAll = false;
+// The open workspaces' "save now", so signing out can wait until their work is on the server
+const openSavers = new Set<() => Promise<unknown>>();
+let syncing: Promise<void> | null = null;
 
 // Sends the work of every project this browser has changes for that the server hasn't got (made
 // offline, or from before work was saved online), so it gets there even if the project isn't opened
-// again. Conflicts wait until the project is opened, where the student chooses.
-export async function syncLocalWork() {
-    if (syncingAll) return;
-    syncingAll = true;
-    try {
-        for (const projectId of localWorkIds()) {
-            const sync = loadSyncState(projectId);
-            if (openProjects.has(projectId) || (sync && !sync.dirty)) continue;
-            const opened = await openWork(projectId);
-            if (opened.offline) break;
-            if (!opened.unsynced || !opened.work) continue;
-            const { ok, data } = await api<{ version: number }>(`/work/${projectId}`, "PUT", { work: opened.work, version: opened.version });
-            if (ok && typeof data.version === "number") saveSyncState(projectId, { version: data.version, dirty: false });
-            await uploadMissingMedia(projectId, opened.work.media);
-        }
-    } finally {
-        syncingAll = false;
+// again. Conflicts wait until the project is opened, where the student chooses. A call while this runs
+// waits for the same run.
+export function syncLocalWork(): Promise<void> {
+    syncing ??= sendLocalWork().finally(() => {
+        syncing = null;
+    });
+    return syncing;
+}
+
+async function sendLocalWork() {
+    for (const projectId of localWorkIds()) {
+        const sync = loadSyncState(projectId);
+        if (openProjects.has(projectId) || (sync && !sync.dirty)) continue;
+        const opened = await openWork(projectId);
+        if (opened.offline) break;
+        if (!opened.unsynced || !opened.work) continue;
+        const { ok, data } = await api<{ version: number }>(`/work/${projectId}`, "PUT", { work: opened.work, version: opened.version });
+        if (ok && typeof data.version === "number") saveSyncState(projectId, { version: data.version, dirty: false });
+        await uploadMissingMedia(projectId, opened.work.media);
     }
+}
+
+// Saves everything this browser has that the server hasn't: the open workspaces' latest changes and
+// other projects' unsent work. For signing out.
+export async function saveAllWork() {
+    await Promise.all([...openSavers].map((save) => save()));
+    await syncLocalWork();
 }
 
 // Media files only this browser has are sent to the server
 export async function uploadMissingMedia(projectId: string, media: SavedMedia[]) {
     for (const item of media) {
-        if (item.source === "project") continue;
-        const file = await loadMediaFile(mediaKey(projectId, item.id)).catch(() => undefined);
-        if (file && (await mediaOnServer(projectId, item.id)) === false) await uploadMedia(projectId, item.id, file);
+        if (item.source !== "project") await sendLocalMedia(mediaKey(projectId, item.id), projectId, item.id);
+    }
+}
+
+// Makes sure the server has this browser's copy of a file (`key` in the media store; `file` when it's at
+// hand), then removes that copy: files are large, and on a shared computer they'd stay for whoever uses
+// it next. The copy stays when the server can't be reached or won't take the file.
+export async function sendLocalMedia(key: string, projectId: string, mediaId: string, file?: Blob) {
+    const local = file ?? await loadMediaFile(key).catch(() => undefined);
+    if (!local) return;
+    const onServer = await mediaOnServer(projectId, mediaId);
+    const stored = onServer === true || (onServer === false && (await uploadMedia(projectId, mediaId, local)).ok);
+    if (stored) await deleteMediaFile(key).catch(() => undefined);
+}
+
+// Goes through every file the signed-in account (`scope`) keeps in this browser, e.g. ones kept before
+// files were removed once uploaded
+export async function tidyLocalMedia(scope: string) {
+    for (const key of await scopeMediaKeys(scope)) {
+        const [, projectId, mediaId] = key.split("/");
+        if (projectId && mediaId) await sendLocalMedia(key, projectId, mediaId);
     }
 }
 
@@ -247,6 +277,14 @@ export function useWorkSync(projectId: string | null, opened: OpenedWork) {
         }
         return { saved: !s.pending && !s.inFlight, version: s.version };
     }, [flush]);
+
+    useEffect(() => {
+        if (!projectId) return;
+        openSavers.add(saveNow);
+        return () => {
+            openSavers.delete(saveNow);
+        };
+    }, [projectId, saveNow]);
 
     // "Keep mine": save this browser's work over the newer version
     const keepMine = useCallback(() => {

@@ -1,6 +1,6 @@
-// Media files (videos, images) added to projects, kept on this device. They're too large for
-// localStorage, so they live in IndexedDB; the rest of the project (points, settings) stays in
-// localStorage and refers to a file by its key. Keys start with the account's storage scope.
+// Media files (videos, images) added to projects, kept on this device until the server has them
+// (see lib/workSync). They're too large for localStorage, so they live in IndexedDB; the rest of the
+// project (points, settings) refers to a file by its key. Keys start with the account's storage scope.
 
 import { storageScope } from "./storageScope";
 
@@ -45,6 +45,13 @@ export function loadMediaFile(key: string): Promise<Blob | undefined> {
 
 export function deleteMediaFile(key: string): Promise<void> {
     return withStore("readwrite", (store) => store.delete(key));
+}
+
+// The keys of the files one account (`scope`) keeps on this device
+export async function scopeMediaKeys(scope: string): Promise<string[]> {
+    const keys = await withStore<IDBValidKey[]>("readonly", (store) => store.getAllKeys(IDBKeyRange.bound(`${scope}/`, `${scope}/￿`)))
+        .catch(() => [] as IDBValidKey[]);
+    return keys.map(String);
 }
 
 // Removes every file one account (`scope`) kept on this device, e.g. when the account is deleted

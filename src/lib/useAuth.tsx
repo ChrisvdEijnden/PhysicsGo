@@ -2,10 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { ReactNode } from "react";
 import { api, errorOf, onSessionEnded } from "./api";
 import type { Result } from "./api";
-import { forgetLocalWork, setStorageUser } from "../data/Projects";
+import { forgetLocalWork, forgetSavedWork, setStorageUser } from "../data/Projects";
 import { deleteScopeMedia } from "./mediaStore";
 import { storageScope } from "./storageScope";
-import { resumeSaving, syncLocalWork } from "./workSync";
+import { resumeSaving, saveAllWork, syncLocalWork, tidyLocalMedia } from "./workSync";
+
+// Signing out waits this long at most for the latest work to reach the server
+const SIGN_OUT_SAVE_MS = 8000;
 import { useRefreshOnReturn } from "./useRefreshOnReturn";
 
 export type Role = "student" | "teacher";
@@ -124,13 +127,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const tellOtherTabs = useCallback(() => channel.current?.postMessage("changed"), []);
 
     // Work this browser has that the server hasn't (made offline, or from before work was saved online)
-    // is sent after signing in and whenever the connection comes back
+    // is sent after signing in and whenever the connection comes back. Then files this browser still
+    // keeps that the server has are removed from it.
     const userId = user?.id ?? null;
     useEffect(() => {
         if (userId === null) return;
-        syncLocalWork();
-        window.addEventListener("online", syncLocalWork);
-        return () => window.removeEventListener("online", syncLocalWork);
+        const scope = storageScope();
+        syncLocalWork().then(() => {
+            if (scope) return tidyLocalMedia(scope);
+        });
+        const onOnline = () => syncLocalWork();
+        window.addEventListener("online", onOnline);
+        return () => window.removeEventListener("online", onOnline);
     }, [userId]);
 
     // Shared by every call that returns the updated account
@@ -164,7 +172,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         [withUser]
     );
 
+    // The latest work goes to the server first (for a while at most); then this browser's copy of
+    // everything the server has is removed, so whoever uses this computer next finds nothing of this
+    // account. Changes that couldn't be saved stay, and are sent when the account signs in here again.
     const logout = useCallback(async () => {
+        const scope = storageScope();
+        if (scope) {
+            await Promise.race([
+                saveAllWork().then(() => tidyLocalMedia(scope)),
+                new Promise((resolve) => setTimeout(resolve, SIGN_OUT_SAVE_MS)),
+            ]);
+            forgetSavedWork(scope);
+        }
         await api("/auth/logout", "POST");
         applyUser(null);
         tellOtherTabs();

@@ -10,14 +10,15 @@ import { safeEmbedSrc } from "../../lib/embeds";
 import type { Embed } from "../../lib/embeds";
 import { deleteServerMedia, mediaOnServer, mediaUrl, projectMediaUrl, uploadMedia, urlExists } from "../../lib/mediaServer";
 import { deleteMediaFile, loadMediaFile, mediaKey, saveMediaFile } from "../../lib/mediaStore";
+import { sendLocalMedia } from "../../lib/workSync";
 import { ALL_MEDIA_ACCEPT, MAX_PANELS, inferMediaCategory, nextVarName, toSaved } from "./media";
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 /**
  * The photos, videos, documents and websites in the right-hand column. Their points and settings are
- * saved with the work (through `onChange`); the files themselves in this browser (IndexedDB) and on
- * the server.
+ * saved with the work (through `onChange`); the files themselves on the server, and in this browser
+ * (IndexedDB) only until the server has them.
  */
 export function useMediaPanels({ project, initialMedia, reviewedStudent, noSaving, graphCount, onChange }: {
     project: Project | undefined;
@@ -48,8 +49,9 @@ export function useMediaPanels({ project, initialMedia, reviewedStudent, noSavin
         itemsRef.current = mediaItems;
     }, [mediaItems]);
 
-    // Reopening a project brings back its media: from this browser when it has the file (sending it to
-    // the server if that doesn't have it yet), otherwise from the server. A file found in neither keeps its points.
+    // Reopening a project brings back its media: from this browser when it still has the file (sending it
+    // to the server if that doesn't have it yet, after which this browser's copy goes), otherwise from the
+    // server. A file found in neither keeps its points.
     useEffect(() => {
         if (!project) return;
         let cancelled = false;
@@ -64,11 +66,11 @@ export function useMediaPanels({ project, initialMedia, reviewedStudent, noSavin
                 const onServer = await mediaOnServer(project.id, media.id, reviewedStudent);
                 return { ...media, url: onServer ? mediaUrl(project.id, media.id, reviewedStudent) : "" };
             }
-            const file = await loadMediaFile(mediaKey(project.id, media.id)).catch(() => undefined);
+            const key = mediaKey(project.id, media.id);
+            const file = await loadMediaFile(key).catch(() => undefined);
             if (file) {
-                mediaOnServer(project.id, media.id).then((onServer) => {
-                    if (onServer === false) uploadMedia(project.id, media.id, file);
-                });
+                // The page keeps showing it from its own copy (the URL) after the stored one is removed
+                sendLocalMedia(key, project.id, media.id, file);
                 return { ...media, url: URL.createObjectURL(file) };
             }
             const onServer = await mediaOnServer(project.id, media.id);
@@ -139,10 +141,16 @@ export function useMediaPanels({ project, initialMedia, reviewedStudent, noSavin
         if (!project) return;
         const projectId = project.id;
         setMediaError(null);
-        const kept = saveMediaFile(mediaKey(projectId, item.id), file).then(() => true, () => false);
+        // Kept in this browser until the upload has worked, so it isn't lost if that fails
+        const key = mediaKey(projectId, item.id);
+        const kept = saveMediaFile(key, file).then(() => true, () => false);
         Promise.all([kept, uploadMedia(projectId, item.id, file)]).then(([kept, res]) => {
+            if (res.ok) {
+                if (kept) deleteMediaFile(key).catch(() => undefined);
+                return;
+            }
             // Offline, a file this browser keeps is uploaded the next time the project opens; other failures are shown
-            if (!res.ok && (res.error !== "network" || !kept)) setMediaError({ name: file.name, error: res.error, kept });
+            if (res.error !== "network" || !kept) setMediaError({ name: file.name, error: res.error, kept });
         });
     }
 
