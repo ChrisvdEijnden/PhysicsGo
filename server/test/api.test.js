@@ -7,6 +7,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { brotliCompressSync } from "node:zlib";
 
 const serverDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "physicsgo-test-"));
@@ -17,13 +18,20 @@ const env = {
     PHYSICSGO_DB: path.join(dataDir, "test.db"),
     PHYSICSGO_MEDIA_DIR: path.join(dataDir, "media"),
     PHYSICSGO_BACKUP_DIR: path.join(dataDir, "backups"),
-    // No built app is served during the tests
-    PHYSICSGO_STATIC: path.join(dataDir, "no-app"),
+    // A tiny built app (made below), to check how its files are sent
+    PHYSICSGO_STATIC: path.join(dataDir, "app"),
     // Small, so the test can fill it
     PHYSICSGO_WORK_QUOTA_MB: "1",
     NODE_ENV: "test",
 };
 const BASE = `http://localhost:${port}/api`;
+
+// What `pnpm build` makes, in miniature: index.html, and an asset with the Brotli copy compress-dist.mjs adds
+const APP_JS = "console.log('PhysicsGo');\n".repeat(200);
+fs.mkdirSync(path.join(env.PHYSICSGO_STATIC, "assets"), { recursive: true });
+fs.writeFileSync(path.join(env.PHYSICSGO_STATIC, "index.html"), "<!doctype html><title>PhysicsGo</title>");
+fs.writeFileSync(path.join(env.PHYSICSGO_STATIC, "assets", "app-1234.js"), APP_JS);
+fs.writeFileSync(path.join(env.PHYSICSGO_STATIC, "assets", "app-1234.js.br"), brotliCompressSync(APP_JS));
 let server;
 
 // One browser: remembers its session cookie like a real one. A body is sent as JSON, or as it is
@@ -97,6 +105,23 @@ describe("running the server", () => {
         const backups = () => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.endsWith(".partial")) : []);
         for (let i = 0; i < 50 && backups().length === 0; i++) await new Promise((resolve) => setTimeout(resolve, 50));
         assert.deepEqual(backups(), today);
+    });
+});
+
+describe("serving the built app", () => {
+    test("its files go compressed to browsers that accept it, and as they are to others", async () => {
+        const url = `http://localhost:${port}/assets/app-1234.js`;
+        const compressed = await fetch(url, { headers: { "Accept-Encoding": "gzip, deflate, br" } });
+        assert.equal(compressed.headers.get("content-encoding"), "br");
+        assert.match(compressed.headers.get("content-type"), /javascript/);
+        assert.match(compressed.headers.get("cache-control"), /immutable/);
+        assert.match(compressed.headers.get("vary"), /Accept-Encoding/);
+        assert.equal(await compressed.text(), APP_JS);
+
+        const plain = await fetch(url, { headers: { "Accept-Encoding": "identity" } });
+        assert.equal(plain.headers.get("content-encoding"), null);
+        assert.equal(await plain.text(), APP_JS);
+        assert.equal((await fetch(`http://localhost:${port}/assets/..%2F..%2Fpackage.json`)).status, 404);
     });
 });
 

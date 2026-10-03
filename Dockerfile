@@ -21,8 +21,8 @@ COPY server/package.json ./server/
 RUN pnpm install --frozen-lockfile
 COPY . .
 COPY --from=interpreter /build/wasm ./src/wasm
-# The interpreter is already built, so this skips ensure-wasm and only type-checks and bundles
-RUN pnpm exec tsc && pnpm exec vite build --configLoader native
+# The interpreter is already built, so this skips ensure-wasm and only type-checks, bundles and compresses
+RUN pnpm exec tsc && pnpm exec vite build --configLoader native && node scripts/compress-dist.mjs
 
 # 3. What runs: Node, the API's production dependencies, the API and the built app
 FROM node:22-slim

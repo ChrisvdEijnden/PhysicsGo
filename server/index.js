@@ -414,11 +414,39 @@ api.use("/admin", adminRouter({ requireAuth }));
 app.use("/api", api);
 app.use("/api", (req, res) => res.status(404).json({ error: "not_found" }));
 
+// The build keeps a Brotli and a gzip copy of its larger files (scripts/compress-dist.mjs). A browser that
+// accepts one gets that copy, a fraction of the size: the modeling page's code editor is 3.4 MB as it is
+// and under 0.7 MB in Brotli. Others get the file as it is (express.static, after this).
+function precompressed(dir, sendOptions) {
+    const root = path.resolve(dir);
+    return (req, res, next) => {
+        if (req.method !== "GET" && req.method !== "HEAD") return next();
+        res.vary("Accept-Encoding");
+        let file;
+        try {
+            file = path.join(root, decodeURIComponent(req.path));
+        } catch {
+            return next();
+        }
+        if (!file.startsWith(root + path.sep)) return next();
+        const accepts = req.get("accept-encoding") ?? "";
+        for (const [encoding, suffix] of [["br", ".br"], ["gzip", ".gz"]]) {
+            if (!new RegExp(`\\b${encoding}\\b`).test(accepts) || !fs.existsSync(file + suffix)) continue;
+            res.set("Content-Encoding", encoding);
+            res.type(path.extname(file));
+            return res.sendFile(file + suffix, sendOptions);
+        }
+        next();
+    };
+}
+
 // The web app itself, when it has been built. Files under assets/ have a hash in their name, so
 // browsers may keep them; index.html is always checked, so a new version is picked up right away.
 if (fs.existsSync(path.join(STATIC_DIR, "index.html"))) {
-    app.use("/assets", express.static(path.join(STATIC_DIR, "assets"), { immutable: true, maxAge: "1y", index: false }));
-    app.use(express.static(STATIC_DIR, { maxAge: 0 }));
+    const assets = path.join(STATIC_DIR, "assets");
+    const forever = { immutable: true, maxAge: "1y" };
+    app.use("/assets", precompressed(assets, forever), express.static(assets, { ...forever, index: false }));
+    app.use(precompressed(STATIC_DIR, { maxAge: 0 }), express.static(STATIC_DIR, { maxAge: 0 }));
 }
 
 app.use((err, req, res, _next) => {

@@ -1,5 +1,27 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import * as monaco from "monaco-editor";
+// Monaco's editor with the editing features the modeling language uses and students know from other
+// editors, but not the 80-odd programming languages, the TypeScript, CSS, HTML and JSON services and the
+// IDE features (refactoring, code lenses, diff view, …) of the full package, which only slow down loading
+import * as monaco from "monaco-editor/editor";
+import "monaco-editor/features/codicon/register"; // icons in suggestions and help
+import "monaco-editor/editor/contrib/suggest/browser/suggestController"; // suggestions while typing
+import "monaco-editor/features/snippet/register"; // a function suggestion puts the cursor between its brackets
+import "monaco-editor/features/hover/register"; // help on functions and keywords, and error messages
+import "monaco-editor/features/gotoError/register"; // F8: the next error
+import "monaco-editor/features/find/register"; // Ctrl+F, Ctrl+H
+import "monaco-editor/features/comment/register"; // Ctrl+/ comments out lines
+import "monaco-editor/features/bracketMatching/register";
+import "monaco-editor/features/clipboard/register";
+import "monaco-editor/features/contextmenu/register";
+import "monaco-editor/features/cursorUndo/register";
+import "monaco-editor/features/multicursor/register";
+import "monaco-editor/features/linesOperations/register"; // move, copy and delete lines
+import "monaco-editor/features/indentation/register";
+import "monaco-editor/features/folding/register"; // fold the indented lines under als/if
+import "monaco-editor/features/wordHighlighter/register"; // other uses of the variable under the cursor
+import "monaco-editor/features/wordOperations/register";
+import "monaco-editor/features/smartSelect/register";
+import "monaco-editor/features/readOnlyMessage/register"; // "can't edit" in a teacher's read-only view
 import "./codeEditor.css";
 import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 

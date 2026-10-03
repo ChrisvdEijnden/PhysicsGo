@@ -91,7 +91,7 @@ server {
 }
 ```
 
-The server sends its own security headers (a Content Security Policy that only allows the app's own files, HSTS, no framing).
+The server sends its own security headers (a Content Security Policy that only allows the app's own files, HSTS, no framing). The build stores Brotli and gzip copies of the app's files, and the server sends those to browsers that accept them, so the proxy doesn't need to compress them again.
 
 ## Backups
 
