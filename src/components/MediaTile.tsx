@@ -669,7 +669,9 @@ export default function MediaTile({
                     </div>
                 </>
             ) : item.category === "embed" ? (
-                <EmbedView href={item.href ?? ""} name={item.name}/>
+                // A website the student added loads for their teacher only after a click; the
+                // assignment's own starter websites are the teacher's
+                <EmbedView href={item.href ?? ""} name={item.name} askFirst={readOnly && item.source !== "project"}/>
             ) : isPdfMime(item.mime) ? (
                 <PdfView url={item.url} name={item.name}/>
             ) : (

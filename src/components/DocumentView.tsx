@@ -74,13 +74,26 @@ export function DownloadView({ url, name }: { url: string; name: string }) {
 
 // A website in a sandboxed frame. Sites that don't allow being shown inside another page stay
 // blank, which can't be detected from here, so the new-tab link is always there.
-export function EmbedView({ href, name }: { href: string; name: string }) {
+// With `askFirst` (a website a student added, while their teacher looks at the work), it only loads
+// after a click, with a warning that it isn't part of PhysicsGo: a student could add a page made to
+// look like PhysicsGo's sign-in.
+export function EmbedView({ href, name, askFirst = false }: { href: string; name: string; askFirst?: boolean }) {
     const { t } = useTranslation();
+    const [shown, setShown] = useState(!askFirst);
     const src = safeEmbedSrc(href, window.location.origin);
     if (!src) {
         return (
             <div className="analysis-media-file">
                 <span>{t("modeling.embedInvalid")}</span>
+            </div>
+        );
+    }
+    if (!shown) {
+        return (
+            <div className="analysis-media-file embed-ask">
+                <strong>{t("modeling.embedAskTitle")}</strong>
+                <span>{t("modeling.embedAsk", { host: new URL(src).hostname })}</span>
+                <button type="button" className="class-button" onClick={() => setShown(true)}>{t("modeling.embedShow")}</button>
             </div>
         );
     }

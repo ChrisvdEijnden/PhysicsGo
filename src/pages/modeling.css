@@ -325,6 +325,12 @@
     word-break: break-word;
 }
 
+/* A website a student added, waiting for the teacher to choose to load it */
+:where(.modeling-page) .embed-ask strong {
+    font-size: 13px;
+    color: var(--color-text-primary);
+}
+
 /* ---------- code-panel ---------- */
 
 :where(.modeling-page) .code-panel-actions, :where(.modeling-page) .analysis-panel-actions {

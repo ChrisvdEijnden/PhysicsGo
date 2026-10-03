@@ -612,6 +612,9 @@ export const translations = {
         "classes.joinOpen": "Students can join with this code",
         "classes.joinClosed": "Joining is closed; the code is not accepted",
         "classes.toggleJoin": "Allow students to join",
+        "modeling.embedAskTitle": "Website added by the student",
+        "modeling.embedAsk": "This panel shows {{host}}, a website the student added. It isn't part of PhysicsGo: never enter your password there.",
+        "modeling.embedShow": "Show website",
     },
     nl: {
         "nav.dashboard": "Dashboard",
@@ -1225,6 +1228,9 @@ export const translations = {
         "classes.joinOpen": "Leerlingen kunnen met deze code lid worden",
         "classes.joinClosed": "Aanmelden is gesloten; de code wordt niet geaccepteerd",
         "classes.toggleJoin": "Leerlingen laten aanmelden",
+        "modeling.embedAskTitle": "Website toegevoegd door de leerling",
+        "modeling.embedAsk": "Dit paneel toont {{host}}, een website die de leerling heeft toegevoegd. Die hoort niet bij PhysicsGo: vul daar nooit je wachtwoord in.",
+        "modeling.embedShow": "Website tonen",
     },
 } as const;
 

@@ -88,8 +88,9 @@ export function safeEmbedSrc(href: unknown, ownOrigin: string): string | null {
 }
 
 // The frame's sandbox: scripts and the site's own storage (players need them), popups (so "watch on
-// YouTube" opens a tab) and fullscreen, but it can't navigate or reach this app
-export const EMBED_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-presentation";
+// YouTube" opens a tab) and fullscreen, but it can't navigate or reach this app, and it can't submit
+// forms, so a page made to look like a sign-in form can't post what's typed into it
+export const EMBED_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation";
 export const EMBED_ALLOW = "fullscreen; picture-in-picture; encrypted-media";
 
 // A file's first bytes say whether it really is a PDF, whatever its name or type claims
